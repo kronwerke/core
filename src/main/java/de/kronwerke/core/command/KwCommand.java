@@ -70,7 +70,8 @@ public final class KwCommand {
                                 .then(Commands.literal("progress").then(Commands.argument("goal", StringArgumentType.word())
                                         .then(Commands.argument("item", StringArgumentType.string())
                                                 .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(c -> goalOp(c, "progress")))))))
-                        .then(Commands.literal("active").executes(c -> { ok(c, "Active players (scaling window): " + GoalManager.get().activePlayers()); return 1; }))));
+                        .then(Commands.literal("active").executes(c -> { ok(c, "Active players (scaling window): " + GoalManager.get().activePlayers()); return 1; })))
+                .then(TestCommand.build()));
     }
 
     // ---- streamer slot commands ----

@@ -39,7 +39,7 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | --- | --- |
 | `slot` | Slot budgets per streamer, invites and revokes, kept in sync with the vanilla whitelist |
 | `goal` | Goals with tech and magic pillars, scaling by activity, hold point before the event, starter kits, boss bar |
-| `command` | `/kw` for players, streamers and admins |
+| `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
 | `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements |
 
 ## Quick look
@@ -95,6 +95,11 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 | `/kw admin goal reload\|complete\|reset\|open\|rescale` | op | Manage goals |
 | `/kw admin goal progress <goal> "<item>" <n>` | op | Set the progress of one item (quote the item id) |
 | `/kw admin active` | op | How many players count as active for scaling |
+| `/kw test join\|leave\|give\|inv\|deposit\|kits\|list` | op, test servers | Server side test players, see below |
+
+### Testing without a client
+
+With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test players that exist only as inventory and data: `/kw test join Anna`, `/kw test give Anna create:andesite_alloy 200`, `/kw test deposit Anna all`, `/kw test kits Anna`. That is how deposits, the hold point, completion, stages and starter kits are checked over RCON on a headless server. Never turn it on in a season.
 
 ## Planned
 

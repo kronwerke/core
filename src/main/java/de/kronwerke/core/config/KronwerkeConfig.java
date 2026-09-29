@@ -16,6 +16,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue SCALE_MIN_HOURS;
     public static final ModConfigSpec.DoubleValue SCALE_MIN;
     public static final ModConfigSpec.DoubleValue SCALE_MAX;
+    public static final ModConfigSpec.BooleanValue TEST_COMMANDS;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -49,6 +50,11 @@ public final class KronwerkeConfig {
                 .defineInRange("minFactor", 0.4, 0.01, 10.0);
         SCALE_MAX = b.comment("Highest factor a goal can be scaled to.")
                 .defineInRange("maxFactor", 1.5, 0.01, 10.0);
+        b.pop();
+
+        b.push("testing");
+        TEST_COMMANDS = b.comment("Register /kw test, which creates server side test players. Only for test servers, never in a season.")
+                .define("testCommands", false);
         b.pop();
 
         SPEC = b.build();
