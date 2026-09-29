@@ -10,7 +10,7 @@
 - Goal progress is set per item: `/kw admin goal progress <goal> "<item>" <n>`.
 - Chapters stages per goal, granted on completion and on login.
 - `/kw admin invite|revoke <streamer> <player>` and `/kw admin goals json` for the Discord bot over RCON. Answers start with `OK` or `ERR`.
-- `/kw admin grant <player> <slots>` and `/kw admin ungrant <player>`: a place on the whitelist without a streamer's slot, with slots of the player's own. For Season 1 players. Taking it back also frees every slot the player gave.
+- `/kw admin grant <player> [slots]` and `/kw admin ungrant <player>`: a place on the whitelist without a streamer's slot, with slots of the player's own (the config default when left out). For streamers and Season 1 players. Taking it back also frees every slot the player gave.
 - `/kw test`: server side test players for exercising goals without a client. Off unless `testCommands` is set.
 
 ## 0.1.0

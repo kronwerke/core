@@ -219,7 +219,7 @@ public final class KwCommand {
 
     private static int adminList(CommandContext<CommandSourceStack> c) {
         for (SlotData.StreamerEntry e : SlotManager.get().allStreamers()) {
-            String tag = e.granted ? " (Season 1)" : "";
+            String tag = e.granted ? " (own place)" : "";
             c.getSource().sendSuccess(() -> Component.literal(e.name + tag + "  " + e.used() + "/" + SlotManager.get().allowance(e)).withStyle(ChatFormatting.GOLD)
                     .append(Component.literal("  " + String.join(", ", e.invited.values())).withStyle(ChatFormatting.GRAY)), false);
         }
