@@ -31,7 +31,7 @@ Nothing important is unlocked by an individual. The server has a list of goals, 
    /kw deposit, spawn block     boss bar                 (Chapters, titles, rewards)
 ```
 
-Whitelist slots work the same way in miniature: each streamer has a budget of invites and manages it in game.
+Whitelist slots work the same way in miniature: each streamer has a budget of invites and manages it in game, or through the [Discord bot](https://github.com/kronwerke/bot), which talks to this mod over RCON.
 
 ## Parts
 
@@ -95,6 +95,8 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 | `/kw admin goal reload\|complete\|reset\|open\|rescale` | op | Manage goals |
 | `/kw admin goal progress <goal> "<item>" <n>` | op | Set the progress of one item (quote the item id) |
 | `/kw admin active` | op | How many players count as active for scaling |
+| `/kw admin invite\|revoke <streamer> <player>` | op, the bot | Slots on behalf of a streamer; one line, `OK` or `ERR` |
+| `/kw admin goals json` | op, the bot | Every goal with state, progress and top five, as `OK <json>` |
 | `/kw test join\|leave\|give\|inv\|deposit\|kits\|list` | op, test servers | Server side test players, see below |
 
 ### Testing without a client
@@ -105,7 +107,6 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 - The obelisk: a block at spawn to deposit into, with a screen showing both pillars and the top contributors, and an item input side so factories can feed it.
 - A screen for streamers to manage their slots.
-- Discord: membership check on join, whitelist sync, goal announcements.
 - Rewards for the top contributors of each goal.
 
 ## Non-goals
@@ -116,7 +117,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## Status
 
-Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands. No screens and no obelisk block yet. Not yet used in a season.
+Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. No screens and no obelisk block yet. Not yet used in a season.
 
 ## Docs
 

@@ -34,6 +34,7 @@ import java.util.UUID;
  *   admin list                 op: all streamers and their invites
  *   admin goal reload|complete|reset|open|rescale|progress ...
  *   admin active            op: how many players count as active for scaling
+ *   admin invite|revoke|goals json   for the Discord bot, see BotCommand
  */
 public final class KwCommand {
 
@@ -61,6 +62,9 @@ public final class KwCommand {
                                 .then(Commands.argument("streamer", StringArgumentType.word())
                                         .then(Commands.argument("amount", IntegerArgumentType.integer()).executes(KwCommand::adminBonus))))
                         .then(Commands.literal("list").executes(KwCommand::adminList))
+                        .then(BotCommand.invite())
+                        .then(BotCommand.revoke())
+                        .then(BotCommand.goals())
                         .then(Commands.literal("goal")
                                 .then(Commands.literal("reload").executes(c -> { GoalManager.get().reload(); ok(c, "Goals reloaded: " + GoalManager.get().goalCount()); return 1; }))
                                 .then(Commands.literal("complete").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "complete"))))
