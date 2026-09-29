@@ -64,7 +64,7 @@ public final class SlotManager {
     }
 
     /** Result type for invite/revoke so the command layer can build the message. */
-    public enum Result { OK, NO_SLOTS_LEFT, ALREADY_INVITED, UNKNOWN_PLAYER, NOT_INVITED_BY_YOU, ALREADY_WHITELISTED }
+    public enum Result { OK, NO_SLOTS_LEFT, ALREADY_INVITED, UNKNOWN_PLAYER, NOT_INVITED_BY_YOU, ALREADY_WHITELISTED, NOT_GRANTED }
 
     public Result invite(SlotData.StreamerEntry streamer, String playerName) {
         Optional<GameProfile> profile = lookup(playerName);
@@ -95,6 +95,46 @@ public final class SlotManager {
         server.getPlayerList().getWhiteList().remove(new UserWhiteListEntry(profile.get()));
         server.kickUnlistedPlayers(server.createCommandSourceStack());
         KronwerkeCore.LOGGER.info("{} revoked {}", streamer.name, profile.get().getName());
+        return Result.OK;
+    }
+
+    /**
+     * Whitelists a player without using anyone's slot and gives them slots of their own.
+     * Used for Season 1 players. An existing streamer entry keeps its allowance.
+     */
+    public Result grant(String playerName, int slots) {
+        Optional<GameProfile> profile = lookup(playerName);
+        if (profile.isEmpty()) return Result.UNKNOWN_PLAYER;
+        UUID id = profile.get().getId();
+        SlotData.StreamerEntry inviter = data().findInviter(id);
+        if (inviter != null) return Result.ALREADY_INVITED;
+        boolean fresh = data().find(id) == null;
+        SlotData.StreamerEntry e = entry(id, profile.get().getName());
+        if (e.granted) return Result.ALREADY_WHITELISTED;
+        e.granted = true;
+        if (fresh) e.slotOverride = slots;
+        data().setDirty();
+        server.getPlayerList().getWhiteList().add(new UserWhiteListEntry(profile.get()));
+        KronwerkeCore.LOGGER.info("{} whitelisted by the team with {} slots of their own", e.name, allowance(e));
+        return Result.OK;
+    }
+
+    /** Takes a granted place back, together with every slot the player gave away. */
+    public Result ungrant(String playerName) {
+        Optional<GameProfile> profile = lookup(playerName);
+        if (profile.isEmpty()) return Result.UNKNOWN_PLAYER;
+        SlotData.StreamerEntry e = data().find(profile.get().getId());
+        if (e == null || !e.granted) return Result.NOT_GRANTED;
+        UserWhiteList wl = server.getPlayerList().getWhiteList();
+        for (UUID invited : e.invited.keySet()) {
+            wl.remove(new UserWhiteListEntry(new GameProfile(invited, e.invited.get(invited))));
+        }
+        e.invited.clear();
+        e.granted = false;
+        data().setDirty();
+        wl.remove(new UserWhiteListEntry(profile.get()));
+        server.kickUnlistedPlayers(server.createCommandSourceStack());
+        KronwerkeCore.LOGGER.info("{} lost their granted place", e.name);
         return Result.OK;
     }
 

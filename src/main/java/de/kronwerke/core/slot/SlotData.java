@@ -84,6 +84,8 @@ public class SlotData extends SavedData {
         /** -1 means "use the config default". */
         public int slotOverride = -1;
         public int bonusSlots = 0;
+        /** Whitelisted by the team without a streamer's slot (Season 1 players). */
+        public boolean granted = false;
         /** invited uuid -> last known name */
         public final Map<UUID, String> invited = new LinkedHashMap<>();
 
@@ -106,6 +108,7 @@ public class SlotData extends SavedData {
             t.putString("name", name);
             t.putInt("slotOverride", slotOverride);
             t.putInt("bonusSlots", bonusSlots);
+            t.putBoolean("granted", granted);
             ListTag inv = new ListTag();
             invited.forEach((id, n) -> {
                 CompoundTag it = new CompoundTag();
@@ -121,6 +124,7 @@ public class SlotData extends SavedData {
             StreamerEntry e = new StreamerEntry(t.getUUID("uuid"), t.getString("name"));
             e.slotOverride = t.getInt("slotOverride");
             e.bonusSlots = t.getInt("bonusSlots");
+            e.granted = t.getBoolean("granted");
             ListTag inv = t.getList("invited", Tag.TAG_COMPOUND);
             for (int i = 0; i < inv.size(); i++) {
                 CompoundTag it = inv.getCompound(i);

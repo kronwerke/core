@@ -3,6 +3,7 @@ package de.kronwerke.core.command;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
@@ -29,6 +30,8 @@ import java.util.UUID;
  *
  *   admin invite <streamer> <player>   use one of the streamer's slots for the player
  *   admin revoke <streamer> <player>   free it again
+ *   admin grant <player> <slots>       whitelist without a streamer's slot, with slots of their own
+ *   admin ungrant <player>             take that place back, with every slot the player gave
  *   admin goals json                   every goal with state, progress and top five
  */
 public final class BotCommand {
@@ -44,6 +47,17 @@ public final class BotCommand {
         return Commands.literal("revoke")
                 .then(Commands.argument("streamer", StringArgumentType.word())
                         .then(Commands.argument("player", StringArgumentType.word()).executes(c -> slot(c, false))));
+    }
+
+    static LiteralArgumentBuilder<CommandSourceStack> grant() {
+        return Commands.literal("grant")
+                .then(Commands.argument("player", StringArgumentType.word())
+                        .then(Commands.argument("slots", IntegerArgumentType.integer(0, 64)).executes(BotCommand::grant)));
+    }
+
+    static LiteralArgumentBuilder<CommandSourceStack> ungrant() {
+        return Commands.literal("ungrant")
+                .then(Commands.argument("player", StringArgumentType.word()).executes(BotCommand::ungrant));
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> goals() {
@@ -76,6 +90,37 @@ public final class BotCommand {
             case ALREADY_WHITELISTED -> answer(c, "ERR " + player + " is already on the whitelist");
             case UNKNOWN_PLAYER -> answer(c, "ERR no Minecraft account named " + player);
             case NOT_INVITED_BY_YOU -> answer(c, "ERR " + player + " was not invited by " + e.name);
+            case NOT_GRANTED -> answer(c, "ERR " + player + " has no granted place");
+        }
+        return r == SlotManager.Result.OK ? 1 : 0;
+    }
+
+    private static int grant(CommandContext<CommandSourceStack> c) {
+        String player = StringArgumentType.getString(c, "player");
+        int slots = IntegerArgumentType.getInteger(c, "slots");
+        SlotManager sm = SlotManager.get();
+        SlotManager.Result r = sm.grant(player, slots);
+        switch (r) {
+            case OK -> {
+                SlotData.StreamerEntry e = sm.entryByName(player);
+                answer(c, "OK " + e.name + " is whitelisted with " + sm.allowance(e) + " slots of their own");
+            }
+            case UNKNOWN_PLAYER -> answer(c, "ERR no Minecraft account named " + player);
+            case ALREADY_INVITED -> answer(c, "ERR " + player + " already has a slot from " + sm.inviterOf(sm.lookup(player).get().getId()).name);
+            case ALREADY_WHITELISTED -> answer(c, "ERR " + player + " already has a granted place");
+            default -> answer(c, "ERR " + r);
+        }
+        return r == SlotManager.Result.OK ? 1 : 0;
+    }
+
+    private static int ungrant(CommandContext<CommandSourceStack> c) {
+        String player = StringArgumentType.getString(c, "player");
+        SlotManager.Result r = SlotManager.get().ungrant(player);
+        switch (r) {
+            case OK -> answer(c, "OK " + player + " is off the whitelist, with every slot they gave");
+            case UNKNOWN_PLAYER -> answer(c, "ERR no Minecraft account named " + player);
+            case NOT_GRANTED -> answer(c, "ERR " + player + " has no granted place");
+            default -> answer(c, "ERR " + r);
         }
         return r == SlotManager.Result.OK ? 1 : 0;
     }
