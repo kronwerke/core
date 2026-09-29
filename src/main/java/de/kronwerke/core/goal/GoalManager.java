@@ -222,6 +222,15 @@ public final class GoalManager {
 
     /** Returns how many items were taken from the stack. */
     public long deposit(ServerPlayer player, ItemStack stack) {
+        return deposit(player.getUUID(), player.getDisplayName(), stack, true);
+    }
+
+    /**
+     * Deposits for a contributor who does not have to be online, like the owner of an obelisk
+     * feeder. Takes from the stack and returns how many were taken. announce=false leaves the
+     * chat message to the caller.
+     */
+    public long deposit(UUID who, Component name, ItemStack stack, boolean announce) {
         if (stack.isEmpty()) return 0;
         for (Goal g : activeGoals()) {
             if (isHeld(g)) continue;
@@ -237,10 +246,10 @@ public final class GoalManager {
                     if (take <= 0) continue;
                 }
                 stack.shrink((int) take);
-                long now = data().add(g.id(), it.item(), player.getUUID(), take);
-                if (KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
+                long now = data().add(g.id(), it.item(), who, take);
+                if (announce && KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
                     server.getPlayerList().broadcastSystemMessage(Component.literal("")
-                            .append(player.getDisplayName())
+                            .append(name)
                             .append(Component.literal(" deposited " + take + " ").withStyle(ChatFormatting.GRAY))
                             .append(itemName(it.item()))
                             .append(Component.literal(" (" + now + "/" + data().target(g.id(), it.item()) + ")").withStyle(ChatFormatting.GRAY)), false);
