@@ -34,7 +34,7 @@ import java.util.UUID;
  *   admin list                 op: all streamers and their invites
  *   admin goal reload|complete|reset|open|rescale|progress ...
  *   admin active            op: how many players count as active for scaling
- *   admin invite|revoke|goals json   for the Discord bot, see BotCommand
+ *   admin invite|revoke|grant|ungrant|goals json   for the Discord bot, see BotCommand
  */
 public final class KwCommand {
 
@@ -64,6 +64,8 @@ public final class KwCommand {
                         .then(Commands.literal("list").executes(KwCommand::adminList))
                         .then(BotCommand.invite())
                         .then(BotCommand.revoke())
+                        .then(BotCommand.grant())
+                        .then(BotCommand.ungrant())
                         .then(BotCommand.goals())
                         .then(Commands.literal("goal")
                                 .then(Commands.literal("reload").executes(c -> { GoalManager.get().reload(); ok(c, "Goals reloaded: " + GoalManager.get().goalCount()); return 1; }))
@@ -217,7 +219,8 @@ public final class KwCommand {
 
     private static int adminList(CommandContext<CommandSourceStack> c) {
         for (SlotData.StreamerEntry e : SlotManager.get().allStreamers()) {
-            c.getSource().sendSuccess(() -> Component.literal(e.name + "  " + e.used() + "/" + SlotManager.get().allowance(e)).withStyle(ChatFormatting.GOLD)
+            String tag = e.granted ? " (Season 1)" : "";
+            c.getSource().sendSuccess(() -> Component.literal(e.name + tag + "  " + e.used() + "/" + SlotManager.get().allowance(e)).withStyle(ChatFormatting.GOLD)
                     .append(Component.literal("  " + String.join(", ", e.invited.values())).withStyle(ChatFormatting.GRAY)), false);
         }
         return 1;
