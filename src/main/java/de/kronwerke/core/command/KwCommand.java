@@ -34,6 +34,7 @@ import java.util.UUID;
  *   admin list                 op: all streamers and their invites
  *   admin goal reload|complete|reset|open|rescale|progress ...
  *   admin active            op: how many players count as active for scaling
+ *   admin obelisk ...       op: where the obelisk is and its feeders, see ObeliskCommand
  *   admin invite|revoke|grant|ungrant|goals json   for the Discord bot, see BotCommand
  */
 public final class KwCommand {
@@ -76,7 +77,8 @@ public final class KwCommand {
                                 .then(Commands.literal("progress").then(Commands.argument("goal", StringArgumentType.word())
                                         .then(Commands.argument("item", StringArgumentType.string())
                                                 .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(c -> goalOp(c, "progress")))))))
-                        .then(Commands.literal("active").executes(c -> { ok(c, "Active players (scaling window): " + GoalManager.get().activePlayers()); return 1; })))
+                        .then(Commands.literal("active").executes(c -> { ok(c, "Active players (scaling window): " + GoalManager.get().activePlayers()); return 1; }))
+                        .then(ObeliskCommand.build()))
                 .then(TestCommand.build()));
     }
 
