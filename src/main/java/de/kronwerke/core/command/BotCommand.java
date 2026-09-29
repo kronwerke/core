@@ -30,7 +30,8 @@ import java.util.UUID;
  *
  *   admin invite <streamer> <player>   use one of the streamer's slots for the player
  *   admin revoke <streamer> <player>   free it again
- *   admin grant <player> <slots>       whitelist without a streamer's slot, with slots of their own
+ *   admin grant <player> [slots]       whitelist without a streamer's slot, with slots of their own
+ *                                      (the config default when slots is left out)
  *   admin ungrant <player>             take that place back, with every slot the player gave
  *   admin goals json                   every goal with state, progress and top five
  */
@@ -52,7 +53,9 @@ public final class BotCommand {
     static LiteralArgumentBuilder<CommandSourceStack> grant() {
         return Commands.literal("grant")
                 .then(Commands.argument("player", StringArgumentType.word())
-                        .then(Commands.argument("slots", IntegerArgumentType.integer(0, 64)).executes(BotCommand::grant)));
+                        .executes(c -> grant(c, -1))
+                        .then(Commands.argument("slots", IntegerArgumentType.integer(0, 64))
+                                .executes(c -> grant(c, IntegerArgumentType.getInteger(c, "slots")))));
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> ungrant() {
@@ -95,9 +98,8 @@ public final class BotCommand {
         return r == SlotManager.Result.OK ? 1 : 0;
     }
 
-    private static int grant(CommandContext<CommandSourceStack> c) {
+    private static int grant(CommandContext<CommandSourceStack> c, int slots) {
         String player = StringArgumentType.getString(c, "player");
-        int slots = IntegerArgumentType.getInteger(c, "slots");
         SlotManager sm = SlotManager.get();
         SlotManager.Result r = sm.grant(player, slots);
         switch (r) {

@@ -100,7 +100,8 @@ public final class SlotManager {
 
     /**
      * Whitelists a player without using anyone's slot and gives them slots of their own.
-     * Used for Season 1 players. An existing streamer entry keeps its allowance.
+     * Used for streamers and Season 1 players. A negative slot count keeps the config
+     * default, and an existing entry keeps its allowance.
      */
     public Result grant(String playerName, int slots) {
         Optional<GameProfile> profile = lookup(playerName);
@@ -112,7 +113,7 @@ public final class SlotManager {
         SlotData.StreamerEntry e = entry(id, profile.get().getName());
         if (e.granted) return Result.ALREADY_WHITELISTED;
         e.granted = true;
-        if (fresh) e.slotOverride = slots;
+        if (fresh && slots >= 0) e.slotOverride = slots;
         data().setDirty();
         server.getPlayerList().getWhiteList().add(new UserWhiteListEntry(profile.get()));
         KronwerkeCore.LOGGER.info("{} whitelisted by the team with {} slots of their own", e.name, allowance(e));

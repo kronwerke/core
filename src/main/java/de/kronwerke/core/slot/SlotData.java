@@ -84,7 +84,7 @@ public class SlotData extends SavedData {
         /** -1 means "use the config default". */
         public int slotOverride = -1;
         public int bonusSlots = 0;
-        /** Whitelisted by the team without a streamer's slot (Season 1 players). */
+        /** Whitelisted without a streamer's slot (streamers themselves, Season 1 players). */
         public boolean granted = false;
         /** invited uuid -> last known name */
         public final Map<UUID, String> invited = new LinkedHashMap<>();
