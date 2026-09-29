@@ -96,7 +96,7 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 | `/kw admin goal progress <goal> "<item>" <n>` | op | Set the progress of one item (quote the item id) |
 | `/kw admin active` | op | How many players count as active for scaling |
 | `/kw admin invite\|revoke <streamer> <player>` | op, the bot | Slots on behalf of a streamer; one line, `OK` or `ERR` |
-| `/kw admin grant <player> <slots>` | op, the bot | Whitelist without a streamer's slot, with slots of their own (Season 1 players) |
+| `/kw admin grant <player> [slots]` | op, the bot | Whitelist without a streamer's slot, with slots of their own (streamers, Season 1 players) |
 | `/kw admin ungrant <player>` | op, the bot | Take that place back, and every slot the player gave |
 | `/kw admin goals json` | op, the bot | Every goal with state, progress and top five, as `OK <json>` |
 | `/kw test join\|leave\|give\|inv\|deposit\|kits\|list` | op, test servers | Server side test players, see below |
