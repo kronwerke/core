@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- The obelisk: any block at spawn, set with `/kw admin obelisk set <pos>`. Right click hands in the held stack, sneak and right click everything that fits. No new block, clients need nothing.
+- Feeders: a container placed next to the obelisk counts for the player who placed it. Every two seconds the mod empties what the active goal can take, so factories can pay into the goal. Radius, feeders per player and interval are in the config.
+- `/kw admin obelisk info|clear|feeder|unfeeder|drain`.
+- Deposits can be credited to a player who is not online.
+
 ## 0.2.0
 
 - Goals have pillars (tech, magic, anything) and every item of every pillar has to fill.

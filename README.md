@@ -28,7 +28,7 @@ Nothing important is unlocked by an individual. The server has a list of goals, 
 ```
   players deposit items          goal reached          stage unlocked
   ─────────────────────►  ████████████░░░  ────►  commands run for everyone
-   /kw deposit, spawn block     boss bar                 (Chapters, titles, rewards)
+   obelisk, feeders, /kw deposit  boss bar               (Chapters, titles, rewards)
 ```
 
 Whitelist slots work the same way in miniature: each streamer has a budget of invites and manages it in game, or through the [Discord bot](https://github.com/kronwerke/bot), which talks to this mod over RCON.
@@ -39,8 +39,9 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | --- | --- |
 | `slot` | Slot budgets per streamer, invites and revokes, kept in sync with the vanilla whitelist |
 | `goal` | Goals with tech and magic pillars, scaling by activity, hold point before the event, starter kits, boss bar |
+| `obelisk` | The deposit point at spawn and the feeder containers around it |
 | `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
-| `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements |
+| `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, feeder radius and interval |
 
 ## Quick look
 
@@ -81,6 +82,15 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 - **Hold point.** At `holdAt` of the total, the obelisk stops taking deposits and the boss bar turns purple. `/kw admin goal open <goal>` lifts the hold for the event; the last items go in and the goal completes.
 - **Starter kit.** Given once to every player after the goal completes, including players who join later.
 
+### The obelisk
+
+The obelisk is any block at spawn, chosen with `/kw admin obelisk set <pos>`. It needs no block of its own, so clients need nothing extra.
+
+- **Right click** it to hand in the stack in your hand. Sneak and right click to hand in everything in your inventory that the goal takes. When nothing fits, it says what it wants.
+- **Feeders.** A chest, barrel or any other container placed within `feederRadius` blocks of the obelisk (3 by default) becomes a feeder of the player who placed it, up to `feedersPerPlayer` (2). Every `feederInterval` seconds the mod takes whatever the goal can use out of every feeder and counts it for its owner. Anything the goal does not want stays in the container. Pipe a factory into your feeder and it pays into the goal while you sleep.
+- The hold point applies to feeders too: at 98 percent they stop being emptied until the event.
+- Players need build rights next to the obelisk to place a feeder. Admins can also set one with `/kw admin obelisk feeder <pos> <player>`.
+
 | Command | Who | What |
 | --- | --- | --- |
 | `/kw invite <player>` | streamer | Whitelist a viewer using one of your slots |
@@ -95,6 +105,9 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 | `/kw admin goal reload\|complete\|reset\|open\|rescale` | op | Manage goals |
 | `/kw admin goal progress <goal> "<item>" <n>` | op | Set the progress of one item (quote the item id) |
 | `/kw admin active` | op | How many players count as active for scaling |
+| `/kw admin obelisk set <pos>\|clear\|info` | op | Where the obelisk is, and its feeders |
+| `/kw admin obelisk feeder <pos> <player>`, `unfeeder <pos>` | op | Add or remove a feeder by hand |
+| `/kw admin obelisk drain` | op | Empty the feeders now |
 | `/kw admin invite\|revoke <streamer> <player>` | op, the bot | Slots on behalf of a streamer; one line, `OK` or `ERR` |
 | `/kw admin grant <player> [slots]` | op, the bot | Whitelist without a streamer's slot, with slots of their own (streamers, Season 1 players) |
 | `/kw admin ungrant <player>` | op, the bot | Take that place back, and every slot the player gave |
@@ -107,7 +120,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## Planned
 
-- The obelisk: a block at spawn to deposit into, with a screen showing both pillars and the top contributors, and an item input side so factories can feed it.
+- A screen for the obelisk showing both pillars and the top contributors (needs the mod on clients).
 - A screen for streamers to manage their slots.
 - Rewards for the top contributors of each goal.
 
@@ -119,7 +132,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## Status
 
-Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. No screens and no obelisk block yet. Not yet used in a season.
+Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. The obelisk and its feeders were tested the same way: a chest next to it, filled over RCON, is emptied into the goal, stops at the hold point and goes on after `open`. Right clicking needs a client and waits for the beta. No screens yet. Not yet used in a season.
 
 ## Docs
 
