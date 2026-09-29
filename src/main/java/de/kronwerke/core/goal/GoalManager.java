@@ -120,6 +120,7 @@ public final class GoalManager {
         return new Goal(g.id(), g.title() == null ? g.id() : g.title(), g.description() == null ? "" : g.description(),
                 g.requires() == null ? List.of() : g.requires(), g.holdAt(), g.scale(),
                 g.pillars() == null ? List.of() : g.pillars(),
+                g.stages() == null ? List.of() : g.stages(),
                 g.onComplete() == null ? List.of() : g.onComplete(),
                 g.starterKit() == null ? List.of() : g.starterKit());
     }
@@ -132,6 +133,7 @@ public final class GoalManager {
                 List.of(new Goal.Pillar("stone", "Stone", List.of(new Goal.PillarItem("#c:cobblestones", 40000))),
                         new Goal.Pillar("tech", "Tech", List.of(new Goal.PillarItem("create:andesite_alloy", 3000))),
                         new Goal.Pillar("magic", "Magic", List.of(new Goal.PillarItem("ars_nouveau:source_gem", 1500)))),
+                List.of("kronwerke:stage2"),
                 List.of("say The foundation is complete. Stage 2 is open."),
                 List.of()));
         l.add(new Goal("stage2", "The Brass Engine",
@@ -141,6 +143,7 @@ public final class GoalManager {
                                 new Goal.PillarItem("create:precision_mechanism", 300))),
                         new Goal.Pillar("magic", "Magic", List.of(new Goal.PillarItem("botania:mana_pearl", 1500),
                                 new Goal.PillarItem("botania:terrasteel_ingot", 100)))),
+                List.of("kronwerke:stage3"),
                 List.of("say The brass engine runs. Stage 3 is open."),
                 List.of(new Goal.KitItem("create:brass_ingot", 16), new Goal.KitItem("create:blaze_burner", 1),
                         new Goal.KitItem("ars_nouveau:source_jar", 1), new Goal.KitItem("botania:mana_pearl", 8))));
@@ -285,8 +288,25 @@ public final class GoalManager {
         }
         KronwerkeCore.LOGGER.info("Goal {} completed", g.id());
         activatePending();
-        for (ServerPlayer p : server.getPlayerList().getPlayers()) giveKits(p);
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            giveStages(p);
+            giveKits(p);
+        }
         refreshBossBar();
+    }
+
+    // ---- stages ----
+
+    /** Grants the Chapters stages of every completed goal the player does not have yet. */
+    public void giveStages(ServerPlayer player) {
+        for (Goal g : goals.values()) {
+            if (!data().isCompleted(g.id()) || g.stages().isEmpty() || data().hasStages(g.id(), player.getUUID())) continue;
+            for (String stage : g.stages()) {
+                server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(),
+                        "chapters add " + player.getGameProfile().getName() + " " + stage);
+            }
+            data().markStages(g.id(), player.getUUID());
+        }
     }
 
     /** Completes the goal if every target is met and nothing holds it. Used after admin edits. */
@@ -346,6 +366,7 @@ public final class GoalManager {
         if (player instanceof ServerPlayer sp) {
             activity().login(sp.getUUID(), System.currentTimeMillis());
             if (bossBar != null) bossBar.addPlayer(sp);
+            giveStages(sp);
             giveKits(sp);
         }
     }

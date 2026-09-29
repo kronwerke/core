@@ -31,6 +31,8 @@ public class GoalData extends SavedData {
     private final Map<String, Map<UUID, Long>> contributions = new HashMap<>();
     /** goal -> players who received the starter kit */
     private final Map<String, Set<UUID>> kits = new HashMap<>();
+    /** goal -> players who received the goal's stages */
+    private final Map<String, Set<UUID>> staged = new HashMap<>();
 
     private static String key(String goal, String item) {
         return goal + "/" + item;
@@ -70,6 +72,15 @@ public class GoalData extends SavedData {
 
     public void markKit(String goal, UUID player) {
         kits.computeIfAbsent(goal, k -> new HashSet<>()).add(player);
+        setDirty();
+    }
+
+    public boolean hasStages(String goal, UUID player) {
+        return staged.getOrDefault(goal, Set.of()).contains(player);
+    }
+
+    public void markStages(String goal, UUID player) {
+        staged.computeIfAbsent(goal, k -> new HashSet<>()).add(player);
         setDirty();
     }
 
@@ -117,6 +128,7 @@ public class GoalData extends SavedData {
         completed.remove(goal);
         contributions.remove(goal);
         kits.remove(goal);
+        staged.remove(goal);
         setDirty();
     }
 
@@ -163,6 +175,11 @@ public class GoalData extends SavedData {
             Set<UUID> s = d.kits.computeIfAbsent(goal, k -> new HashSet<>());
             for (String u : kits.getCompound(goal).getAllKeys()) s.add(UUID.fromString(u));
         }
+        CompoundTag staged = tag.getCompound("staged");
+        for (String goal : staged.getAllKeys()) {
+            Set<UUID> s = d.staged.computeIfAbsent(goal, k -> new HashSet<>());
+            for (String u : staged.getCompound(goal).getAllKeys()) s.add(UUID.fromString(u));
+        }
         return d;
     }
 
@@ -190,6 +207,13 @@ public class GoalData extends SavedData {
             kitsTag.put(goal, t);
         });
         tag.put("kits", kitsTag);
+        CompoundTag stagedTag = new CompoundTag();
+        staged.forEach((goal, s) -> {
+            CompoundTag t = new CompoundTag();
+            s.forEach(u -> t.putBoolean(u.toString(), true));
+            stagedTag.put(goal, t);
+        });
+        tag.put("staged", stagedTag);
         return tag;
     }
 }

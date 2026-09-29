@@ -30,17 +30,20 @@ import java.util.List;
  *       { "item": "botania:terrasteel_ingot", "base": 100 }
  *     ]}
  *   ],
- *   "onComplete": ["chapters grant @a stage2"],
+ *   "stages": ["kronwerke:stage2"],
+ *   "onComplete": ["say Stage 2 is open."],
  *   "starterKit": [ { "item": "create:brass_ingot", "count": 16 } ]
  * }
  * </pre>
  *
- * An item can be an id or a #tag. Base amounts are multiplied by the activity factor when the goal
+ * Stages are Chapters stage ids. They are granted to every online player when the goal completes and
+ * to every other player when they next log in. An item can be an id or a #tag. Base amounts are multiplied by the activity factor when the goal
  * becomes active (see {@link GoalManager#activate}) unless scale is false. At holdAt (fraction of
  * the total) the goal stops accepting deposits until an admin opens it with /kw admin goal open.
  */
 public record Goal(String id, String title, String description, List<String> requires, Double holdAt,
-                   Boolean scale, List<Pillar> pillars, List<String> onComplete, List<KitItem> starterKit) {
+                   Boolean scale, List<Pillar> pillars, List<String> stages, List<String> onComplete,
+                   List<KitItem> starterKit) {
 
     public record Pillar(String id, String title, List<PillarItem> items) {}
 

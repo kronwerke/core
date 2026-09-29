@@ -69,12 +69,14 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
       { "item": "botania:terrasteel_ingot", "base": 100 }
     ]}
   ],
-  "onComplete": ["chapters grant @a stage2"],
+  "stages": ["kronwerke:stage2"],
+  "onComplete": ["say Stage 2 is open."],
   "starterKit": [ { "item": "create:brass_ingot", "count": 16 } ]
 }
 ```
 
 - **Pillars.** Every item of every pillar has to reach its target. An item is an id or a `#tag`.
+- **Stages.** Chapters stage ids. Granted to everyone online when the goal completes, and to everyone else on their next login, so nobody misses a stage by being offline.
 - **Scaling.** When a goal becomes active, each base amount is multiplied by `clamp(active / basePlayers, minFactor, maxFactor)`, where `active` is the number of players with at least `minHours` of play in the last `days` (all in the config). The targets are then fixed for that goal. `/kw admin goal rescale` recomputes them.
 - **Hold point.** At `holdAt` of the total, the obelisk stops taking deposits and the boss bar turns purple. `/kw admin goal open <goal>` lifts the hold for the event; the last items go in and the goal completes.
 - **Starter kit.** Given once to every player after the goal completes, including players who join later.
