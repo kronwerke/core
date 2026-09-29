@@ -7,6 +7,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import de.kronwerke.core.config.KronwerkeConfig;
 import de.kronwerke.core.goal.Goal;
+import de.kronwerke.core.goal.GoalData;
 import de.kronwerke.core.goal.GoalManager;
 import de.kronwerke.core.slot.SlotData;
 import de.kronwerke.core.slot.SlotManager;
@@ -31,7 +32,8 @@ import java.util.UUID;
  *   admin slots <streamer> <n> op: set a streamer's base slots
  *   admin bonus <streamer> <n> op: add bonus slots (negative to remove)
  *   admin list                 op: all streamers and their invites
- *   admin goal reload|complete|reset|progress ...
+ *   admin goal reload|complete|reset|open|rescale|progress ...
+ *   admin active            op: how many players count as active for scaling
  */
 public final class KwCommand {
 
@@ -63,8 +65,12 @@ public final class KwCommand {
                                 .then(Commands.literal("reload").executes(c -> { GoalManager.get().reload(); ok(c, "Goals reloaded: " + GoalManager.get().goalCount()); return 1; }))
                                 .then(Commands.literal("complete").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "complete"))))
                                 .then(Commands.literal("reset").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "reset"))))
+                                .then(Commands.literal("open").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "open"))))
+                                .then(Commands.literal("rescale").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "rescale"))))
                                 .then(Commands.literal("progress").then(Commands.argument("goal", StringArgumentType.word())
-                                        .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(c -> goalOp(c, "progress"))))))));
+                                        .then(Commands.argument("item", StringArgumentType.string())
+                                                .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(c -> goalOp(c, "progress")))))))
+                        .then(Commands.literal("active").executes(c -> { ok(c, "Active players (scaling window): " + GoalManager.get().activePlayers()); return 1; }))));
     }
 
     // ---- streamer slot commands ----
@@ -131,17 +137,27 @@ public final class KwCommand {
 
     private static int goals(CommandContext<CommandSourceStack> c) {
         GoalManager gm = GoalManager.get();
+        GoalData d = gm.progressData();
         c.getSource().sendSuccess(() -> Component.literal("Community goals").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
         for (Goal g : gm.allGoals()) {
-            boolean done = gm.progressData().isCompleted(g.id());
+            boolean done = d.isCompleted(g.id());
             boolean active = gm.isActive(g);
-            long p = gm.progressData().progress(g.id());
             ChatFormatting color = done ? ChatFormatting.GREEN : active ? ChatFormatting.YELLOW : ChatFormatting.DARK_GRAY;
-            String state = done ? "done" : active ? p + "/" + g.amount() : "locked";
+            String state = done ? "done" : active ? (gm.isHeld(g) ? "waiting for the event" : Math.round(gm.fraction(g) * 100) + "%") : "locked";
             c.getSource().sendSuccess(() -> Component.literal(" " + g.title() + " ").withStyle(color)
                     .append(Component.literal("[" + state + "]").withStyle(ChatFormatting.GRAY)), false);
-            if (active) {
-                c.getSource().sendSuccess(() -> Component.literal("   needs " + g.item() + "  " + g.description()).withStyle(ChatFormatting.GRAY), false);
+            if (!active) continue;
+            if (!g.description().isEmpty()) {
+                c.getSource().sendSuccess(() -> Component.literal("   " + g.description()).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), false);
+            }
+            for (Goal.Pillar p : g.pillars()) {
+                boolean pd = gm.pillarDone(g, p);
+                c.getSource().sendSuccess(() -> Component.literal("   " + p.title()).withStyle(pd ? ChatFormatting.GREEN : ChatFormatting.AQUA), false);
+                for (Goal.PillarItem it : p.items()) {
+                    long have = d.progress(g.id(), it.item()), need = d.target(g.id(), it.item());
+                    c.getSource().sendSuccess(() -> Component.literal("     " + it.item() + "  " + have + " / " + need)
+                            .withStyle(have >= need ? ChatFormatting.GREEN : ChatFormatting.WHITE), false);
+                }
             }
         }
         return 1;
@@ -203,17 +219,24 @@ public final class KwCommand {
     }
 
     private static int goalOp(CommandContext<CommandSourceStack> c, String op) {
-        Goal g = GoalManager.get().goal(StringArgumentType.getString(c, "goal"));
+        GoalManager gm = GoalManager.get();
+        Goal g = gm.goal(StringArgumentType.getString(c, "goal"));
         if (g == null) {
             fail(c, "Unknown goal.");
             return 0;
         }
         switch (op) {
-            case "complete" -> GoalManager.get().complete(g);
-            case "reset" -> GoalManager.get().reset(g);
+            case "complete" -> gm.complete(g);
+            case "reset" -> gm.reset(g);
+            case "open" -> gm.release(g);
+            case "rescale" -> {
+                double f = gm.activate(g);
+                ok(c, "Goal " + g.id() + " rescaled with factor " + String.format("%.2f", f) + ".");
+                return 1;
+            }
             case "progress" -> {
-                GoalManager.get().progressData().setProgress(g.id(), IntegerArgumentType.getInteger(c, "amount"));
-                GoalManager.get().reload();
+                gm.progressData().setProgress(g.id(), StringArgumentType.getString(c, "item"), IntegerArgumentType.getInteger(c, "amount"));
+                gm.check(g);
             }
         }
         ok(c, "Goal " + g.id() + ": " + op + " applied.");

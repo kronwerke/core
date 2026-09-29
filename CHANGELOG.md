@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Goals have pillars (tech, magic, anything) and every item of every pillar has to fill.
+- Goal amounts scale with the number of active players when the goal becomes active. Play sessions are recorded for that.
+- Hold point: a goal stops taking deposits at a set fraction until an admin opens it for the event.
+- Starter kits per goal, given once to every player after completion, late joiners included.
+- `/kw goals` shows pillars and per item progress. New admin commands: `goal open`, `goal rescale`, `active`.
+- Goal progress is set per item: `/kw admin goal progress <goal> "<item>" <n>`.
+
 ## 0.1.0
 
 First version.

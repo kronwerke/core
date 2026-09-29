@@ -38,7 +38,7 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | Part | What it does |
 | --- | --- |
 | `slot` | Slot budgets per streamer, invites and revokes, kept in sync with the vanilla whitelist |
-| `goal` | Goals loaded from `config/kronwerke/goals.json`, progress and contributions saved with the world, boss bar |
+| `goal` | Goals with tech and magic pillars, scaling by activity, hold point before the event, starter kits, boss bar |
 | `command` | `/kw` for players, streamers and admins |
 | `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements |
 
@@ -49,19 +49,35 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 cp build/libs/kronwerke-*.jar /path/to/server/mods/
 ```
 
-On first start the mod writes `config/kronwerke/goals.json` with two example goals. A goal looks like this:
+On first start the mod writes `config/kronwerke/goals.json` with the first two stages. A goal looks like this:
 
 ```json
 {
-  "id": "age1_cobble",
-  "title": "Foundation of the Kronwerk",
-  "description": "Bring cobblestone to the spawn.",
-  "item": "#c:cobblestones",
-  "amount": 10000,
-  "requires": [],
-  "onComplete": ["chapters grant @a age1"]
+  "id": "stage2",
+  "title": "The Brass Engine",
+  "description": "Brass and mana. Machines that work while you sleep.",
+  "requires": ["stage1"],
+  "holdAt": 0.98,
+  "scale": true,
+  "pillars": [
+    { "id": "tech", "title": "Tech", "items": [
+      { "item": "create:brass_ingot", "base": 4000 },
+      { "item": "create:precision_mechanism", "base": 300 }
+    ]},
+    { "id": "magic", "title": "Magic", "items": [
+      { "item": "botania:mana_pearl", "base": 1500 },
+      { "item": "botania:terrasteel_ingot", "base": 100 }
+    ]}
+  ],
+  "onComplete": ["chapters grant @a stage2"],
+  "starterKit": [ { "item": "create:brass_ingot", "count": 16 } ]
 }
 ```
+
+- **Pillars.** Every item of every pillar has to reach its target. An item is an id or a `#tag`.
+- **Scaling.** When a goal becomes active, each base amount is multiplied by `clamp(active / basePlayers, minFactor, maxFactor)`, where `active` is the number of players with at least `minHours` of play in the last `days` (all in the config). The targets are then fixed for that goal. `/kw admin goal rescale` recomputes them.
+- **Hold point.** At `holdAt` of the total, the obelisk stops taking deposits and the boss bar turns purple. `/kw admin goal open <goal>` lifts the hold for the event; the last items go in and the goal completes.
+- **Starter kit.** Given once to every player after the goal completes, including players who join later.
 
 | Command | Who | What |
 | --- | --- | --- |
@@ -74,11 +90,13 @@ On first start the mod writes `config/kronwerke/goals.json` with two example goa
 | `/kw admin slots <streamer> <n>` | op | Set base slots |
 | `/kw admin bonus <streamer> <n>` | op | Add or remove bonus slots |
 | `/kw admin list` | op | All streamers and their invites |
-| `/kw admin goal reload\|complete\|reset\|progress` | op | Manage goals |
+| `/kw admin goal reload\|complete\|reset\|open\|rescale` | op | Manage goals |
+| `/kw admin goal progress <goal> "<item>" <n>` | op | Set the progress of one item (quote the item id) |
+| `/kw admin active` | op | How many players count as active for scaling |
 
 ## Planned
 
-- A block at spawn to deposit into, with a screen showing progress and the top contributors.
+- The obelisk: a block at spawn to deposit into, with a screen showing both pillars and the top contributors, and an item input side so factories can feed it.
 - A screen for streamers to manage their slots.
 - Discord: membership check on join, whitelist sync, goal announcements.
 - Rewards for the top contributors of each goal.
@@ -91,7 +109,7 @@ On first start the mod writes `config/kronwerke/goals.json` with two example goa
 
 ## Status
 
-Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, completion, prerequisites, admin commands. No screens yet. Not yet used in a season.
+Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands. No screens and no obelisk block yet. Not yet used in a season.
 
 ## Docs
 

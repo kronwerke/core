@@ -6,12 +6,15 @@ import com.google.gson.reflect.TypeToken;
 import de.kronwerke.core.KronwerkeCore;
 import de.kronwerke.core.config.KronwerkeConfig;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.BossEvent;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.fml.loading.FMLPaths;
 
@@ -22,13 +25,15 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
- * Loads goals from config/kronwerke/goals.json, tracks deposits, shows the active goal as a
- * boss bar and fires the goal's commands once it is reached.
+ * Loads goals from config/kronwerke/goals.json, scales them when they become active, takes
+ * deposits, holds at the hold point, runs the completion commands and hands out starter kits.
  */
 public final class GoalManager {
     private static final GoalManager INSTANCE = new GoalManager();
@@ -48,12 +53,14 @@ public final class GoalManager {
         if (KronwerkeConfig.SHOW_GOAL_BOSSBAR.get()) {
             bossBar = new ServerBossEvent(Component.literal("Kronwerke"), BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.NOTCHED_10);
             bossBar.setVisible(false);
-            refreshBossBar();
         }
+        activatePending();
+        refreshBossBar();
     }
 
     public void shutdown() {
         if (bossBar != null) bossBar.removeAllPlayers();
+        if (server != null) activity().closeAll(System.currentTimeMillis());
     }
 
     public int goalCount() {
@@ -70,6 +77,10 @@ public final class GoalManager {
 
     private GoalData data() {
         return server.overworld().getDataStorage().computeIfAbsent(GoalData.FACTORY, GoalData.NAME);
+    }
+
+    private ActivityData activity() {
+        return server.overworld().getDataStorage().computeIfAbsent(ActivityData.FACTORY, ActivityData.NAME);
     }
 
     public GoalData progressData() {
@@ -99,26 +110,40 @@ public final class GoalManager {
         } catch (IOException e) {
             KronwerkeCore.LOGGER.error("Could not read goals file {}", file, e);
         }
-        refreshBossBar();
+        if (server != null) {
+            activatePending();
+            refreshBossBar();
+        }
     }
 
     private static Goal normalize(Goal g) {
         return new Goal(g.id(), g.title() == null ? g.id() : g.title(), g.description() == null ? "" : g.description(),
-                g.item(), g.amount(),
-                g.requires() == null ? List.of() : g.requires(),
-                g.onComplete() == null ? List.of() : g.onComplete());
+                g.requires() == null ? List.of() : g.requires(), g.holdAt(), g.scale(),
+                g.pillars() == null ? List.of() : g.pillars(),
+                g.onComplete() == null ? List.of() : g.onComplete(),
+                g.starterKit() == null ? List.of() : g.starterKit());
     }
 
     private static List<Goal> defaultGoals() {
         List<Goal> l = new ArrayList<>();
-        l.add(new Goal("age1_cobble", "Foundation of the Kronwerk",
-                "Bring cobblestone to the spawn. Once the pile is complete, the first machines unlock for everyone.",
-                "#c:cobblestones", 10000, List.of(),
-                List.of("say The foundation is complete. Age 1 is open.")));
-        l.add(new Goal("age2_iron", "Iron Age",
-                "Deposit iron ingots to unlock advanced processing.",
-                "#c:ingots/iron", 5000, List.of("age1_cobble"),
-                List.of("say Iron Age unlocked.")));
+        l.add(new Goal("stage1", "Foundation of the Kronwerk",
+                "Stone for the walls, alloy for the machines, gems for the spells. When the obelisk is full, the Nether opens.",
+                List.of(), 0.98, true,
+                List.of(new Goal.Pillar("stone", "Stone", List.of(new Goal.PillarItem("#c:cobblestones", 40000))),
+                        new Goal.Pillar("tech", "Tech", List.of(new Goal.PillarItem("create:andesite_alloy", 3000))),
+                        new Goal.Pillar("magic", "Magic", List.of(new Goal.PillarItem("ars_nouveau:source_gem", 1500)))),
+                List.of("say The foundation is complete. Stage 2 is open."),
+                List.of()));
+        l.add(new Goal("stage2", "The Brass Engine",
+                "Brass and mana. Machines that work while you sleep.",
+                List.of("stage1"), 0.98, true,
+                List.of(new Goal.Pillar("tech", "Tech", List.of(new Goal.PillarItem("create:brass_ingot", 4000),
+                                new Goal.PillarItem("create:precision_mechanism", 300))),
+                        new Goal.Pillar("magic", "Magic", List.of(new Goal.PillarItem("botania:mana_pearl", 1500),
+                                new Goal.PillarItem("botania:terrasteel_ingot", 100)))),
+                List.of("say The brass engine runs. Stage 3 is open."),
+                List.of(new Goal.KitItem("create:brass_ingot", 16), new Goal.KitItem("create:blaze_burner", 1),
+                        new Goal.KitItem("ars_nouveau:source_jar", 1), new Goal.KitItem("botania:mana_pearl", 8))));
         return l;
     }
 
@@ -138,26 +163,90 @@ public final class GoalManager {
         return out;
     }
 
+    /** Sets the targets of every active goal that has none yet. */
+    private void activatePending() {
+        for (Goal g : activeGoals()) {
+            if (!data().isActivated(g.id())) activate(g);
+        }
+    }
+
+    /** Fixes the targets of a goal from its base amounts and the current activity factor. */
+    public double activate(Goal g) {
+        double factor = 1.0;
+        if (g.scales()) {
+            int active = activity().activePlayers(System.currentTimeMillis(), KronwerkeConfig.SCALE_DAYS.get(), KronwerkeConfig.SCALE_MIN_HOURS.get());
+            double raw = (double) active / KronwerkeConfig.SCALE_BASE_PLAYERS.get();
+            factor = Math.max(KronwerkeConfig.SCALE_MIN.get(), Math.min(KronwerkeConfig.SCALE_MAX.get(), raw));
+            if (active == 0) factor = 1.0;
+        }
+        Map<String, Long> targets = new HashMap<>();
+        for (Goal.PillarItem it : g.allItems()) {
+            targets.put(it.item(), Math.max(1, Math.round(it.base() * factor)));
+        }
+        data().activate(g.id(), factor, targets);
+        KronwerkeCore.LOGGER.info("Goal {} activated with factor {}", g.id(), String.format("%.2f", factor));
+        return factor;
+    }
+
+    public long total(Goal g) {
+        long t = 0;
+        for (Goal.PillarItem it : g.allItems()) t += data().target(g.id(), it.item());
+        return t;
+    }
+
+    public long done(Goal g) {
+        long d = 0;
+        for (Goal.PillarItem it : g.allItems()) d += Math.min(data().progress(g.id(), it.item()), data().target(g.id(), it.item()));
+        return d;
+    }
+
+    public double fraction(Goal g) {
+        long t = total(g);
+        return t == 0 ? 0 : (double) done(g) / t;
+    }
+
+    /** True while the goal sits at its hold point waiting for the event. */
+    public boolean isHeld(Goal g) {
+        return g.holdFraction() < 1.0 && !data().isReleased(g.id()) && fraction(g) >= g.holdFraction();
+    }
+
+    public boolean pillarDone(Goal g, Goal.Pillar p) {
+        for (Goal.PillarItem it : p.items()) {
+            if (data().progress(g.id(), it.item()) < data().target(g.id(), it.item())) return false;
+        }
+        return true;
+    }
+
     /** Returns how many items were taken from the stack. */
     public long deposit(ServerPlayer player, ItemStack stack) {
         if (stack.isEmpty()) return 0;
         for (Goal g : activeGoals()) {
-            if (!g.matches(stack)) continue;
-            long remaining = g.amount() - data().progress(g.id());
-            long take = Math.min(remaining, stack.getCount());
-            if (take <= 0) continue;
-            stack.shrink((int) take);
-            long now = data().add(g.id(), player.getUUID(), take);
-            if (KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
-                server.getPlayerList().broadcastSystemMessage(Component.literal("")
-                        .append(player.getDisplayName())
-                        .append(Component.literal(" deposited " + take + " for ").withStyle(ChatFormatting.GRAY))
-                        .append(Component.literal(g.title()).withStyle(ChatFormatting.GOLD))
-                        .append(Component.literal(" (" + now + "/" + g.amount() + ")").withStyle(ChatFormatting.GRAY)), false);
+            if (isHeld(g)) continue;
+            for (Goal.PillarItem it : g.allItems()) {
+                if (!it.matches(stack)) continue;
+                long remaining = data().target(g.id(), it.item()) - data().progress(g.id(), it.item());
+                long take = Math.min(remaining, stack.getCount());
+                if (take <= 0) continue;
+                if (g.holdFraction() < 1.0 && !data().isReleased(g.id())) {
+                    // do not let a single deposit jump past the hold point
+                    long allowed = (long) Math.ceil(total(g) * g.holdFraction()) - done(g);
+                    take = Math.min(take, Math.max(0, allowed));
+                    if (take <= 0) continue;
+                }
+                stack.shrink((int) take);
+                long now = data().add(g.id(), it.item(), player.getUUID(), take);
+                if (KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
+                    server.getPlayerList().broadcastSystemMessage(Component.literal("")
+                            .append(player.getDisplayName())
+                            .append(Component.literal(" deposited " + take + " ").withStyle(ChatFormatting.GRAY))
+                            .append(itemName(it.item()))
+                            .append(Component.literal(" (" + now + "/" + data().target(g.id(), it.item()) + ")").withStyle(ChatFormatting.GRAY)), false);
+                }
+                if (isHeld(g)) announceHold(g);
+                if (done(g) >= total(g)) complete(g);
+                refreshBossBar();
+                return take;
             }
-            if (now >= g.amount()) complete(g);
-            refreshBossBar();
-            return take;
         }
         return 0;
     }
@@ -173,25 +262,68 @@ public final class GoalManager {
         return total;
     }
 
+    private void announceHold(Goal g) {
+        server.getPlayerList().broadcastSystemMessage(Component.literal("The obelisk is nearly full. ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+                .append(Component.literal(g.title() + " waits for the event. Watch the announcements.").withStyle(ChatFormatting.YELLOW)), false);
+    }
+
+    /** Lifts the hold so the last items can go in. */
+    public void release(Goal g) {
+        data().release(g.id());
+        server.getPlayerList().broadcastSystemMessage(Component.literal("The obelisk accepts again. ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+                .append(Component.literal("Finish " + g.title() + "!").withStyle(ChatFormatting.YELLOW)), false);
+        refreshBossBar();
+    }
+
     public void complete(Goal g) {
         if (data().isCompleted(g.id())) return;
         data().markCompleted(g.id());
-        data().setProgress(g.id(), g.amount());
         server.getPlayerList().broadcastSystemMessage(Component.literal("Community goal complete: ").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)
                 .append(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)), false);
         for (String cmd : g.onComplete()) {
             server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), cmd);
         }
         KronwerkeCore.LOGGER.info("Goal {} completed", g.id());
+        activatePending();
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) giveKits(p);
+        refreshBossBar();
+    }
+
+    /** Completes the goal if every target is met and nothing holds it. Used after admin edits. */
+    public void check(Goal g) {
+        if (isActive(g) && !isHeld(g) && total(g) > 0 && done(g) >= total(g)) complete(g);
         refreshBossBar();
     }
 
     public void reset(Goal g) {
         data().reset(g.id());
+        activatePending();
         refreshBossBar();
     }
 
-    // ---- boss bar ----
+    // ---- starter kits ----
+
+    public void giveKits(ServerPlayer player) {
+        for (Goal g : goals.values()) {
+            if (!data().isCompleted(g.id()) || g.starterKit().isEmpty() || data().hasKit(g.id(), player.getUUID())) continue;
+            for (Goal.KitItem k : g.starterKit()) {
+                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(k.item()));
+                if (item == null) continue;
+                ItemStack stack = new ItemStack(item, k.count());
+                if (!player.getInventory().add(stack)) player.drop(stack, false);
+            }
+            data().markKit(g.id(), player.getUUID());
+            player.sendSystemMessage(Component.literal("Starter kit for " + g.title() + " added to your inventory.").withStyle(ChatFormatting.GREEN));
+        }
+    }
+
+    // ---- boss bar and players ----
+
+    private Component itemName(String id) {
+        if (id.startsWith("#")) return Component.literal(id).withStyle(ChatFormatting.AQUA);
+        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
+        return item == null ? Component.literal(id) : new ItemStack(item).getHoverName().copy().withStyle(ChatFormatting.AQUA);
+    }
 
     private void refreshBossBar() {
         if (bossBar == null || server == null) return;
@@ -201,23 +333,36 @@ public final class GoalManager {
             return;
         }
         Goal g = active.get(0);
-        long p = data().progress(g.id());
+        double f = fraction(g);
+        String state = isHeld(g) ? "  waiting for the event" : String.format("  %d%%", Math.round(f * 100));
         bossBar.setName(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)
-                .append(Component.literal("  " + p + " / " + g.amount()).withStyle(ChatFormatting.WHITE)));
-        bossBar.setProgress(g.amount() == 0 ? 1f : Math.min(1f, (float) p / g.amount()));
+                .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.WHITE)));
+        bossBar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
+        bossBar.setProgress((float) Math.min(1.0, f));
         bossBar.setVisible(true);
     }
 
     public void onPlayerJoin(Player player) {
-        if (bossBar != null && player instanceof ServerPlayer sp) bossBar.addPlayer(sp);
+        if (player instanceof ServerPlayer sp) {
+            activity().login(sp.getUUID(), System.currentTimeMillis());
+            if (bossBar != null) bossBar.addPlayer(sp);
+            giveKits(sp);
+        }
     }
 
     public void onPlayerLeave(Player player) {
-        if (bossBar != null && player instanceof ServerPlayer sp) bossBar.removePlayer(sp);
+        if (player instanceof ServerPlayer sp) {
+            activity().logout(sp.getUUID(), System.currentTimeMillis());
+            if (bossBar != null) bossBar.removePlayer(sp);
+        }
     }
 
-    public List<Map.Entry<java.util.UUID, Long>> leaderboard(Goal g, int limit) {
-        List<Map.Entry<java.util.UUID, Long>> l = new ArrayList<>(data().contributions(g.id()).entrySet());
+    public int activePlayers() {
+        return activity().activePlayers(System.currentTimeMillis(), KronwerkeConfig.SCALE_DAYS.get(), KronwerkeConfig.SCALE_MIN_HOURS.get());
+    }
+
+    public List<Map.Entry<UUID, Long>> leaderboard(Goal g, int limit) {
+        List<Map.Entry<UUID, Long>> l = new ArrayList<>(data().contributions(g.id()).entrySet());
         l.sort(Collections.reverseOrder(Map.Entry.comparingByValue()));
         return l.size() > limit ? l.subList(0, limit) : l;
     }

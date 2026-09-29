@@ -11,6 +11,11 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue SHOW_GOAL_BOSSBAR;
     public static final ModConfigSpec.BooleanValue BROADCAST_DEPOSITS;
     public static final ModConfigSpec.IntValue BROADCAST_DEPOSIT_MIN;
+    public static final ModConfigSpec.IntValue SCALE_BASE_PLAYERS;
+    public static final ModConfigSpec.IntValue SCALE_DAYS;
+    public static final ModConfigSpec.DoubleValue SCALE_MIN_HOURS;
+    public static final ModConfigSpec.DoubleValue SCALE_MIN;
+    public static final ModConfigSpec.DoubleValue SCALE_MAX;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -31,6 +36,19 @@ public final class KronwerkeConfig {
                 .define("broadcastDeposits", true);
         BROADCAST_DEPOSIT_MIN = b.comment("Only announce deposits of at least this many items.")
                 .defineInRange("broadcastDepositMin", 64, 1, 1_000_000);
+        b.pop();
+
+        b.push("scaling");
+        SCALE_BASE_PLAYERS = b.comment("The base amounts in goals.json assume this many active players.")
+                .defineInRange("basePlayers", 30, 1, 1000);
+        SCALE_DAYS = b.comment("Look back this many days when counting active players.")
+                .defineInRange("days", 7, 1, 60);
+        SCALE_MIN_HOURS = b.comment("A player counts as active with at least this many hours in the window.")
+                .defineInRange("minHours", 1.0, 0.0, 1000.0);
+        SCALE_MIN = b.comment("Lowest factor a goal can be scaled to.")
+                .defineInRange("minFactor", 0.4, 0.01, 10.0);
+        SCALE_MAX = b.comment("Highest factor a goal can be scaled to.")
+                .defineInRange("maxFactor", 1.5, 0.01, 10.0);
         b.pop();
 
         SPEC = b.build();
