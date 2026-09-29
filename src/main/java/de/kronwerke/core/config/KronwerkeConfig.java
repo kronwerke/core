@@ -11,6 +11,9 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue SHOW_GOAL_BOSSBAR;
     public static final ModConfigSpec.BooleanValue BROADCAST_DEPOSITS;
     public static final ModConfigSpec.IntValue BROADCAST_DEPOSIT_MIN;
+    public static final ModConfigSpec.IntValue FEEDER_RADIUS;
+    public static final ModConfigSpec.IntValue FEEDERS_PER_PLAYER;
+    public static final ModConfigSpec.IntValue FEEDER_INTERVAL;
     public static final ModConfigSpec.IntValue SCALE_BASE_PLAYERS;
     public static final ModConfigSpec.IntValue SCALE_DAYS;
     public static final ModConfigSpec.DoubleValue SCALE_MIN_HOURS;
@@ -37,6 +40,15 @@ public final class KronwerkeConfig {
                 .define("broadcastDeposits", true);
         BROADCAST_DEPOSIT_MIN = b.comment("Only announce deposits of at least this many items.")
                 .defineInRange("broadcastDepositMin", 64, 1, 1_000_000);
+        b.pop();
+
+        b.push("obelisk");
+        FEEDER_RADIUS = b.comment("A container placed this many blocks from the obelisk or closer becomes a feeder of the player who placed it.")
+                .defineInRange("feederRadius", 3, 1, 16);
+        FEEDERS_PER_PLAYER = b.comment("How many feeders one player can have.")
+                .defineInRange("feedersPerPlayer", 2, 0, 64);
+        FEEDER_INTERVAL = b.comment("Empty the feeders into the active goal every this many seconds.")
+                .defineInRange("feederInterval", 2, 1, 600);
         b.pop();
 
         b.push("scaling");

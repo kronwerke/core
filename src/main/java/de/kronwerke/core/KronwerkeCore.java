@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import de.kronwerke.core.command.KwCommand;
 import de.kronwerke.core.config.KronwerkeConfig;
 import de.kronwerke.core.goal.GoalManager;
+import de.kronwerke.core.obelisk.Obelisk;
 import de.kronwerke.core.slot.SlotManager;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -29,6 +30,10 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(this::onServerStopping);
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogin);
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogout);
+        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onRightClick);
+        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onPlace);
+        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onBreak);
+        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onServerTick);
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
@@ -38,6 +43,7 @@ public class KronwerkeCore {
     private void onServerStarted(ServerStartedEvent event) {
         SlotManager.get().init(event.getServer());
         GoalManager.get().init(event.getServer());
+        Obelisk.get().init(event.getServer());
         LOGGER.info("Kronwerke Core ready. {} goals loaded, {} streamers with slots.",
                 GoalManager.get().goalCount(), SlotManager.get().streamerCount());
     }
