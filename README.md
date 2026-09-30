@@ -42,6 +42,7 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | `obelisk` | The deposit point at spawn and the feeder containers around it |
 | `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
 | `privacy` | Deletes rotated server logs after `logDays` (30), since they hold names and addresses |
+| `compat` | On clients: hands Chapters' stage locks to JEI in one batch instead of one call per item, which froze joining for minutes |
 | `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, feeder radius and interval, log retention |
 
 ## Quick look
@@ -129,7 +130,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 ## Non-goals
 
 - Replacing FTB Quests or Chapters. This mod triggers them, it does not lock items itself.
-- A general permission system. LuckPerms does that.
+- A general permission system. Operator levels are enough for this server.
 - Anything client side that the server does not need. Screens are the exception.
 
 ## Status
