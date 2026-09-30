@@ -65,12 +65,13 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
   "scale": true,
   "pillars": [
     { "id": "tech", "title": "Tech", "items": [
-      { "item": "create:brass_ingot", "base": 4000 },
-      { "item": "create:precision_mechanism", "base": 300 }
+      { "item": "create:brass_ingot", "base": 2000 },
+      { "item": "create:precision_mechanism", "base": 150, "weight": 5 },
+      { "item": "kronwerke:brass_heart", "base": 8, "fixed": true, "weight": 300 }
     ]},
     { "id": "magic", "title": "Magic", "items": [
-      { "item": "botania:mana_pearl", "base": 1500 },
-      { "item": "botania:terrasteel_ingot", "base": 100 }
+      { "item": "botania:mana_pearl", "base": 600, "weight": 2 },
+      { "item": "botania:terrasteel_ingot", "base": 50, "weight": 20 }
     ]}
   ],
   "stages": ["kronwerke:stage2"],
@@ -81,8 +82,9 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 
 - **Pillars.** Every item of every pillar has to reach its target. An item is an id or a `#tag`.
 - **Stages.** Chapters stage ids. Granted to everyone online when the goal completes, and to everyone else on their next login, so nobody misses a stage by being offline.
-- **Scaling.** When a goal becomes active, each base amount is multiplied by `clamp(active / basePlayers, minFactor, maxFactor)`, where `active` is the number of players with at least `minHours` of play in the last `days` (all in the config). The targets are then fixed for that goal. `/kw admin goal rescale` recomputes them.
-- **Hold point.** At `holdAt` of the total, the obelisk stops taking deposits and the boss bar turns purple. `/kw admin goal open <goal>` lifts the hold for the event; the last items go in and the goal completes.
+- **Scaling.** When a goal becomes active, each base amount is multiplied by `clamp(active / basePlayers, minFactor, maxFactor)`, where `active` is the number of players with at least `minHours` of play in the last `days` (all in the config). The targets are then fixed for that goal. `/kw admin goal rescale` recomputes them. Items with `"fixed": true` keep their base amount, for milestone items that every server builds the same number of.
+- **Weight.** The bar counts points, not items: every item is worth its `weight` (1 when left out). A handful of hard milestone items can carry as much of a goal as thousands of ingots.
+- **Hold point.** At `holdAt` of the points, the obelisk stops taking deposits and the boss bar turns purple. `/kw admin goal open <goal>` lifts the hold for the event; the last items go in and the goal completes.
 - **Starter kit.** Given once to every player after the goal completes, including players who join later.
 
 ### The obelisk

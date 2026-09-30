@@ -27,7 +27,7 @@ import java.util.List;
  *     ]},
  *     { "id": "magic", "title": "Magic", "items": [
  *       { "item": "botania:mana_pearl", "base": 1500 },
- *       { "item": "botania:terrasteel_ingot", "base": 100 }
+ *       { "item": "kronwerke:rune_core", "base": 8, "fixed": true, "weight": 100 }
  *     ]}
  *   ],
  *   "stages": ["kronwerke:stage2"],
@@ -38,8 +38,11 @@ import java.util.List;
  *
  * Stages are Chapters stage ids. They are granted to every online player when the goal completes and
  * to every other player when they next log in. An item can be an id or a #tag. Base amounts are multiplied by the activity factor when the goal
- * becomes active (see {@link GoalManager#activate}) unless scale is false. At holdAt (fraction of
- * the total) the goal stops accepting deposits until an admin opens it with /kw admin goal open.
+ * becomes active (see {@link GoalManager#activate}) unless scale is false for the goal or fixed is
+ * true for the item. Progress is counted in points: every item counts its weight (default 1), so a
+ * handful of milestone items can carry as much of the bar as thousands of ingots. At holdAt
+ * (fraction of the points) the goal stops accepting deposits until an admin opens it with
+ * /kw admin goal open.
  */
 public record Goal(String id, String title, String description, List<String> requires, Double holdAt,
                    Boolean scale, List<Pillar> pillars, List<String> stages, List<String> onComplete,
@@ -47,7 +50,21 @@ public record Goal(String id, String title, String description, List<String> req
 
     public record Pillar(String id, String title, List<PillarItem> items) {}
 
-    public record PillarItem(String item, long base) {
+    public record PillarItem(String item, long base, Boolean fixed, Integer weight) {
+
+        public PillarItem(String item, long base) {
+            this(item, base, null, null);
+        }
+
+        /** False for items whose amount stays the same whatever the player count. */
+        public boolean scales() {
+            return fixed == null || !fixed;
+        }
+
+        /** Points one item is worth on the bar. */
+        public long points() {
+            return weight == null || weight < 1 ? 1 : weight;
+        }
 
         public boolean isTag() {
             return item.startsWith("#");

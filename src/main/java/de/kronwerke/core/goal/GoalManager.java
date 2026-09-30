@@ -184,7 +184,8 @@ public final class GoalManager {
         }
         Map<String, Long> targets = new HashMap<>();
         for (Goal.PillarItem it : g.allItems()) {
-            targets.put(it.item(), Math.max(1, Math.round(it.base() * factor)));
+            double f = it.scales() ? factor : 1.0;
+            targets.put(it.item(), Math.max(1, Math.round(it.base() * f)));
         }
         data().activate(g.id(), factor, targets);
         KronwerkeCore.LOGGER.info("Goal {} activated with factor {}", g.id(), String.format("%.2f", factor));
@@ -193,13 +194,14 @@ public final class GoalManager {
 
     public long total(Goal g) {
         long t = 0;
-        for (Goal.PillarItem it : g.allItems()) t += data().target(g.id(), it.item());
+        for (Goal.PillarItem it : g.allItems()) t += data().target(g.id(), it.item()) * it.points();
         return t;
     }
 
     public long done(Goal g) {
         long d = 0;
-        for (Goal.PillarItem it : g.allItems()) d += Math.min(data().progress(g.id(), it.item()), data().target(g.id(), it.item()));
+        for (Goal.PillarItem it : g.allItems())
+            d += Math.min(data().progress(g.id(), it.item()), data().target(g.id(), it.item())) * it.points();
         return d;
     }
 
@@ -242,7 +244,7 @@ public final class GoalManager {
                 if (g.holdFraction() < 1.0 && !data().isReleased(g.id())) {
                     // do not let a single deposit jump past the hold point
                     long allowed = (long) Math.ceil(total(g) * g.holdFraction()) - done(g);
-                    take = Math.min(take, Math.max(0, allowed));
+                    take = Math.min(take, Math.max(0, allowed) / it.points());
                     if (take <= 0) continue;
                 }
                 stack.shrink((int) take);
