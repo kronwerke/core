@@ -23,8 +23,10 @@ import java.io.Reader;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -222,6 +224,34 @@ public final class GoalManager {
         return true;
     }
 
+    /** One deposit, for the stream overlay's feed. Kept in memory only. */
+    public record Recent(long at, String goal, String name, String item, long amount) {}
+
+    private final Deque<Recent> recent = new ArrayDeque<>();
+    private static final int RECENT = 20;
+
+    /** The latest deposits, newest first. */
+    public List<Recent> recent() {
+        synchronized (recent) {
+            return new ArrayList<>(recent);
+        }
+    }
+
+    private void remember(String goal, Component name, String item, long amount) {
+        synchronized (recent) {
+            Recent last = recent.peekFirst();
+            String who = name.getString();
+            // a feeder hands in stack after stack; one line per player and item within a few seconds
+            if (last != null && last.goal().equals(goal) && last.name().equals(who) && last.item().equals(item)
+                    && System.currentTimeMillis() - last.at() < 10_000) {
+                recent.pollFirst();
+                amount += last.amount();
+            }
+            recent.addFirst(new Recent(System.currentTimeMillis(), goal, who, item, amount));
+            while (recent.size() > RECENT) recent.removeLast();
+        }
+    }
+
     /** Returns how many items were taken from the stack. */
     public long deposit(ServerPlayer player, ItemStack stack) {
         return deposit(player.getUUID(), player.getDisplayName(), stack, true);
@@ -249,6 +279,7 @@ public final class GoalManager {
                 }
                 stack.shrink((int) take);
                 long now = data().add(g.id(), it.item(), who, take);
+                remember(g.id(), name, it.item(), take);
                 if (announce && KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
                     server.getPlayerList().broadcastSystemMessage(Component.literal("")
                             .append(name)

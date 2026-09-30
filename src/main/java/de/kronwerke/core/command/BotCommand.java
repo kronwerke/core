@@ -149,6 +149,7 @@ public final class BotCommand {
                     io.addProperty("name", displayName(it.item()));
                     io.addProperty("have", d.progress(g.id(), it.item()));
                     io.addProperty("target", d.target(g.id(), it.item()));
+                    io.addProperty("weight", it.points());
                     items.add(io);
                 }
                 po.add("items", items);
@@ -166,6 +167,18 @@ public final class BotCommand {
                 top.add(t);
             }
             o.add("top", top);
+            JsonArray recent = new JsonArray();
+            for (GoalManager.Recent r : gm.recent()) {
+                if (!r.goal().equals(g.id())) continue;
+                JsonObject ro = new JsonObject();
+                ro.addProperty("at", r.at());
+                ro.addProperty("name", r.name());
+                ro.addProperty("item", r.item());
+                ro.addProperty("itemName", displayName(r.item()));
+                ro.addProperty("amount", r.amount());
+                recent.add(ro);
+            }
+            o.add("recent", recent);
             out.add(o);
         }
         answer(c, "OK " + GSON.toJson(out));
