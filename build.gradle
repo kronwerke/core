@@ -13,6 +13,7 @@ repositories {
     maven { url = 'https://api.modrinth.com/maven' }
     maven { url = 'https://maven.saps.dev/releases' }
     maven { url = 'https://maven.architectury.dev/' }
+    maven { url = 'https://maven.blamejared.com' } // JEI
 }
 
 base { archivesName = mod_id }
@@ -42,6 +43,8 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 configurations { runtimeClasspath.extendsFrom localRuntime }
 
 dependencies {
+    // only for the JEI batching of Chapters' stage locks, JEI itself comes with the pack
+    compileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
 }
 
 var generatedResources = file("src/generated/resources")
