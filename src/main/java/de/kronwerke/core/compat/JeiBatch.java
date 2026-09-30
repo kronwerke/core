@@ -1,6 +1,7 @@
 package de.kronwerke.core.compat;
 
 import de.kronwerke.core.KronwerkeCore;
+import de.kronwerke.core.lock.ClientLocks;
 import mezz.jei.api.ingredients.IIngredientType;
 import mezz.jei.api.runtime.IIngredientManager;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -29,6 +30,12 @@ import java.util.Map;
  *
  * The recipe lookups Chapters would run to hide recipes are skipped altogether, see
  * ChaptersJeiBatchMixin; they are only counted here for the log line.
+ *
+ * The items of the next stage stay in JEI's list, drawn veiled as "???" (LockedDecorator),
+ * so players can see how much is coming and look at the recipes. Later stages stay
+ * hidden until they are next. Chapters does not know about this: its hide calls for the
+ * next stage are dropped here, its restore calls for items still in the list are
+ * filtered, and when a stage opens {@link #reconcile()} brings the new next stage in.
  */
 public final class JeiBatch {
     private JeiBatch() {}
@@ -42,6 +49,16 @@ public final class JeiBatch {
     private static Map<ResourceLocation, List<ItemStack>> byItem;
     private static long started;
     private static int skipped;
+
+    // items Chapters hid, with their stacks, and locked items kept in the list on purpose
+    private static final Map<ResourceLocation, List<ItemStack>> hidden = new HashMap<>();
+    private static final java.util.Set<ResourceLocation> shown = new java.util.HashSet<>();
+    private static IIngredientManager lastManager;
+    private static IIngredientType<?> itemType;
+
+    private static boolean isItems(IIngredientType<?> type) {
+        return type.getIngredientClass() == ItemStack.class;
+    }
 
     /** Chapters wanted to look up recipes for a locked or unlocked thing, and did not. */
     public static void skippedLookup() {
@@ -67,6 +84,27 @@ public final class JeiBatch {
         return byItem.getOrDefault(currentItem, List.of());
     }
 
+    /** A stage opened: the items of the new next stage come into the list, veiled. */
+    public static void reconcile() {
+        if (active) return; // end() does it
+        reconcileQueued();
+        flush();
+    }
+
+    private static void reconcileQueued() {
+        if (lastManager == null || hidden.isEmpty()) return;
+        List<Object> bring = new ArrayList<>();
+        var it = hidden.entrySet().iterator();
+        while (it.hasNext()) {
+            var e = it.next();
+            if (!ClientLocks.opensNext(e.getKey())) continue;
+            bring.addAll(e.getValue());
+            shown.add(e.getKey());
+            it.remove();
+        }
+        if (!bring.isEmpty()) ops.add(new Op(lastManager, itemType, true, bring));
+    }
+
     public static void begin() {
         if (active) flush(); // a previous run ended with an exception
         active = true;
@@ -79,12 +117,24 @@ public final class JeiBatch {
         currentItem = null;
         indexed = null;
         byItem = null;
+        reconcileQueued();
         int[] done = flush();
         KronwerkeCore.LOGGER.info("Stage locks applied in {} ms: {} ingredient changes in {} JEI calls, {} recipe lookups skipped",
                 (System.nanoTime() - started) / 1_000_000, done[0], done[1], skipped);
     }
 
     public static void remove(IIngredientManager manager, IIngredientType<?> type, Collection<?> items) {
+        if (isItems(type) && currentItem != null) {
+            lastManager = manager;
+            itemType = type;
+            if (ClientLocks.opensNext(currentItem)) {
+                shown.add(currentItem);
+                return;
+            }
+            List<ItemStack> stacks = new ArrayList<>();
+            for (Object o : items) stacks.add((ItemStack) o);
+            hidden.put(currentItem, stacks);
+        }
         if (!active) {
             call(manager, type, false, items);
             return;
@@ -93,6 +143,17 @@ public final class JeiBatch {
     }
 
     public static void add(IIngredientManager manager, IIngredientType<?> type, Collection<?> items) {
+        if (isItems(type)) {
+            // items that are already in the list, because they were the next stage
+            List<Object> keep = new ArrayList<>();
+            for (Object o : items) {
+                ResourceLocation id = BuiltInRegistries.ITEM.getKey(((ItemStack) o).getItem());
+                hidden.remove(id);
+                if (!shown.contains(id)) keep.add(o);
+            }
+            for (Object o : items) shown.remove(BuiltInRegistries.ITEM.getKey(((ItemStack) o).getItem()));
+            items = keep;
+        }
         if (!active) {
             call(manager, type, true, items);
             return;

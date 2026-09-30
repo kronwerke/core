@@ -42,7 +42,7 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | `obelisk` | The deposit point at spawn and the feeder containers around it |
 | `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
 | `privacy` | Deletes rotated server logs after `logDays` (30), since they hold names and addresses |
-| `lock` | Locked items the SevTech way: they can be picked up and carried, but not held, worn or used. One in a hand or armour slot is moved into the inventory (dropped only when it is full), with a line in the action bar saying which stage it belongs to; the tooltip says the same. Replaces Chapters' audit, which dropped every locked item and refused to pick it up again |
+| `lock` | Locked items the SevTech way: they can be picked up and carried, but not held, worn or used. One in a hand or armour slot is moved into the inventory (dropped only when it is full), with a line in the action bar saying which stage it belongs to; the tooltip says the same. Replaces Chapters' audit, which dropped every locked item and refused to pick it up again. On the client, locked items are veiled (a dark cover with a question mark, "???" as the name), and JEI shows the next stage's items veiled while later stages stay hidden |
 | `compat` | On clients: hands Chapters' stage locks to JEI in one batch instead of one call per item, which froze joining for minutes |
 | `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, feeder radius and interval, log retention |
 
@@ -138,7 +138,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## Status
 
-Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. The obelisk and its feeders were tested the same way: a chest next to it, filled over RCON, is emptied into the goal, stops at the hold point and goes on after `open`. The stage bypass was checked over RCON as far as it goes without a player online. Locked items were checked with test players: one in the hand moves into the inventory, and is dropped when the inventory is full. Right clicking, picking up, the action bar and the bypass itself need a client and wait for the beta. No screens yet. Not yet used in a season.
+Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. The obelisk and its feeders were tested the same way: a chest next to it, filled over RCON, is emptied into the goal, stops at the hold point and goes on after `open`. The stage bypass was checked over RCON as far as it goes without a player online. Locked items were checked with test players: one in the hand moves into the inventory, and is dropped when the inventory is full. Right clicking, picking up, the action bar, the veiled items and JEI's next stage, and the bypass itself need a client and wait for the beta. No screens yet. Not yet used in a season.
 
 ## Docs
 

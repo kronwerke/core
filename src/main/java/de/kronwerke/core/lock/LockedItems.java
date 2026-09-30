@@ -145,12 +145,13 @@ public final class LockedItems {
         if (last != null && now - last < 2000) return;
         lastMessage.put(player.getUUID(), now);
 
-        Component item = stack.getHoverName().copy().withStyle(ChatFormatting.GOLD);
+        // the item keeps its name secret until its stage opens, like in the tooltip
+        Component item = Component.literal("???").withStyle(ChatFormatting.GOLD);
         Component stage = stageName(lockingStage(player, stack)).copy().withStyle(ChatFormatting.YELLOW);
         String fallback = switch (what) {
-            case "dropped" -> "%s gehört zu %s. Kein Platz im Inventar, es liegt vor dir.";
-            case "full" -> "%s gehört zu %s. Mach Platz im Inventar, dann kannst du es aufheben.";
-            default -> "%s gehört zu %s. Du kannst es einstecken, aber noch nicht benutzen.";
+            case "dropped" -> "Das gehört zu %2$s. Kein Platz im Inventar, es liegt vor dir.";
+            case "full" -> "Das gehört zu %2$s. Mach Platz im Inventar, dann kannst du es aufheben.";
+            default -> "Das gehört zu %2$s. Du kannst es einstecken, aber noch nicht benutzen.";
         };
         player.displayClientMessage(Component.translatableWithFallback("kronwerke.locked." + what, fallback, item, stage)
                 .withStyle(ChatFormatting.GRAY), true);

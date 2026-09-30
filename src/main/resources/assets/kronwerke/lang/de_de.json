@@ -1,11 +1,13 @@
 {
-  "kronwerke.locked.stowed": "%s gehört zu %s. Du kannst es einstecken, aber noch nicht benutzen.",
-  "kronwerke.locked.dropped": "%s gehört zu %s. Kein Platz im Inventar, es liegt vor dir.",
-  "kronwerke.locked.full": "%s gehört zu %s. Mach Platz im Inventar, dann kannst du es aufheben.",
-  "kronwerke.locked.tooltip": "Gesperrt bis %s. Einstecken geht, benutzen noch nicht.",
+  "kronwerke.locked.stowed": "Das gehört zu %2$s. Du kannst es einstecken, aber noch nicht benutzen.",
+  "kronwerke.locked.dropped": "Das gehört zu %2$s. Kein Platz im Inventar, es liegt vor dir.",
+  "kronwerke.locked.full": "Das gehört zu %2$s. Mach Platz im Inventar, dann kannst du es aufheben.",
   "kronwerke.stage.unknown": "einer späteren Stufe",
   "kronwerke.stage.kronwerke.stage2": "Stufe 2 (Messingwerk)",
   "kronwerke.stage.kronwerke.stage3": "Stufe 3 (Stahlwerk)",
   "kronwerke.stage.kronwerke.stage4": "Stufe 4 (Sternwerk)",
-  "kronwerke.stage.kronwerke.stage5": "Stufe 5 (Chaoswerk)"
+  "kronwerke.stage.kronwerke.stage5": "Stufe 5 (Chaoswerk)",
+  "kronwerke.locked.name": "???",
+  "kronwerke.locked.opens": "Öffnet in %s.",
+  "kronwerke.locked.carry": "Einstecken geht, benutzen noch nicht."
 }

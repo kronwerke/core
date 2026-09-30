@@ -6,7 +6,7 @@ import de.kronwerke.core.command.KwCommand;
 import de.kronwerke.core.config.KronwerkeConfig;
 import de.kronwerke.core.goal.GoalManager;
 import de.kronwerke.core.lock.LockedItems;
-import de.kronwerke.core.lock.LockedTooltip;
+import de.kronwerke.core.lock.ClientHooks;
 import de.kronwerke.core.obelisk.Obelisk;
 import de.kronwerke.core.privacy.LogPruner;
 import de.kronwerke.core.slot.SlotManager;
@@ -59,7 +59,7 @@ public class KronwerkeCore {
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.LeftClickBlock.class, LockedItems::onInteract);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.EntityInteract.class, LockedItems::onInteract);
             if (FMLEnvironment.dist == Dist.CLIENT) {
-                NeoForge.EVENT_BUS.addListener(LockedTooltip::onTooltip);
+                ClientHooks.register(modBus);
             }
         }
     }

@@ -5,6 +5,9 @@
 - Goal items can be `"fixed": true`: their amount stays the same whatever the player count. Meant for milestone items, where thirty and twelve players should both build the same eight.
 - Goal items can have a `"weight"`: the points one item is worth on the bar (default 1). The bar, the hold point and the percentages count points, so eight milestone items can carry as much of a goal as a few thousand ingots. A deposit never pushes the bar past the hold point, which means milestones worth more than what is left before the hold wait for the event.
 - `kw admin goals json` also gives each item's `weight` and a goal's `recent` deposits (the last twenty, newest first, one line per player and item within ten seconds) for the stream overlay on the website. They live in memory and start empty after a restart.
+- Locked items are veiled: wherever items are drawn they get a dark cover with a question mark, and their tooltip says "???" and which stage opens them, like the unknown items of SevTech. The action bar messages do not name them either.
+- JEI keeps the items of the next stage in its list, veiled, so everyone can see what is coming and look at the recipes. Later stages stay hidden until they are next.
+- English names of the Kronwerke milestone items for the server, so the goals json names them.
 
 ## 0.5.0
 

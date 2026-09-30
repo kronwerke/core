@@ -1,11 +1,19 @@
 {
-  "kronwerke.locked.stowed": "%s belongs to %s. You can carry it, but not use it yet.",
-  "kronwerke.locked.dropped": "%s belongs to %s. No room in your inventory, it is on the ground in front of you.",
-  "kronwerke.locked.full": "%s belongs to %s. Make room in your inventory to pick it up.",
-  "kronwerke.locked.tooltip": "Locked until %s. You can carry it, not use it.",
+  "kronwerke.locked.stowed": "That belongs to %2$s. You can carry it, but not use it yet.",
+  "kronwerke.locked.dropped": "That belongs to %2$s. No room in your inventory, it is on the ground in front of you.",
+  "kronwerke.locked.full": "That belongs to %2$s. Make room in your inventory to pick it up.",
   "kronwerke.stage.unknown": "a later stage",
   "kronwerke.stage.kronwerke.stage2": "stage 2 (Messingwerk)",
   "kronwerke.stage.kronwerke.stage3": "stage 3 (Stahlwerk)",
   "kronwerke.stage.kronwerke.stage4": "stage 4 (Sternwerk)",
-  "kronwerke.stage.kronwerke.stage5": "stage 5 (Chaoswerk)"
+  "kronwerke.stage.kronwerke.stage5": "stage 5 (Chaoswerk)",
+  "kronwerke.locked.name": "???",
+  "kronwerke.locked.opens": "Opens in %s.",
+  "kronwerke.locked.carry": "You can carry it, not use it yet.",
+  "item.kronwerke.stone_gearbox": "Stoneworks Gearbox",
+  "item.kronwerke.source_keystone": "Source Keystone",
+  "item.kronwerke.brass_heart": "Brass Heart",
+  "item.kronwerke.rune_core": "Rune Core",
+  "item.kronwerke.steel_core": "Steel Core",
+  "item.kronwerke.elven_star": "Elven Star"
 }
