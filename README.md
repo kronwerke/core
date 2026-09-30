@@ -41,7 +41,8 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | `goal` | Goals with tech and magic pillars, scaling by activity, hold point before the event, starter kits, boss bar |
 | `obelisk` | The deposit point at spawn and the feeder containers around it |
 | `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
-| `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, feeder radius and interval |
+| `privacy` | Deletes rotated server logs after `logDays` (30), since they hold names and addresses |
+| `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, feeder radius and interval, log retention |
 
 ## Quick look
 
@@ -108,6 +109,7 @@ The obelisk is any block at spawn, chosen with `/kw admin obelisk set <pos>`. It
 | `/kw admin obelisk set <pos>\|clear\|info` | op | Where the obelisk is, and its feeders |
 | `/kw admin obelisk feeder <pos> <player>`, `unfeeder <pos>` | op | Add or remove a feeder by hand |
 | `/kw admin obelisk drain` | op | Empty the feeders now |
+| `/kw admin bypass [on\|off] [player]`, `bypass list` | op | Every stage a goal grants, for testing; off takes back what the community has not earned yet. Without arguments it toggles your own |
 | `/kw admin invite\|revoke <streamer> <player>` | op, the bot | Slots on behalf of a streamer; one line, `OK` or `ERR` |
 | `/kw admin grant <player> [slots]` | op, the bot | Whitelist without a streamer's slot, with slots of their own (streamers, Season 1 players) |
 | `/kw admin ungrant <player>` | op, the bot | Take that place back, and every slot the player gave |
@@ -132,7 +134,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## Status
 
-Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. The obelisk and its feeders were tested the same way: a chest next to it, filled over RCON, is emptied into the goal, stops at the hold point and goes on after `open`. Right clicking needs a client and waits for the beta. No screens yet. Not yet used in a season.
+Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. The obelisk and its feeders were tested the same way: a chest next to it, filled over RCON, is emptied into the goal, stops at the hold point and goes on after `open`. The stage bypass was checked over RCON as far as it goes without a player online. Right clicking and the bypass itself need a client and wait for the beta. No screens yet. Not yet used in a season.
 
 ## Docs
 
