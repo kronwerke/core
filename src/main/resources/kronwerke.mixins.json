@@ -3,6 +3,9 @@
   "minVersion": "0.8",
   "package": "de.kronwerke.core.mixin",
   "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "ChaptersAuditMixin"
+  ],
   "client": [
     "ChaptersJeiBatchMixin"
   ],

@@ -45,6 +45,8 @@ configurations { runtimeClasspath.extendsFrom localRuntime }
 dependencies {
     // only for the JEI batching of Chapters' stage locks, JEI itself comes with the pack
     compileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
+    // stage locks: locked items can be carried but not held, see lock/LockedItems; Chapters comes with the pack
+    compileOnly "maven.modrinth:chapters:${chapters_version}"
 }
 
 var generatedResources = file("src/generated/resources")

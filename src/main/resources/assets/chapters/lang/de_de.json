@@ -1,0 +1,4 @@
+{
+  "commands.chapters.craft.blocked": "Das kannst du noch nicht herstellen: %s",
+  "commands.chapters.craft.blocked_recipe": "Dieses Rezept ist noch gesperrt: %s"
+}

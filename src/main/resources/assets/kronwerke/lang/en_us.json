@@ -1,1 +1,11 @@
-{}
+{
+  "kronwerke.locked.stowed": "%s belongs to %s. You can carry it, but not use it yet.",
+  "kronwerke.locked.dropped": "%s belongs to %s. No room in your inventory, it is on the ground in front of you.",
+  "kronwerke.locked.full": "%s belongs to %s. Make room in your inventory to pick it up.",
+  "kronwerke.locked.tooltip": "Locked until %s. You can carry it, not use it.",
+  "kronwerke.stage.unknown": "a later stage",
+  "kronwerke.stage.kronwerke.stage2": "stage 2 (Messingwerk)",
+  "kronwerke.stage.kronwerke.stage3": "stage 3 (Stahlwerk)",
+  "kronwerke.stage.kronwerke.stage4": "stage 4 (Sternwerk)",
+  "kronwerke.stage.kronwerke.stage5": "stage 5 (Chaoswerk)"
+}
