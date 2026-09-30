@@ -18,6 +18,15 @@ import java.util.Set;
 /**
  * Chapters applies its stage locks to JEI one item at a time. This routes those calls
  * through {@link JeiBatch}, which sends them to JEI in one go at the end of applyLocked.
+ *
+ * Chapters also hides every recipe that makes a locked item, fluid or chemical. It finds
+ * them by asking each of JEI's four hundred recipe types, once for all items, then once
+ * per fluid and chemical, and when a stage opens once more per unlocked item to show them
+ * again. With this pack that froze the client for a minute on joining, six more for the
+ * fluids, and would have frozen it for far longer at every stage opening. Those lookups
+ * are skipped: locked things stay out of JEI's list, and the server still refuses to make
+ * them, but a recipe for one can show up under the uses of an open item.
+ *
  * Without Chapters or JEI the mixin does nothing.
  */
 @Pseudo
@@ -34,6 +43,14 @@ public abstract class ChaptersJeiBatchMixin {
     private static void kronwerke$end(Set<ResourceLocation> items, Set<ResourceLocation> fluids,
                                       Set<ResourceLocation> chemicals, Set<ResourceLocation> recipes, CallbackInfo ci) {
         JeiBatch.end();
+    }
+
+    @Inject(method = {"hideOutputRecipesForItemsBatch", "hideOutputRecipesForFluid", "hideOutputRecipesForChemical",
+            "ensureOutputRecipesVisibleForItem", "ensureOutputRecipesVisibleForFluid", "ensureOutputRecipesVisibleForChemical"},
+            at = @At("HEAD"), cancellable = true, require = 0)
+    private static void kronwerke$skipRecipeLookups(CallbackInfo ci) {
+        JeiBatch.skippedLookup();
+        ci.cancel();
     }
 
     @Inject(method = "hideIngredientsForItem", at = @At("HEAD"), require = 0)

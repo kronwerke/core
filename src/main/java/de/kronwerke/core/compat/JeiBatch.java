@@ -26,6 +26,9 @@ import java.util.Map;
  * Chapters also scans JEI's whole item list once per locked item to find its stacks.
  * While a batch runs, that list is grouped by item once and each scan gets only the
  * stacks of its own item.
+ *
+ * The recipe lookups Chapters would run to hide recipes are skipped altogether, see
+ * ChaptersJeiBatchMixin; they are only counted here for the log line.
  */
 public final class JeiBatch {
     private JeiBatch() {}
@@ -37,6 +40,13 @@ public final class JeiBatch {
     private static ResourceLocation currentItem;
     private static IIngredientManager indexed;
     private static Map<ResourceLocation, List<ItemStack>> byItem;
+    private static long started;
+    private static int skipped;
+
+    /** Chapters wanted to look up recipes for a locked or unlocked thing, and did not. */
+    public static void skippedLookup() {
+        skipped++;
+    }
 
     /** Chapters is about to look up the stacks of this item. */
     public static void lookingFor(ResourceLocation item) {
@@ -60,6 +70,8 @@ public final class JeiBatch {
     public static void begin() {
         if (active) flush(); // a previous run ended with an exception
         active = true;
+        started = System.nanoTime();
+        skipped = 0;
     }
 
     public static void end() {
@@ -67,7 +79,9 @@ public final class JeiBatch {
         currentItem = null;
         indexed = null;
         byItem = null;
-        flush();
+        int[] done = flush();
+        KronwerkeCore.LOGGER.info("Stage locks applied in {} ms: {} ingredient changes in {} JEI calls, {} recipe lookups skipped",
+                (System.nanoTime() - started) / 1_000_000, done[0], done[1], skipped);
     }
 
     public static void remove(IIngredientManager manager, IIngredientType<?> type, Collection<?> items) {
@@ -98,9 +112,8 @@ public final class JeiBatch {
         ops.add(new Op(manager, type, add, new ArrayList<>(items)));
     }
 
-    private static void flush() {
-        if (ops.isEmpty()) return;
-        long start = System.nanoTime();
+    /** Sends what was queued; answers the number of changes and of calls. */
+    private static int[] flush() {
         int n = 0;
         for (Op op : ops) {
             n += op.items.size();
@@ -110,9 +123,9 @@ public final class JeiBatch {
                 KronwerkeCore.LOGGER.warn("JEI rejected a batch of {} ingredients: {}", op.items.size(), e.toString());
             }
         }
-        KronwerkeCore.LOGGER.info("Stage locks: {} ingredient changes in {} JEI calls, {} ms",
-                n, ops.size(), (System.nanoTime() - start) / 1_000_000);
+        int calls = ops.size();
         ops.clear();
+        return new int[] {n, calls};
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
