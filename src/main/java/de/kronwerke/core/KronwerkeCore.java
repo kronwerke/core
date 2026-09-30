@@ -5,17 +5,24 @@ import de.kronwerke.core.command.BypassCommand;
 import de.kronwerke.core.command.KwCommand;
 import de.kronwerke.core.config.KronwerkeConfig;
 import de.kronwerke.core.goal.GoalManager;
+import de.kronwerke.core.lock.LockedItems;
+import de.kronwerke.core.lock.LockedTooltip;
 import de.kronwerke.core.obelisk.Obelisk;
 import de.kronwerke.core.privacy.LogPruner;
 import de.kronwerke.core.slot.SlotManager;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.ModList;
 import net.neoforged.fml.config.ModConfig;
+import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.fml.loading.FMLPaths;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import org.apache.logging.log4j.Level;
@@ -42,6 +49,19 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onPlace);
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onBreak);
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onServerTick);
+
+        if (ModList.get().isLoaded("chapters")) {
+            // after Chapters, which refuses the pickup of every locked item
+            NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, LockedItems::onPickup);
+            NeoForge.EVENT_BUS.addListener(LockedItems::onTick);
+            NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickItem.class, LockedItems::onInteract);
+            NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickBlock.class, LockedItems::onInteract);
+            NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.LeftClickBlock.class, LockedItems::onInteract);
+            NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.EntityInteract.class, LockedItems::onInteract);
+            if (FMLEnvironment.dist == Dist.CLIENT) {
+                NeoForge.EVENT_BUS.addListener(LockedTooltip::onTooltip);
+            }
+        }
     }
 
     /**

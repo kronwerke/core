@@ -31,6 +31,8 @@ import java.util.Map;
  *   test leave <name>
  *   test give <name> <item> <count>   put items into its inventory
  *   test inv <name>                   list its inventory
+ *   test slots <name>                 every filled slot, with hand, offhand and armour marked
+ *   test audit <name>                 run Chapters' inventory audit on it (Core replaces it, see LockedItems)
  *   test deposit <name> [all]         deposit the first stack (or everything) into the active goal
  *   test kits <name>                  hand out starter kits it is owed
  *   test list
@@ -46,6 +48,8 @@ public final class TestCommand {
                         .then(Commands.argument("item", ResourceLocationArgument.id())
                                 .then(Commands.argument("count", IntegerArgumentType.integer(1)).executes(TestCommand::give)))))
                 .then(Commands.literal("inv").then(Commands.argument("name", StringArgumentType.word()).executes(TestCommand::inv)))
+                .then(Commands.literal("slots").then(Commands.argument("name", StringArgumentType.word()).executes(TestCommand::slots)))
+                .then(Commands.literal("audit").then(Commands.argument("name", StringArgumentType.word()).executes(TestCommand::audit)))
                 .then(Commands.literal("deposit").then(Commands.argument("name", StringArgumentType.word())
                         .executes(c -> deposit(c, false))
                         .then(Commands.literal("all").executes(c -> deposit(c, true)))))
@@ -121,6 +125,42 @@ public final class TestCommand {
             c.getSource().sendSuccess(() -> Component.literal("Inventory empty.").withStyle(ChatFormatting.GRAY), false);
         }
         totals.forEach((k, v) -> c.getSource().sendSuccess(() -> Component.literal(" " + v + " x " + k).withStyle(ChatFormatting.GRAY), false));
+        return 1;
+    }
+
+    private static int slots(CommandContext<CommandSourceStack> c) {
+        FakePlayer p = player(c);
+        if (p == null) return 0;
+        var inv = p.getInventory();
+        for (int i = 0; i < inv.items.size(); i++) {
+            ItemStack s = inv.items.get(i);
+            if (s.isEmpty()) continue;
+            String line = " " + i + (i == inv.selected ? " (hand)" : "") + ": " + s.getCount() + " x " + BuiltInRegistries.ITEM.getKey(s.getItem());
+            c.getSource().sendSuccess(() -> Component.literal(line).withStyle(ChatFormatting.GRAY), false);
+        }
+        for (int i = 0; i < inv.armor.size(); i++) {
+            ItemStack s = inv.armor.get(i);
+            if (s.isEmpty()) continue;
+            String line = " armour " + i + ": " + BuiltInRegistries.ITEM.getKey(s.getItem());
+            c.getSource().sendSuccess(() -> Component.literal(line).withStyle(ChatFormatting.GRAY), false);
+        }
+        ItemStack off = inv.offhand.get(0);
+        if (!off.isEmpty()) {
+            String line = " offhand: " + off.getCount() + " x " + BuiltInRegistries.ITEM.getKey(off.getItem());
+            c.getSource().sendSuccess(() -> Component.literal(line).withStyle(ChatFormatting.GRAY), false);
+        }
+        return 1;
+    }
+
+    private static int audit(CommandContext<CommandSourceStack> c) {
+        FakePlayer p = player(c);
+        if (p == null) return 0;
+        if (!net.neoforged.fml.ModList.get().isLoaded("chapters")) {
+            c.getSource().sendFailure(Component.literal("Chapters is not installed.").withStyle(ChatFormatting.RED));
+            return 0;
+        }
+        com.gabinx.chapters.event.InventoryAuditor.auditNow(p);
+        c.getSource().sendSuccess(() -> Component.literal("Audited.").withStyle(ChatFormatting.GREEN), false);
         return 1;
     }
 

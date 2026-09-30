@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- Locked items can be picked up again. Chapters dropped every item of a stage the player does not have out of the inventory once a second and refused to pick it up, so loot from chests and mobs lay on the ground until it despawned. Now, as in SevTech, a locked item can be carried and stored but not held, worn or used: one that lands in a hand or an armour slot is moved into the inventory, and only dropped when there is no room. The action bar says which stage it belongs to, and so does its tooltip.
+- Using, placing or hitting with a locked item in hand is refused.
+- German texts for these messages and for Chapters' crafting messages.
+- `/kw test slots` and `/kw test audit` for checking this on a test server.
+
 ## 0.4.2
 
 - Joining still froze the client for about eight minutes after 0.4.1. The rest was Chapters hiding every recipe that makes a locked item, fluid or chemical: it asks each of JEI's 400 recipe types, once for all items and once per fluid, and at every stage opening once per unlocked item. Those lookups are skipped. Locked things stay out of JEI's list and the server still refuses to make them; a recipe for one can show up under the uses of an open item.
