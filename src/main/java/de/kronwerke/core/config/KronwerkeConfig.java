@@ -20,6 +20,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue SCALE_MIN;
     public static final ModConfigSpec.DoubleValue SCALE_MAX;
     public static final ModConfigSpec.BooleanValue TEST_COMMANDS;
+    public static final ModConfigSpec.IntValue LOG_DAYS;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -62,6 +63,11 @@ public final class KronwerkeConfig {
                 .defineInRange("minFactor", 0.4, 0.01, 10.0);
         SCALE_MAX = b.comment("Highest factor a goal can be scaled to.")
                 .defineInRange("maxFactor", 1.5, 0.01, 10.0);
+        b.pop();
+
+        b.push("privacy");
+        LOG_DAYS = b.comment("Delete old server logs (logs/*.log.gz, with names and addresses of players) after this many days, checked at every start. 0 keeps them.")
+                .defineInRange("logDays", 30, 0, 3650);
         b.pop();
 
         b.push("testing");

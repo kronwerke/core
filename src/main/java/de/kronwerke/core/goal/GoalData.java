@@ -33,6 +33,8 @@ public class GoalData extends SavedData {
     private final Map<String, Set<UUID>> kits = new HashMap<>();
     /** goal -> players who received the goal's stages */
     private final Map<String, Set<UUID>> staged = new HashMap<>();
+    /** players who have every stage for testing, see BypassCommand */
+    private final Set<UUID> bypass = new HashSet<>();
 
     private static String key(String goal, String item) {
         return goal + "/" + item;
@@ -82,6 +84,18 @@ public class GoalData extends SavedData {
     public void markStages(String goal, UUID player) {
         staged.computeIfAbsent(goal, k -> new HashSet<>()).add(player);
         setDirty();
+    }
+
+    public boolean hasBypass(UUID player) {
+        return bypass.contains(player);
+    }
+
+    public Set<UUID> bypassing() {
+        return Set.copyOf(bypass);
+    }
+
+    public void setBypass(UUID player, boolean on) {
+        if (on ? bypass.add(player) : bypass.remove(player)) setDirty();
     }
 
     public void activate(String goal, double factor, Map<String, Long> itemTargets) {
@@ -180,6 +194,7 @@ public class GoalData extends SavedData {
             Set<UUID> s = d.staged.computeIfAbsent(goal, k -> new HashSet<>());
             for (String u : staged.getCompound(goal).getAllKeys()) s.add(UUID.fromString(u));
         }
+        for (String u : tag.getCompound("bypass").getAllKeys()) d.bypass.add(UUID.fromString(u));
         return d;
     }
 
@@ -214,6 +229,9 @@ public class GoalData extends SavedData {
             stagedTag.put(goal, t);
         });
         tag.put("staged", stagedTag);
+        CompoundTag bypassTag = new CompoundTag();
+        bypass.forEach(u -> bypassTag.putBoolean(u.toString(), true));
+        tag.put("bypass", bypassTag);
         return tag;
     }
 }
