@@ -27,7 +27,7 @@ Nothing important is unlocked by an individual. The server has a list of goals, 
 
 ```
   players deposit items          goal reached          stage unlocked
-  ─────────────────────►  ████████████░░░  ────►  commands run for everyone
+  ──────────────────────►  ████████████░░░  ────►  commands run for everyone
    obelisk, feeders, /kw deposit  boss bar               (Chapters, titles, rewards)
 ```
 
@@ -42,6 +42,7 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | `obelisk` | The deposit point at spawn and the feeder containers around it |
 | `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
 | `privacy` | Deletes rotated server logs after `logDays` (30), since they hold names and addresses |
+| `lock` | Locked items the SevTech way: they can be picked up and carried, but not held, worn or used. One in a hand or armour slot is moved into the inventory (dropped only when it is full), with a line in the action bar saying which stage it belongs to; the tooltip says the same. Replaces Chapters' audit, which dropped every locked item and refused to pick it up again |
 | `compat` | On clients: hands Chapters' stage locks to JEI in one batch instead of one call per item, which froze joining for minutes |
 | `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, feeder radius and interval, log retention |
 
@@ -115,7 +116,7 @@ The obelisk is any block at spawn, chosen with `/kw admin obelisk set <pos>`. It
 | `/kw admin grant <player> [slots]` | op, the bot | Whitelist without a streamer's slot, with slots of their own (streamers, Season 1 players) |
 | `/kw admin ungrant <player>` | op, the bot | Take that place back, and every slot the player gave |
 | `/kw admin goals json` | op, the bot | Every goal with state, progress and top five, as `OK <json>` |
-| `/kw test join\|leave\|give\|inv\|deposit\|kits\|list` | op, test servers | Server side test players, see below |
+| `/kw test join\|leave\|give\|inv\|slots\|audit\|deposit\|kits\|list` | op, test servers | Server side test players, see below |
 
 ### Testing without a client
 
@@ -129,13 +130,13 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## Non-goals
 
-- Replacing FTB Quests or Chapters. This mod triggers them, it does not lock items itself.
+- Replacing FTB Quests or Chapters. Which items a stage locks stays in Chapters' stage files; this mod only changes what a locked item does in the inventory.
 - A general permission system. Operator levels are enough for this server.
 - Anything client side that the server does not need. Screens are the exception.
 
 ## Status
 
-Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. The obelisk and its feeders were tested the same way: a chest next to it, filled over RCON, is emptied into the goal, stops at the hold point and goes on after `open`. The stage bypass was checked over RCON as far as it goes without a player online. Right clicking and the bypass itself need a client and wait for the beta. No screens yet. Not yet used in a season.
+Early. Slots and goals work and were tested on a dedicated server with the full pack: invite, revoke, deposit, pillars, hold point, release, completion, prerequisites, starter kits, admin commands, and the bot's RCON commands with the bot's own RCON client. The obelisk and its feeders were tested the same way: a chest next to it, filled over RCON, is emptied into the goal, stops at the hold point and goes on after `open`. The stage bypass was checked over RCON as far as it goes without a player online. Locked items were checked with test players: one in the hand moves into the inventory, and is dropped when the inventory is full. Right clicking, picking up, the action bar and the bypass itself need a client and wait for the beta. No screens yet. Not yet used in a season.
 
 ## Docs
 
