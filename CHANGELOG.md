@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.2
+
+- FTB Quests could fail to load a large quest book ("this.wrapped is null") when the entries of the reward tables pushed its object map over the fill limit while it was being read. Core makes FTB Quests read from a copy, so the size of the book no longer matters.
+
 ## 0.6.1
 
 - The whitelist is only switched on for a dedicated server. In singleplayer the world kicked its own player as not whitelisted.
