@@ -4,7 +4,8 @@
   "package": "de.kronwerke.core.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "ChaptersAuditMixin"
+    "ChaptersAuditMixin",
+    "QuietPingMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

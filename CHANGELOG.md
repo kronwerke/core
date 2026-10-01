@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+
+- The whitelist is only switched on for a dedicated server. In singleplayer the world kicked its own player as not whitelisted.
+- Server list scanners that drop the socket during a status ping no longer fill the log with a sixty line stack trace about an unknown disconnect packet. Such a connection is closed quietly.
+
 ## 0.6.0
 
 - Goal items can be `"fixed": true`: their amount stays the same whatever the player count. Meant for milestone items, where thirty and twelve players should both build the same eight.

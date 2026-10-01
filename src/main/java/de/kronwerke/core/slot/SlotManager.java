@@ -25,7 +25,8 @@ public final class SlotManager {
 
     public void init(MinecraftServer server) {
         this.server = server;
-        if (KronwerkeConfig.ENFORCE_WHITELIST.get() && !server.getPlayerList().isUsingWhitelist()) {
+        // Only the real server: a singleplayer world must never lock out its own player.
+        if (server.isDedicatedServer() && KronwerkeConfig.ENFORCE_WHITELIST.get() && !server.getPlayerList().isUsingWhitelist()) {
             server.getPlayerList().setUsingWhiteList(true);
             KronwerkeCore.LOGGER.info("Whitelist turned on by Kronwerke Core.");
         }
