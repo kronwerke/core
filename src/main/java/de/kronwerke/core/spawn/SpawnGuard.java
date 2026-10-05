@@ -25,8 +25,9 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
  * The area around the world spawn, kept the way the team built it. Inside spawn.radius
  * blocks of the overworld spawn nobody but operators breaks or places blocks, no explosion
  * takes a block, no mob griefs, no hostile mob spawns and no player hurts another. Doors,
- * buttons, waystones and the obelisk keep working. An intake next to the obelisk may be
- * placed by anyone and taken back by its owner; nothing else may.
+ * buttons, waystones and the obelisk keep working. The zone around the obelisk
+ * (obelisk.feederRadius) is open: anyone places intakes, hoppers, pipes and belts there and
+ * takes back their own blocks; nothing else may.
  */
 public final class SpawnGuard {
     private SpawnGuard() {
@@ -52,7 +53,7 @@ public final class SpawnGuard {
         if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return false;
         BlockPos o = d.pos();
         int r = KronwerkeConfig.FEEDER_RADIUS.get();
-        return Math.abs(pos.getX() - o.getX()) <= r + 2 && Math.abs(pos.getY() - o.getY()) <= r + 2 && Math.abs(pos.getZ() - o.getZ()) <= r + 2;
+        return Math.abs(pos.getX() - o.getX()) <= r && Math.abs(pos.getY() - o.getY()) <= r && Math.abs(pos.getZ() - o.getZ()) <= r;
     }
 
     private static void tell(Entity entity) {
@@ -63,17 +64,23 @@ public final class SpawnGuard {
 
     public static void onBreak(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !inside(level, event.getPos()) || mayBuild(event.getPlayer())) return;
-        // a player takes back their own intake or feeder
+        // in the zone around the obelisk a player takes back what they placed there
         if (level.getBlockEntity(event.getPos()) instanceof de.kronwerke.core.obelisk.ObeliskIntakeBlockEntity be && event.getPlayer().getUUID().equals(be.owner())) return;
-        if (nearObelisk(level, event.getPos()) && event.getPlayer().getUUID().equals(Obelisk.get().data().feeder(event.getPos()))) return;
+        if (nearObelisk(level, event.getPos()) && event.getPlayer().getUUID().equals(Obelisk.get().data().feeder(event.getPos()))) {
+            Obelisk.get().data().removeFeeder(event.getPos());
+            return;
+        }
         event.setCanceled(true);
         tell(event.getPlayer());
     }
 
     public static void onPlace(BlockEvent.EntityPlaceEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !inside(level, event.getPos()) || mayBuild(event.getEntity())) return;
-        if (nearObelisk(level, event.getPos()) && (event.getPlacedBlock().is(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK_INTAKE.get())
-                || (KronwerkeConfig.CONTAINER_FEEDERS.get() && level.getCapability(Capabilities.ItemHandler.BLOCK, event.getPos(), null) != null))) return;
+        // the zone around the obelisk is open for intakes, hoppers, pipes and belts; every block there remembers who placed it
+        if (nearObelisk(level, event.getPos()) && event.getEntity() instanceof ServerPlayer sp) {
+            Obelisk.get().data().addFeeder(event.getPos(), sp.getUUID());
+            return;
+        }
         event.setCanceled(true);
         tell(event.getEntity());
     }

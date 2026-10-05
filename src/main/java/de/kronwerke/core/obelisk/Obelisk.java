@@ -148,6 +148,7 @@ public final class Obelisk {
 
     /** Moves everything the active goal can take out of every feeder. Returns what was moved. */
     public long drain() {
+        if (!KronwerkeConfig.CONTAINER_FEEDERS.get()) return 0;
         ObeliskData d = data();
         if (!d.isSet() || d.feeders().isEmpty() || GoalManager.get().activeGoals().isEmpty()) return 0;
         ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(d.dimension())));

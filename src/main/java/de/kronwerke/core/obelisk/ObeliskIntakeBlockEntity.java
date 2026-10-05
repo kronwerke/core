@@ -46,7 +46,7 @@ public class ObeliskIntakeBlockEntity extends BlockEntity {
         if (level == null || !d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return false;
         BlockPos o = d.pos();
         int r = KronwerkeConfig.FEEDER_RADIUS.get();
-        return Math.abs(worldPosition.getX() - o.getX()) <= r + 2 && Math.abs(worldPosition.getY() - o.getY()) <= r + 2 && Math.abs(worldPosition.getZ() - o.getZ()) <= r + 2;
+        return Math.abs(worldPosition.getX() - o.getX()) <= r && Math.abs(worldPosition.getY() - o.getY()) <= r && Math.abs(worldPosition.getZ() - o.getZ()) <= r;
     }
 
     public final IItemHandler handler = new IItemHandler() {

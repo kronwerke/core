@@ -7,12 +7,12 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * The obelisk as a build: the core in the middle of a 5x5 plinth, a 3x3 step around the
- * first shaft segment, four shaft segments and the crystal on top, eight blocks tall.
+ * first shaft segment, six shaft segments and the crystal on top, ten blocks tall.
  * build() places everything around a core that is already there; clear() removes all
  * parts again.
  */
 public final class ObeliskStructure {
-    public static final int SHAFT = 4;
+    public static final int SHAFT = 6;
 
     private ObeliskStructure() {
     }
