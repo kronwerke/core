@@ -23,6 +23,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.IntValue LOG_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
+    public static final ModConfigSpec.IntValue SPAWN_RADIUS;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -57,6 +58,11 @@ public final class KronwerkeConfig {
         b.push("join");
         JOIN_KIT = b.comment("Items every player gets once, on the first join, as item or item*count.")
                 .defineListAllowEmpty("kit", java.util.List.of("waystones:waystone", "waystones:warp_dust*4"), o -> o instanceof String);
+        b.pop();
+
+        b.push("spawn");
+        SPAWN_RADIUS = b.comment("Half the side of the protected square around the overworld spawn, in blocks. 0 turns the protection off. Operators and creative players build freely; containers next to the obelisk stay allowed for feeders.")
+                .defineInRange("radius", 96, 0, 2048);
         b.pop();
 
         b.push("obelisk");

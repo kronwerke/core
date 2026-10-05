@@ -10,6 +10,7 @@ import de.kronwerke.core.lock.ClientHooks;
 import de.kronwerke.core.obelisk.Obelisk;
 import de.kronwerke.core.privacy.LogPruner;
 import de.kronwerke.core.slot.SlotManager;
+import de.kronwerke.core.spawn.SpawnGuard;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -50,6 +51,14 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onPlace);
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onBreak);
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onServerTick);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onPlace);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onMultiPlace);
+        NeoForge.EVENT_BUS.addListener(SpawnGuard::onExplosion);
+        NeoForge.EVENT_BUS.addListener(SpawnGuard::onMobGriefing);
+        NeoForge.EVENT_BUS.addListener(SpawnGuard::onSpawn);
+        NeoForge.EVENT_BUS.addListener(SpawnGuard::onDamage);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onRightClick);
 
         if (ModList.get().isLoaded("chapters")) {
             // after Chapters, which refuses the pickup of every locked item
