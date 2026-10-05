@@ -124,6 +124,10 @@ The obelisk is the `kronwerke:obelisk` block: a pillar four blocks tall with a c
 
 With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test players that exist only as inventory and data: `/kw test join Anna`, `/kw test give Anna create:andesite_alloy 200`, `/kw test deposit Anna all`, `/kw test kits Anna`. That is how deposits, the hold point, completion, stages and starter kits are checked over RCON on a headless server. Never turn it on in a season.
 
+## The streamer menu
+
+`/kw menu` (also `/kw invite` or `/kw revoke` without a name) opens a screen on the client: the slots as a row, every invited player with head, name and online dot, a remove button, and a field to invite the next one. The screen talks to the server through two packets (`net/KwNetwork`); the text commands keep working for consoles and bots. `/kw` alone lists the commands with clickable lines.
+
 ## Tab list and ranks
 
 Ranks are scoreboard teams with a glyph prefix from the Nautical Ranks resource pack the modpack ships: owner (`tab.owners` in the config), admin (operators), streamer (players with whitelist slots) and member. The tab list header shows the season and `tab.line`, the footer the running goal and the player count.

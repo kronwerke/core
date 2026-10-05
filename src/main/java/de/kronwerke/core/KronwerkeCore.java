@@ -42,6 +42,7 @@ public class KronwerkeCore {
         container.registerConfig(ModConfig.Type.COMMON, KronwerkeConfig.SPEC);
         quietRcon();
         de.kronwerke.core.obelisk.ObeliskBlocks.register(modBus);
+        modBus.addListener(de.kronwerke.core.net.KwNetwork::register);
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);

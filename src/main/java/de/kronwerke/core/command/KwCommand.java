@@ -42,11 +42,17 @@ public final class KwCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> d) {
         d.register(Commands.literal("kw")
+                .executes(KwCommand::help)
+                .then(Commands.literal("help").executes(KwCommand::help))
+                .then(Commands.literal("menu").executes(KwCommand::menu))
+                .then(Commands.literal("whitelist").executes(KwCommand::menu))
                 .then(Commands.literal("invite")
                         .requires(s -> KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || s.hasPermission(2))
+                        .executes(KwCommand::menu)
                         .then(Commands.argument("player", StringArgumentType.word()).executes(KwCommand::invite)))
                 .then(Commands.literal("revoke")
                         .requires(s -> KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || s.hasPermission(2))
+                        .executes(KwCommand::menu)
                         .then(Commands.argument("player", StringArgumentType.word()).executes(KwCommand::revoke)))
                 .then(Commands.literal("slots").executes(KwCommand::slots))
                 .then(Commands.literal("deposit")
@@ -83,6 +89,38 @@ public final class KwCommand {
                 .then(TestCommand.build()));
     }
 
+    // ---- help and menu ----
+
+    private static int help(CommandContext<CommandSourceStack> c) {
+        boolean streamer = c.getSource().hasPermission(2) || KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get();
+        c.getSource().sendSuccess(() -> Component.literal("Kronwerke").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
+        line(c, "/kw goals", "Was der Obelisk gerade braucht und wie weit wir sind");
+        line(c, "/kw deposit", "Gibt den Stapel in der Hand am Obelisken ab, /kw deposit all das ganze Inventar");
+        line(c, "/kw top", "Die fleißigsten Hände beim laufenden Ziel");
+        if (streamer) {
+            line(c, "/kw menu", "Deine Whitelist: Plätze, Köpfe, Einladen und Entfernen");
+            line(c, "/kw invite <Name>", "Lädt jemanden auf einen deiner Plätze ein");
+            line(c, "/kw revoke <Name>", "Nimmt den Platz wieder weg");
+        }
+        if (c.getSource().hasPermission(2)) {
+            line(c, "/kw admin ...", "Plätze, Ziele, Obelisk, Bypass. /kw admin ohne Rest zeigt die Liste");
+        }
+        return 1;
+    }
+
+    private static void line(CommandContext<CommandSourceStack> c, String cmd, String what) {
+        c.getSource().sendSuccess(() -> Component.literal(" " + cmd).withStyle(ChatFormatting.YELLOW)
+                .withStyle(st -> st.withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND, cmd.replace(" <Name>", " ").replace(" ...", " ")))
+                        .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Component.literal("Klicken, um den Befehl in den Chat zu setzen"))))
+                .append(Component.literal("  " + what).withStyle(ChatFormatting.GRAY)), false);
+    }
+
+    private static int menu(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        de.kronwerke.core.net.KwNetwork.send(p, true, "", false);
+        return 1;
+    }
+
     // ---- streamer slot commands ----
 
     private static int invite(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
@@ -91,12 +129,12 @@ public final class KwCommand {
         String target = StringArgumentType.getString(c, "player");
         SlotManager.Result r = SlotManager.get().invite(me, target);
         switch (r) {
-            case OK -> ok(c, target + " is whitelisted now. Slots used: " + me.used() + "/" + SlotManager.get().allowance(me));
-            case NO_SLOTS_LEFT -> fail(c, "You have no free slots (" + me.used() + "/" + SlotManager.get().allowance(me) + ").");
-            case ALREADY_INVITED -> fail(c, target + " already has a slot.");
-            case ALREADY_WHITELISTED -> fail(c, target + " is already on the whitelist.");
-            case UNKNOWN_PLAYER -> fail(c, "No Minecraft account named " + target + " was found. Check the spelling.");
-            default -> fail(c, "That did not work.");
+            case OK -> ok(c, target + " steht auf der Whitelist. Plätze: " + me.used() + "/" + SlotManager.get().allowance(me));
+            case NO_SLOTS_LEFT -> fail(c, "Du hast keinen freien Platz mehr (" + me.used() + "/" + SlotManager.get().allowance(me) + ").");
+            case ALREADY_INVITED -> fail(c, target + " hat schon einen Platz.");
+            case ALREADY_WHITELISTED -> fail(c, target + " ist schon auf der Whitelist.");
+            case UNKNOWN_PLAYER -> fail(c, "Kein Minecraft-Konto mit dem Namen " + target + ". Schreibweise prüfen.");
+            default -> fail(c, "Das hat nicht geklappt.");
         }
         return r == SlotManager.Result.OK ? 1 : 0;
     }
@@ -107,10 +145,10 @@ public final class KwCommand {
         String target = StringArgumentType.getString(c, "player");
         SlotManager.Result r = SlotManager.get().revoke(me, target);
         switch (r) {
-            case OK -> ok(c, target + " was removed. Slots used: " + me.used() + "/" + SlotManager.get().allowance(me));
-            case NOT_INVITED_BY_YOU -> fail(c, target + " was not invited by you.");
-            case UNKNOWN_PLAYER -> fail(c, "No Minecraft account named " + target + " was found.");
-            default -> fail(c, "That did not work.");
+            case OK -> ok(c, target + " ist von der Whitelist runter. Plätze: " + me.used() + "/" + SlotManager.get().allowance(me));
+            case NOT_INVITED_BY_YOU -> fail(c, target + " hat seinen Platz nicht von dir.");
+            case UNKNOWN_PLAYER -> fail(c, "Kein Minecraft-Konto mit dem Namen " + target + ".");
+            default -> fail(c, "Das hat nicht geklappt.");
         }
         return r == SlotManager.Result.OK ? 1 : 0;
     }
@@ -118,7 +156,7 @@ public final class KwCommand {
     private static int slots(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
         SlotData.StreamerEntry me = SlotManager.get().entry(p.getUUID(), p.getGameProfile().getName());
-        c.getSource().sendSuccess(() -> Component.literal("Your slots: ").withStyle(ChatFormatting.GOLD)
+        c.getSource().sendSuccess(() -> Component.literal("Deine Plätze: ").withStyle(ChatFormatting.GOLD)
                 .append(Component.literal(me.used() + "/" + SlotManager.get().allowance(me)).withStyle(ChatFormatting.WHITE)), false);
         for (String n : me.invited.values()) {
             c.getSource().sendSuccess(() -> Component.literal("  - " + n).withStyle(ChatFormatting.GRAY), false);
