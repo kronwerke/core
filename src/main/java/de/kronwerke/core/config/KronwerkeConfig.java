@@ -21,6 +21,8 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue SCALE_MAX;
     public static final ModConfigSpec.BooleanValue TEST_COMMANDS;
     public static final ModConfigSpec.IntValue LOG_DAYS;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -41,6 +43,20 @@ public final class KronwerkeConfig {
                 .define("broadcastDeposits", true);
         BROADCAST_DEPOSIT_MIN = b.comment("Only announce deposits of at least this many items.")
                 .defineInRange("broadcastDepositMin", 64, 1, 1_000_000);
+        b.pop();
+
+        b.push("dimensions");
+        LOCKED_DIMENSIONS = b.comment("Dimensions that open with a stage, as dimension=stage. A player without the stage cannot enter; creative players can.")
+                .defineListAllowEmpty("locked", java.util.List.of(
+                        "minecraft:the_nether=kronwerke:stage2", "aether:the_aether=kronwerke:stage2",
+                        "undergarden:undergarden=kronwerke:stage3", "deeperdarker:otherside=kronwerke:stage3",
+                        "minecraft:the_end=kronwerke:stage4", "eternal_starlight:starlight=kronwerke:stage4",
+                        "mahoutsukai:reality_marble=kronwerke:stage4"), o -> o instanceof String str && str.contains("="));
+        b.pop();
+
+        b.push("join");
+        JOIN_KIT = b.comment("Items every player gets once, on the first join, as item or item*count.")
+                .defineListAllowEmpty("kit", java.util.List.of("waystones:waystone", "waystones:warp_dust*4"), o -> o instanceof String);
         b.pop();
 
         b.push("obelisk");

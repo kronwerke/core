@@ -1,0 +1,433 @@
+{
+ "parent": "minecraft:block/block",
+ "render_type": "minecraft:cutout",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_shaft",
+  "shaft": "kronwerke:block/obelisk_shaft",
+  "runes": "kronwerke:block/obelisk_runes",
+  "band": "kronwerke:block/obelisk_band",
+  "crystal": "kronwerke:block/obelisk_crystal",
+  "cap": "kronwerke:block/obelisk_cap"
+ },
+ "elements": [
+  {
+   "from": [
+    2,
+    0,
+    2
+   ],
+   "to": [
+    14,
+    10,
+    14
+   ],
+   "faces": {
+    "north": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      3.0,
+      14,
+      13.0
+     ]
+    },
+    "south": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      3.0,
+      14,
+      13.0
+     ]
+    },
+    "east": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      3.0,
+      14,
+      13.0
+     ]
+    },
+    "west": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      3.0,
+      14,
+      13.0
+     ]
+    },
+    "up": {
+     "texture": "#band",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    },
+    "down": {
+     "texture": "#band",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    1,
+    10,
+    1
+   ],
+   "to": [
+    15,
+    12,
+    15
+   ],
+   "faces": {
+    "north": {
+     "texture": "#band",
+     "uv": [
+      1,
+      7.0,
+      15,
+      9.0
+     ]
+    },
+    "south": {
+     "texture": "#band",
+     "uv": [
+      1,
+      7.0,
+      15,
+      9.0
+     ]
+    },
+    "east": {
+     "texture": "#band",
+     "uv": [
+      1,
+      7.0,
+      15,
+      9.0
+     ]
+    },
+    "west": {
+     "texture": "#band",
+     "uv": [
+      1,
+      7.0,
+      15,
+      9.0
+     ]
+    },
+    "up": {
+     "texture": "#band",
+     "uv": [
+      1,
+      1,
+      15,
+      15
+     ]
+    },
+    "down": {
+     "texture": "#band",
+     "uv": [
+      1,
+      1,
+      15,
+      15
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    3,
+    12,
+    3
+   ],
+   "to": [
+    13,
+    20,
+    13
+   ],
+   "faces": {
+    "north": {
+     "texture": "#cap",
+     "uv": [
+      3,
+      4.0,
+      13,
+      12.0
+     ]
+    },
+    "south": {
+     "texture": "#cap",
+     "uv": [
+      3,
+      4.0,
+      13,
+      12.0
+     ]
+    },
+    "east": {
+     "texture": "#cap",
+     "uv": [
+      3,
+      4.0,
+      13,
+      12.0
+     ]
+    },
+    "west": {
+     "texture": "#cap",
+     "uv": [
+      3,
+      4.0,
+      13,
+      12.0
+     ]
+    },
+    "up": {
+     "texture": "#band",
+     "uv": [
+      3,
+      3,
+      13,
+      13
+     ]
+    },
+    "down": {
+     "texture": "#band",
+     "uv": [
+      3,
+      3,
+      13,
+      13
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    4,
+    20,
+    4
+   ],
+   "to": [
+    12,
+    22,
+    12
+   ],
+   "faces": {
+    "north": {
+     "texture": "#band",
+     "uv": [
+      4,
+      7.0,
+      12,
+      9.0
+     ]
+    },
+    "south": {
+     "texture": "#band",
+     "uv": [
+      4,
+      7.0,
+      12,
+      9.0
+     ]
+    },
+    "east": {
+     "texture": "#band",
+     "uv": [
+      4,
+      7.0,
+      12,
+      9.0
+     ]
+    },
+    "west": {
+     "texture": "#band",
+     "uv": [
+      4,
+      7.0,
+      12,
+      9.0
+     ]
+    },
+    "up": {
+     "texture": "#band",
+     "uv": [
+      4,
+      4,
+      12,
+      12
+     ]
+    },
+    "down": {
+     "texture": "#band",
+     "uv": [
+      4,
+      4,
+      12,
+      12
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    5,
+    22,
+    5
+   ],
+   "to": [
+    11,
+    32,
+    11
+   ],
+   "faces": {
+    "north": {
+     "texture": "#crystal",
+     "uv": [
+      5,
+      3.0,
+      11,
+      13.0
+     ]
+    },
+    "south": {
+     "texture": "#crystal",
+     "uv": [
+      5,
+      3.0,
+      11,
+      13.0
+     ]
+    },
+    "east": {
+     "texture": "#crystal",
+     "uv": [
+      5,
+      3.0,
+      11,
+      13.0
+     ]
+    },
+    "west": {
+     "texture": "#crystal",
+     "uv": [
+      5,
+      3.0,
+      11,
+      13.0
+     ]
+    },
+    "up": {
+     "texture": "#crystal",
+     "uv": [
+      5,
+      5,
+      11,
+      11
+     ]
+    },
+    "down": {
+     "texture": "#crystal",
+     "uv": [
+      5,
+      5,
+      11,
+      11
+     ]
+    }
+   },
+   "shade": false,
+   "rotation": {
+    "origin": [
+     8,
+     27,
+     8
+    ],
+    "axis": "y",
+    "angle": 45
+   }
+  },
+  {
+   "from": [
+    6,
+    26,
+    6
+   ],
+   "to": [
+    10,
+    32,
+    10
+   ],
+   "faces": {
+    "north": {
+     "texture": "#crystal",
+     "uv": [
+      6,
+      5.0,
+      10,
+      11.0
+     ]
+    },
+    "south": {
+     "texture": "#crystal",
+     "uv": [
+      6,
+      5.0,
+      10,
+      11.0
+     ]
+    },
+    "east": {
+     "texture": "#crystal",
+     "uv": [
+      6,
+      5.0,
+      10,
+      11.0
+     ]
+    },
+    "west": {
+     "texture": "#crystal",
+     "uv": [
+      6,
+      5.0,
+      10,
+      11.0
+     ]
+    },
+    "up": {
+     "texture": "#crystal",
+     "uv": [
+      6,
+      6,
+      10,
+      10
+     ]
+    },
+    "down": {
+     "texture": "#crystal",
+     "uv": [
+      6,
+      6,
+      10,
+      10
+     ]
+    }
+   },
+   "shade": false
+  }
+ ]
+}

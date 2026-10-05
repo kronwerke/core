@@ -39,7 +39,7 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | --- | --- |
 | `slot` | Slot budgets per streamer, invites and revokes, kept in sync with the vanilla whitelist |
 | `goal` | Goals with tech and magic pillars, scaling by activity, hold point before the event, starter kits, boss bar |
-| `obelisk` | The deposit point at spawn and the feeder containers around it |
+| `obelisk` | The obelisk block, the deposit point at spawn and the feeder containers around it |
 | `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
 | `privacy` | Deletes rotated server logs after `logDays` (30), since they hold names and addresses |
 | `lock` | Locked items the SevTech way: they can be picked up and carried, but not held, worn or used. One in a hand or armour slot is moved into the inventory (dropped only when it is full), with a line in the action bar saying which stage it belongs to; the tooltip says the same. Replaces Chapters' audit, which dropped every locked item and refused to pick it up again. On the client, locked items are veiled (a dark cover with a question mark, "???" as the name), and JEI shows the next stage's items veiled while later stages stay hidden |
@@ -89,7 +89,7 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 
 ### The obelisk
 
-The obelisk is any block at spawn, chosen with `/kw admin obelisk set <pos>`. It needs no block of its own, so clients need nothing extra.
+The obelisk is the `kronwerke:obelisk` block: a pillar four blocks tall with a crystal on top, unbreakable outside creative mode. An operator places it (creative tab Operator Utilities, or `/give`) and it registers itself; `/kw admin obelisk set <pos>` still turns any other block into the obelisk.
 
 - **Right click** it to hand in the stack in your hand. Sneak and right click to hand in everything in your inventory that the goal takes. When nothing fits, it says what it wants.
 - **Feeders.** A chest, barrel or any other container placed within `feederRadius` blocks of the obelisk (3 by default) becomes a feeder of the player who placed it, up to `feedersPerPlayer` (2). Every `feederInterval` seconds the mod takes whatever the goal can use out of every feeder and counts it for its owner. Anything the goal does not want stays in the container. Pipe a factory into your feeder and it pays into the goal while you sleep.
@@ -123,6 +123,12 @@ The obelisk is any block at spawn, chosen with `/kw admin obelisk set <pos>`. It
 ### Testing without a client
 
 With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test players that exist only as inventory and data: `/kw test join Anna`, `/kw test give Anna create:andesite_alloy 200`, `/kw test deposit Anna all`, `/kw test kits Anna`. That is how deposits, the hold point, completion, stages and starter kits are checked over RCON on a headless server. Never turn it on in a season.
+
+## Join kit and locked dimensions
+
+- Every player gets the `join.kit` items once, on the first join (a waystone and warp dust by default).
+- `dimensions.locked` lists dimensions as `dimension=stage`. A player without the stage cannot enter, by portal or by command; creative players can. The Nether opens with stage 2, the End with stage 4 by default.
+- Items in goals and messages are shown by name, tags as "Bruchstein (alle Arten)".
 
 ## Planned
 

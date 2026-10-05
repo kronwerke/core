@@ -9,5 +9,15 @@
   "kronwerke.stage.kronwerke.stage5": "Stufe 5 (Chaoswerk)",
   "kronwerke.locked.name": "???",
   "kronwerke.locked.opens": "Öffnet in %s.",
-  "kronwerke.locked.carry": "Einstecken geht, benutzen noch nicht."
+  "kronwerke.locked.carry": "Einstecken geht, benutzen noch nicht.",
+  "kronwerke.dimension.locked": "%s öffnet mit %s. Die Gemeinschaft baut den Obelisken voll, dann geht die Tür auf.",
+  "kronwerke.dimension.minecraft.the_nether": "Der Nether",
+  "kronwerke.dimension.minecraft.the_end": "Das End",
+  "kronwerke.dimension.aether.the_aether": "Der Aether",
+  "kronwerke.dimension.undergarden.undergarden": "Der Undergarden",
+  "kronwerke.dimension.deeperdarker.otherside": "Die Otherside",
+  "kronwerke.dimension.eternal_starlight.starlight": "Eternal Starlight",
+  "kronwerke.dimension.mahoutsukai.reality_marble": "Das Reality Marble",
+  "block.kronwerke.obelisk": "Obelisk",
+  "block.kronwerke.obelisk_top": "Obelisk (Spitze)"
 }

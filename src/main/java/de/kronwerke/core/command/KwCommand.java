@@ -5,6 +5,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import de.kronwerke.core.Text;
 import de.kronwerke.core.config.KronwerkeConfig;
 import de.kronwerke.core.goal.Goal;
 import de.kronwerke.core.goal.GoalData;
@@ -137,22 +138,22 @@ public final class KwCommand {
             taken = GoalManager.get().deposit(p, hand);
         }
         if (taken == 0) {
-            fail(c, "Nothing you are holding fits the current goal. Use /kw goals to see what is needed.");
+            fail(c, "Nichts in deiner Hand passt zum aktuellen Ziel. /kw goals zeigt, was gebraucht wird.");
             return 0;
         }
-        ok(c, "Deposited " + taken + ".");
+        ok(c, "Abgegeben: " + Text.number(taken) + ".");
         return 1;
     }
 
     private static int goals(CommandContext<CommandSourceStack> c) {
         GoalManager gm = GoalManager.get();
         GoalData d = gm.progressData();
-        c.getSource().sendSuccess(() -> Component.literal("Community goals").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
+        c.getSource().sendSuccess(() -> Text.t("goals.title", "Gemeinschaftsziele").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
         for (Goal g : gm.allGoals()) {
             boolean done = d.isCompleted(g.id());
             boolean active = gm.isActive(g);
             ChatFormatting color = done ? ChatFormatting.GREEN : active ? ChatFormatting.YELLOW : ChatFormatting.DARK_GRAY;
-            String state = done ? "done" : active ? (gm.isHeld(g) ? "waiting for the event" : Math.round(gm.fraction(g) * 100) + "%") : "locked";
+            String state = done ? "geschafft" : active ? (gm.isHeld(g) ? "wartet auf das Event" : Math.round(gm.fraction(g) * 100) + "%") : "gesperrt";
             c.getSource().sendSuccess(() -> Component.literal(" " + g.title() + " ").withStyle(color)
                     .append(Component.literal("[" + state + "]").withStyle(ChatFormatting.GRAY)), false);
             if (!active) continue;
@@ -164,8 +165,8 @@ public final class KwCommand {
                 c.getSource().sendSuccess(() -> Component.literal("   " + p.title()).withStyle(pd ? ChatFormatting.GREEN : ChatFormatting.AQUA), false);
                 for (Goal.PillarItem it : p.items()) {
                     long have = d.progress(g.id(), it.item()), need = d.target(g.id(), it.item());
-                    c.getSource().sendSuccess(() -> Component.literal("     " + it.item() + "  " + have + " / " + need)
-                            .withStyle(have >= need ? ChatFormatting.GREEN : ChatFormatting.WHITE), false);
+                    c.getSource().sendSuccess(() -> Component.literal("     ").append(Text.item(it.item()).withStyle(have >= need ? ChatFormatting.GREEN : ChatFormatting.AQUA))
+                            .append(Component.literal("  " + Text.number(have) + " / " + Text.number(need)).withStyle(have >= need ? ChatFormatting.GREEN : ChatFormatting.WHITE)), false);
                 }
             }
         }
@@ -176,10 +177,10 @@ public final class KwCommand {
         GoalManager gm = GoalManager.get();
         Goal g = goalId == null ? (gm.activeGoals().isEmpty() ? null : gm.activeGoals().get(0)) : gm.goal(goalId);
         if (g == null) {
-            fail(c, "No such goal.");
+            fail(c, "Dieses Ziel gibt es nicht.");
             return 0;
         }
-        c.getSource().sendSuccess(() -> Component.literal("Top contributors: " + g.title()).withStyle(ChatFormatting.GOLD), false);
+        c.getSource().sendSuccess(() -> Text.t("goals.top", "Die fleißigsten Hände: %s", g.title()).withStyle(ChatFormatting.GOLD), false);
         int rank = 1;
         for (Map.Entry<UUID, Long> e : gm.leaderboard(g, 10)) {
             String name = c.getSource().getServer().getProfileCache() == null ? e.getKey().toString()

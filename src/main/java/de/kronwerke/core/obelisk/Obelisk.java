@@ -7,6 +7,8 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import de.kronwerke.core.Text;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -29,8 +31,8 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * The obelisk at spawn, without a block of its own: any block an admin points at with
- * /kw admin obelisk set. Right click it to deposit what you hold, sneak and right click to
+ * The obelisk at spawn: the {@link ObeliskBlock} an operator placed, or any block an admin
+ * points at with /kw admin obelisk set. Right click it to deposit what you hold, sneak and right click to
  * deposit everything that fits. A chest, barrel or any other container placed right next to
  * it becomes a feeder of the player who placed it: whatever a factory pipes into it goes into
  * the goal under that player's name. Everything stays server side, clients need nothing.
@@ -56,7 +58,10 @@ public final class Obelisk {
 
     private boolean isObelisk(Level level, BlockPos pos) {
         ObeliskData d = data();
-        return d.isSet() && d.pos().equals(pos) && level.dimension().location().toString().equals(d.dimension());
+        if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return false;
+        if (d.pos().equals(pos)) return true;
+        // the upper half of the pillar counts as well
+        return d.pos().equals(pos.below()) && level.getBlockState(pos).is(ObeliskBlocks.OBELISK_TOP.get());
     }
 
     private static int distance(BlockPos a, BlockPos b) {
@@ -74,7 +79,7 @@ public final class Obelisk {
         GoalManager gm = GoalManager.get();
         List<Goal> active = gm.activeGoals();
         if (active.isEmpty()) {
-            player.sendSystemMessage(Component.literal("The obelisk rests. No community goal is open.").withStyle(ChatFormatting.GRAY));
+            player.sendSystemMessage(Text.t("obelisk.rests", "Der Obelisk ruht. Gerade ist kein Gemeinschaftsziel offen.").withStyle(ChatFormatting.GRAY));
             return;
         }
         long taken;
@@ -85,21 +90,25 @@ public final class Obelisk {
             taken = gm.deposit(player, held);
         }
         if (taken > 0) {
-            player.sendSystemMessage(Component.literal("The obelisk took " + taken + ".").withStyle(ChatFormatting.GREEN));
+            player.sendSystemMessage(Text.t("obelisk.took", "Der Obelisk nimmt %s.", Text.number(taken)).withStyle(ChatFormatting.GREEN));
             return;
         }
         Goal g = active.get(0);
         if (gm.isHeld(g)) {
-            player.sendSystemMessage(Component.literal("The obelisk waits for the event. The last items go in together.").withStyle(ChatFormatting.LIGHT_PURPLE));
+            player.sendSystemMessage(Text.t("obelisk.held", "Der Obelisk wartet auf das Event. Die letzten Teile gehen gemeinsam rein.").withStyle(ChatFormatting.LIGHT_PURPLE));
             return;
         }
-        List<String> wanted = new ArrayList<>();
+        MutableComponent wanted = Component.empty();
+        boolean first = true;
         for (Goal.PillarItem it : g.allItems()) {
-            if (gm.progressData().progress(g.id(), it.item()) < gm.progressData().target(g.id(), it.item())) wanted.add(it.item());
+            long have = gm.progressData().progress(g.id(), it.item()), need = gm.progressData().target(g.id(), it.item());
+            if (have >= need) continue;
+            if (!first) wanted.append(Component.literal(", ").withStyle(ChatFormatting.GRAY));
+            first = false;
+            wanted.append(Text.item(it.item())).append(Component.literal(" " + Text.number(have) + "/" + Text.number(need)).withStyle(ChatFormatting.GRAY));
         }
-        player.sendSystemMessage(Component.literal("The obelisk wants: ").withStyle(ChatFormatting.GOLD)
-                .append(Component.literal(String.join(", ", wanted)).withStyle(ChatFormatting.WHITE))
-                .append(Component.literal(". Sneak and right click to hand in everything that fits.").withStyle(ChatFormatting.GRAY)));
+        player.sendSystemMessage(Text.t("obelisk.wants", "Der Obelisk braucht: %s", wanted).withStyle(ChatFormatting.GOLD));
+        player.sendSystemMessage(Text.t("obelisk.hint", "Rechtsklick gibt den Stapel in der Hand ab, Schleichen und Rechtsklick alles, was passt.").withStyle(ChatFormatting.GRAY));
     }
 
     // ---- feeders ----
@@ -115,11 +124,11 @@ public final class Obelisk {
         int max = KronwerkeConfig.FEEDERS_PER_PLAYER.get();
         long owned = d.feeders().values().stream().filter(u -> u.equals(player.getUUID())).count();
         if (owned >= max) {
-            player.sendSystemMessage(Component.literal("You already have " + owned + " feeders at the obelisk. This one does not count.").withStyle(ChatFormatting.GRAY));
+            player.sendSystemMessage(Text.t("obelisk.feeders_full", "Du hast schon %s Zubringer am Obelisken. Dieser zählt nicht.", owned).withStyle(ChatFormatting.GRAY));
             return;
         }
         d.addFeeder(pos, player.getUUID());
-        player.sendSystemMessage(Component.literal("This feeds the obelisk. Whatever goes in counts for you.").withStyle(ChatFormatting.GREEN));
+        player.sendSystemMessage(Text.t("obelisk.feeder", "Das ist jetzt ein Zubringer. Alles, was hier reinkommt, zählt für dich.").withStyle(ChatFormatting.GREEN));
     }
 
     public void onBreak(BlockEvent.BreakEvent event) {

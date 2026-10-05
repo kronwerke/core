@@ -15,5 +15,15 @@
   "item.kronwerke.brass_heart": "Brass Heart",
   "item.kronwerke.rune_core": "Rune Core",
   "item.kronwerke.steel_core": "Steel Core",
-  "item.kronwerke.elven_star": "Elven Star"
+  "item.kronwerke.elven_star": "Elven Star",
+  "kronwerke.dimension.locked": "%s opens with %s. Fill the obelisk together and the door opens.",
+  "kronwerke.dimension.minecraft.the_nether": "The Nether",
+  "kronwerke.dimension.minecraft.the_end": "The End",
+  "kronwerke.dimension.aether.the_aether": "The Aether",
+  "kronwerke.dimension.undergarden.undergarden": "The Undergarden",
+  "kronwerke.dimension.deeperdarker.otherside": "The Otherside",
+  "kronwerke.dimension.eternal_starlight.starlight": "Eternal Starlight",
+  "kronwerke.dimension.mahoutsukai.reality_marble": "The Reality Marble",
+  "block.kronwerke.obelisk": "Obelisk",
+  "block.kronwerke.obelisk_top": "Obelisk (top)"
 }

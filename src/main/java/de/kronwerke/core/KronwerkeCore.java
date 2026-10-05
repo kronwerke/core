@@ -39,6 +39,7 @@ public class KronwerkeCore {
     public KronwerkeCore(IEventBus modBus, ModContainer container) {
         container.registerConfig(ModConfig.Type.COMMON, KronwerkeConfig.SPEC);
         quietRcon();
+        de.kronwerke.core.obelisk.ObeliskBlocks.register(modBus);
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
@@ -54,6 +55,7 @@ public class KronwerkeCore {
             // after Chapters, which refuses the pickup of every locked item
             NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, LockedItems::onPickup);
             NeoForge.EVENT_BUS.addListener(LockedItems::onTick);
+            NeoForge.EVENT_BUS.addListener(de.kronwerke.core.lock.LockedDimensions::onTravel);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickItem.class, LockedItems::onInteract);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickBlock.class, LockedItems::onInteract);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.LeftClickBlock.class, LockedItems::onInteract);

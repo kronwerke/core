@@ -8,6 +8,7 @@ import de.kronwerke.core.config.KronwerkeConfig;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import de.kronwerke.core.Text;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerBossEvent;
@@ -281,11 +282,9 @@ public final class GoalManager {
                 long now = data().add(g.id(), it.item(), who, take);
                 remember(g.id(), name, it.item(), take);
                 if (announce && KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
-                    server.getPlayerList().broadcastSystemMessage(Component.literal("")
-                            .append(name)
-                            .append(Component.literal(" deposited " + take + " ").withStyle(ChatFormatting.GRAY))
-                            .append(itemName(it.item()))
-                            .append(Component.literal(" (" + now + "/" + data().target(g.id(), it.item()) + ")").withStyle(ChatFormatting.GRAY)), false);
+                    server.getPlayerList().broadcastSystemMessage(Text.t("goal.deposit", "%s gibt %s %s ab (%s/%s)", name,
+                            Component.literal(Text.number(take)).withStyle(ChatFormatting.WHITE), Text.item(it.item()),
+                            Text.number(now), Text.number(data().target(g.id(), it.item()))).withStyle(ChatFormatting.GRAY), false);
                 }
                 if (isHeld(g)) announceHold(g);
                 if (done(g) >= total(g)) complete(g);
@@ -308,23 +307,23 @@ public final class GoalManager {
     }
 
     private void announceHold(Goal g) {
-        server.getPlayerList().broadcastSystemMessage(Component.literal("The obelisk is nearly full. ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
-                .append(Component.literal(g.title() + " waits for the event. Watch the announcements.").withStyle(ChatFormatting.YELLOW)), false);
+        server.getPlayerList().broadcastSystemMessage(Text.t("goal.hold", "Der Obelisk ist fast voll. %s wartet auf das Event, achtet auf die Ankündigung.",
+                Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD), false);
     }
 
     /** Lifts the hold so the last items can go in. */
     public void release(Goal g) {
         data().release(g.id());
-        server.getPlayerList().broadcastSystemMessage(Component.literal("The obelisk accepts again. ").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
-                .append(Component.literal("Finish " + g.title() + "!").withStyle(ChatFormatting.YELLOW)), false);
+        server.getPlayerList().broadcastSystemMessage(Text.t("goal.release", "Der Obelisk nimmt wieder an. Macht %s voll!",
+                Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
         refreshBossBar();
     }
 
     public void complete(Goal g) {
         if (data().isCompleted(g.id())) return;
         data().markCompleted(g.id());
-        server.getPlayerList().broadcastSystemMessage(Component.literal("Community goal complete: ").withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD)
-                .append(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)), false);
+        server.getPlayerList().broadcastSystemMessage(Text.t("goal.complete", "Gemeinschaftsziel geschafft: %s",
+                Component.literal(g.title()).withStyle(ChatFormatting.GOLD)).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD), false);
         for (String cmd : g.onComplete()) {
             server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), cmd);
         }
@@ -366,26 +365,34 @@ public final class GoalManager {
     // ---- starter kits ----
 
     public void giveKits(ServerPlayer player) {
+        if (!data().hasKit("join", player.getUUID())) {
+            for (String entry : KronwerkeConfig.JOIN_KIT.get()) {
+                String[] parts = entry.split("\\*", 2);
+                Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse(parts[0].trim())).orElse(null);
+                if (item == null) continue;
+                int count = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 1;
+                ItemStack stack = new ItemStack(item, count);
+                if (!player.getInventory().add(stack)) player.drop(stack, false);
+            }
+            data().markKit("join", player.getUUID());
+            if (!KronwerkeConfig.JOIN_KIT.get().isEmpty()) {
+                player.sendSystemMessage(Text.t("goal.join_kit", "Willkommen auf Kronwerke. Ein Wegstein für deine Basis liegt in deinem Inventar.").withStyle(ChatFormatting.GREEN));
+            }
+        }
         for (Goal g : goals.values()) {
             if (!data().isCompleted(g.id()) || g.starterKit().isEmpty() || data().hasKit(g.id(), player.getUUID())) continue;
             for (Goal.KitItem k : g.starterKit()) {
-                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(k.item()));
+                Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(k.item())).orElse(null);
                 if (item == null) continue;
                 ItemStack stack = new ItemStack(item, k.count());
                 if (!player.getInventory().add(stack)) player.drop(stack, false);
             }
             data().markKit(g.id(), player.getUUID());
-            player.sendSystemMessage(Component.literal("Starter kit for " + g.title() + " added to your inventory.").withStyle(ChatFormatting.GREEN));
+            player.sendSystemMessage(Text.t("goal.kit", "Das Startpaket für %s liegt in deinem Inventar.", g.title()).withStyle(ChatFormatting.GREEN));
         }
     }
 
     // ---- boss bar and players ----
-
-    private Component itemName(String id) {
-        if (id.startsWith("#")) return Component.literal(id).withStyle(ChatFormatting.AQUA);
-        Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(id));
-        return item == null ? Component.literal(id) : new ItemStack(item).getHoverName().copy().withStyle(ChatFormatting.AQUA);
-    }
 
     private void refreshBossBar() {
         if (bossBar == null || server == null) return;
@@ -396,7 +403,7 @@ public final class GoalManager {
         }
         Goal g = active.get(0);
         double f = fraction(g);
-        String state = isHeld(g) ? "  waiting for the event" : String.format("  %d%%", Math.round(f * 100));
+        String state = isHeld(g) ? "  wartet auf das Event" : String.format("  %d%%", Math.round(f * 100));
         bossBar.setName(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)
                 .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.WHITE)));
         bossBar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
