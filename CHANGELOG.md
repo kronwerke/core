@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0
+
+- The crystal on the obelisk floats and turns above the tip with three shards circling it, and the beam rises from its point. Crystal, shards and beam take their colour from the goal: cyan while it runs and warming to gold as it fills, purple while it waits for the event, gold when it is done, a quiet blue-grey when nothing is active. A deposit makes the crystal flare. The server tells the top block the progress along with the pedestals.
+- The rune bands are animated: the glyph pulses and a light runs through it. The crystal texture shimmers. Glowing motes rise from the runes, sparks drift from the crystal.
+- `tools/textures/obelisk.py` draws the animated textures.
+
 ## 0.10.0
 
 - Every screen sits on the same frame: a slate panel with a brass border, a header band with the name of the screen and a close cross, tooltips on every button, a short grow-in when it opens. The sprites come from `tools/textures/gui.py` and live under `textures/gui/sprites`, nine-sliced so they stay sharp at any size.

@@ -5,7 +5,6 @@
   "particle": "kronwerke:block/obelisk_shaft",
   "runes": "kronwerke:block/obelisk_runes",
   "band": "kronwerke:block/obelisk_band",
-  "crystal": "kronwerke:block/obelisk_crystal",
   "cap": "kronwerke:block/obelisk_cap"
  },
  "elements": [
@@ -279,84 +278,6 @@
       12
      ]
     }
-   }
-  },
-  {
-   "from": [
-    5,
-    22,
-    5
-   ],
-   "to": [
-    11,
-    32,
-    11
-   ],
-   "faces": {
-    "north": {
-     "texture": "#crystal",
-     "uv": [
-      5,
-      3.0,
-      11,
-      13.0
-     ]
-    },
-    "south": {
-     "texture": "#crystal",
-     "uv": [
-      5,
-      3.0,
-      11,
-      13.0
-     ]
-    },
-    "east": {
-     "texture": "#crystal",
-     "uv": [
-      5,
-      3.0,
-      11,
-      13.0
-     ]
-    },
-    "west": {
-     "texture": "#crystal",
-     "uv": [
-      5,
-      3.0,
-      11,
-      13.0
-     ]
-    },
-    "up": {
-     "texture": "#crystal",
-     "uv": [
-      5,
-      5,
-      11,
-      11
-     ]
-    },
-    "down": {
-     "texture": "#crystal",
-     "uv": [
-      5,
-      5,
-      11,
-      11
-     ]
-    }
-   },
-   "shade": false,
-   "rotation": {
-    "origin": [
-     8,
-     27,
-     8
-    ],
-    "axis": "y",
-    "angle": 45
    }
   }
  ]

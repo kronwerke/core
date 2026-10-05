@@ -197,6 +197,17 @@ public final class Obelisk {
         ObeliskPedestalBlockEntity last = pedestal(level, 3);
         if (last != null) last.show(shown, "Zuletzt", line);
         trail(level, 3);
+        ObeliskTopBlockEntity top = top(level);
+        if (top != null) {
+            top.show((int) Math.round(gm.fraction(g) * 100), gm.isHeld(g) ? 1 : 0);
+            top.flash();
+        }
+    }
+
+    private ObeliskTopBlockEntity top(ServerLevel level) {
+        BlockPos p = data().pos().above(17);
+        if (!level.isLoaded(p)) return null;
+        return level.getBlockEntity(p) instanceof ObeliskTopBlockEntity te ? te : null;
     }
 
     private void trail(ServerLevel level, int index) {
@@ -227,6 +238,16 @@ public final class Obelisk {
             }
             Goal.Pillar pillar = g.pillars().get(i);
             pe.show(null, pillar.title() + "  " + pillarPercent(gm, g, pillar) + "%", pe.line());
+        }
+        ObeliskTopBlockEntity top = top(level);
+        if (top != null) {
+            if (g != null) {
+                top.show((int) Math.round(gm.fraction(g) * 100), gm.isHeld(g) ? 1 : 0);
+            } else {
+                boolean anyDone = false;
+                for (Goal each : gm.allGoals()) if (gm.progressData().isCompleted(each.id())) anyDone = true;
+                top.show(anyDone ? 100 : 0, anyDone ? 2 : 3);
+            }
         }
         refreshBoard(level, g);
     }
