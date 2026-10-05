@@ -68,10 +68,113 @@ public final class KwNetwork {
         }
     }
 
+    /** One goal as the hub shows it. */
+    public record GoalView(String title, String state, int percent, boolean active, List<ItemView> items) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, GoalView> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, GoalView::title,
+                ByteBufCodecs.STRING_UTF8, GoalView::state,
+                ByteBufCodecs.VAR_INT, GoalView::percent,
+                ByteBufCodecs.BOOL, GoalView::active,
+                ItemView.CODEC.apply(ByteBufCodecs.list()), GoalView::items,
+                GoalView::new);
+    }
+
+    public record ItemView(String pillar, String name, long have, long need) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, ItemView> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, ItemView::pillar,
+                ByteBufCodecs.STRING_UTF8, ItemView::name,
+                ByteBufCodecs.VAR_LONG, ItemView::have,
+                ByteBufCodecs.VAR_LONG, ItemView::need,
+                ItemView::new);
+    }
+
+    /** The /kw hub: goals, what the player may do, and a line about the last action. */
+    public record HubPayload(List<GoalView> goals, boolean streamer, boolean admin, String message, boolean error) implements CustomPacketPayload {
+        public static final Type<HubPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "hub"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, HubPayload> CODEC = StreamCodec.composite(
+                GoalView.CODEC.apply(ByteBufCodecs.list()), HubPayload::goals,
+                ByteBufCodecs.BOOL, HubPayload::streamer,
+                ByteBufCodecs.BOOL, HubPayload::admin,
+                ByteBufCodecs.STRING_UTF8, HubPayload::message,
+                ByteBufCodecs.BOOL, HubPayload::error,
+                HubPayload::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
+    public record StreamerView(String name, int used, int total, boolean granted, List<String> invited) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, StreamerView> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, StreamerView::name,
+                ByteBufCodecs.VAR_INT, StreamerView::used,
+                ByteBufCodecs.VAR_INT, StreamerView::total,
+                ByteBufCodecs.BOOL, StreamerView::granted,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), StreamerView::invited,
+                StreamerView::new);
+    }
+
+    /** The admin screen: every streamer with slots and the players in them. */
+    public record AdminPayload(List<StreamerView> streamers, String message, boolean error) implements CustomPacketPayload {
+        public static final Type<AdminPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "admin"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminPayload> CODEC = StreamCodec.composite(
+                StreamerView.CODEC.apply(ByteBufCodecs.list()), AdminPayload::streamers,
+                ByteBufCodecs.STRING_UTF8, AdminPayload::message,
+                ByteBufCodecs.BOOL, AdminPayload::error,
+                AdminPayload::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar r = event.registrar("1").optional();
+        PayloadRegistrar r = event.registrar("2").optional();
         r.playToClient(SlotsPayload.TYPE, SlotsPayload.CODEC, KwNetwork::onSlots);
+        r.playToClient(HubPayload.TYPE, HubPayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.KwHubScreen.receive(payload));
+        });
+        r.playToClient(AdminPayload.TYPE, AdminPayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.AdminScreen.receive(payload));
+        });
         r.playToServer(ActionPayload.TYPE, ActionPayload.CODEC, KwNetwork::onAction);
+    }
+
+    public static void sendHub(ServerPlayer p, String message, boolean error) {
+        de.kronwerke.core.goal.GoalManager gm = de.kronwerke.core.goal.GoalManager.get();
+        de.kronwerke.core.goal.GoalData d = gm.progressData();
+        List<GoalView> goals = new ArrayList<>();
+        for (de.kronwerke.core.goal.Goal g : gm.allGoals()) {
+            boolean done = d.isCompleted(g.id());
+            boolean active = gm.isActive(g);
+            String state = done ? "geschafft" : active ? (gm.isHeld(g) ? "wartet auf das Event" : "läuft") : "gesperrt";
+            int percent = done ? 100 : active ? (int) Math.round(gm.fraction(g) * 100) : 0;
+            List<ItemView> items = new ArrayList<>();
+            if (active) {
+                for (de.kronwerke.core.goal.Goal.Pillar pillar : g.pillars()) {
+                    for (de.kronwerke.core.goal.Goal.PillarItem it : pillar.items()) {
+                        items.add(new ItemView(pillar.title(), de.kronwerke.core.Text.item(it.item()).getString(), d.progress(g.id(), it.item()), d.target(g.id(), it.item())));
+                    }
+                }
+            }
+            goals.add(new GoalView(g.title(), state, percent, active, items));
+        }
+        boolean admin = p.hasPermissions(2);
+        boolean streamer = admin || de.kronwerke.core.config.KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get();
+        PacketDistributor.sendToPlayer(p, new HubPayload(goals, streamer, admin, message, error));
+    }
+
+    public static void sendAdmin(ServerPlayer p, String message, boolean error) {
+        if (!p.hasPermissions(2)) return;
+        SlotManager sm = SlotManager.get();
+        List<StreamerView> list = new ArrayList<>();
+        for (SlotData.StreamerEntry e : sm.allStreamers()) {
+            list.add(new StreamerView(e.name, e.used(), sm.allowance(e), e.granted, new ArrayList<>(e.invited.values())));
+        }
+        list.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        PacketDistributor.sendToPlayer(p, new AdminPayload(list, message, error));
     }
 
     private static void onSlots(SlotsPayload payload, IPayloadContext ctx) {
@@ -110,6 +213,60 @@ public final class KwNetwork {
                         case UNKNOWN_PLAYER -> "Kein Minecraft-Konto mit dem Namen " + name + ".";
                         default -> "Das hat nicht geklappt.";
                     };
+                }
+                case "menu" -> {
+                    send(p, true, "", false);
+                    return;
+                }
+                case "hub" -> {
+                    sendHub(p, "", false);
+                    return;
+                }
+                case "deposit", "deposit_all" -> {
+                    long taken = payload.action().equals("deposit_all") ? de.kronwerke.core.goal.GoalManager.get().depositAll(p)
+                            : de.kronwerke.core.goal.GoalManager.get().deposit(p, p.getMainHandItem());
+                    sendHub(p, taken > 0 ? "Abgegeben: " + de.kronwerke.core.Text.number(taken) + "." : "Nichts davon passt zum aktuellen Ziel.", taken <= 0);
+                    return;
+                }
+                case "admin" -> {
+                    sendAdmin(p, "", false);
+                    return;
+                }
+                case "admin_slots" -> {
+                    if (!p.hasPermissions(2)) return;
+                    String[] parts = name.split("\\|");
+                    SlotData.StreamerEntry e = sm.entryByName(parts[0]);
+                    if (e == null || parts.length < 2) { sendAdmin(p, "Kein Streamer mit dem Namen " + parts[0] + ".", true); return; }
+                    int n;
+                    try { n = Integer.parseInt(parts[1]); } catch (NumberFormatException ex) { sendAdmin(p, "Das ist keine Zahl.", true); return; }
+                    sm.setSlots(e, Math.max(0, n));
+                    sendAdmin(p, e.name + " hat jetzt " + sm.allowance(e) + " Plätze.", false);
+                    return;
+                }
+                case "admin_move" -> {
+                    if (!p.hasPermissions(2)) return;
+                    String[] parts = name.split("\\|");
+                    SlotData.StreamerEntry to = parts.length < 2 ? null : sm.entryByName(parts[1]);
+                    if (to == null) { sendAdmin(p, "Kein Streamer mit dem Namen " + (parts.length < 2 ? "" : parts[1]) + ".", true); return; }
+                    SlotManager.Result res = sm.move(parts[0], to);
+                    sendAdmin(p, switch (res) {
+                        case OK -> parts[0] + " gehört jetzt zu " + to.name + ".";
+                        case NO_SLOTS_LEFT -> to.name + " hat keinen freien Platz.";
+                        case NOT_INVITED_BY_YOU -> parts[0] + " hat von niemandem einen Platz.";
+                        case ALREADY_INVITED -> parts[0] + " ist schon bei " + to.name + ".";
+                        case UNKNOWN_PLAYER -> "Kein Minecraft-Konto mit dem Namen " + parts[0] + ".";
+                        default -> "Das hat nicht geklappt.";
+                    }, res != SlotManager.Result.OK);
+                    return;
+                }
+                case "admin_revoke" -> {
+                    if (!p.hasPermissions(2)) return;
+                    java.util.Optional<com.mojang.authlib.GameProfile> profile = sm.lookup(name);
+                    SlotData.StreamerEntry from = profile.map(pr -> sm.inviterOf(pr.getId())).orElse(null);
+                    if (from == null) { sendAdmin(p, name + " hat von niemandem einen Platz.", true); return; }
+                    SlotManager.Result res = sm.revoke(from, name);
+                    sendAdmin(p, res == SlotManager.Result.OK ? name + " ist von der Whitelist runter." : "Das hat nicht geklappt.", res != SlotManager.Result.OK);
+                    return;
                 }
                 default -> {
                 }

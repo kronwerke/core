@@ -42,8 +42,9 @@ public final class KwCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> d) {
         d.register(Commands.literal("kw")
-                .executes(KwCommand::help)
+                .executes(KwCommand::hub)
                 .then(Commands.literal("help").executes(KwCommand::help))
+                .then(Commands.literal("team").requires(s -> s.hasPermission(2)).executes(KwCommand::team))
                 .then(Commands.literal("menu").executes(KwCommand::menu))
                 .then(Commands.literal("whitelist").executes(KwCommand::menu))
                 .then(Commands.literal("invite")
@@ -103,6 +104,7 @@ public final class KwCommand {
             line(c, "/kw revoke <Name>", "Nimmt den Platz wieder weg");
         }
         if (c.getSource().hasPermission(2)) {
+            line(c, "/kw team", "Plätze aller Streamer, Spieler verschieben oder rauswerfen");
             line(c, "/kw admin ...", "Plätze, Ziele, Obelisk, Bypass. /kw admin ohne Rest zeigt die Liste");
         }
         return 1;
@@ -113,6 +115,19 @@ public final class KwCommand {
                 .withStyle(st -> st.withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND, cmd.replace(" <Name>", " ").replace(" ...", " ")))
                         .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Component.literal("Klicken, um den Befehl in den Chat zu setzen"))))
                 .append(Component.literal("  " + what).withStyle(ChatFormatting.GRAY)), false);
+    }
+
+    /** /kw without anything: the menu for players, the help for consoles. */
+    private static int hub(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        if (!(c.getSource().getEntity() instanceof ServerPlayer p)) return help(c);
+        de.kronwerke.core.net.KwNetwork.sendHub(p, "", false);
+        return 1;
+    }
+
+    private static int team(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        de.kronwerke.core.net.KwNetwork.sendAdmin(p, "", false);
+        return 1;
     }
 
     private static int menu(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {

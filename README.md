@@ -126,7 +126,9 @@ Machines feed the obelisk through the **intake** (`kronwerke:obelisk_intake`, fu
 
 With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test players that exist only as inventory and data: `/kw test join Anna`, `/kw test give Anna create:andesite_alloy 200`, `/kw test deposit Anna all`, `/kw test kits Anna`. That is how deposits, the hold point, completion, stages and starter kits are checked over RCON on a headless server. Never turn it on in a season.
 
-## The streamer menu
+## The menus
+
+`/kw` opens the hub: the five goals with their bars, the running one with every item and the numbers, and buttons to deposit the hand or everything, the whitelist for streamers and the team screen for operators. `/kw team` is the team screen: every streamer with their slots (plus and minus change the allowance), the players in them, and per player a button to take the place away or to move them to the streamer typed in the field. Consoles get the text help from `/kw`.
 
 `/kw menu` (also `/kw invite` or `/kw revoke` without a name) opens a screen on the client: the slots as a row, every invited player with head, name and online dot, a remove button, and a field to invite the next one. The screen talks to the server through two packets (`net/KwNetwork`); the text commands keep working for consoles and bots. `/kw` alone lists the commands with clickable lines.
 

@@ -140,6 +140,22 @@ public final class SlotManager {
         return Result.OK;
     }
 
+    /** Moves an invited player to another streamer's slots, for the team when a streamer misbehaves. */
+    public Result move(String playerName, SlotData.StreamerEntry to) {
+        Optional<GameProfile> profile = lookup(playerName);
+        if (profile.isEmpty()) return Result.UNKNOWN_PLAYER;
+        UUID id = profile.get().getId();
+        SlotData.StreamerEntry from = data().findInviter(id);
+        if (from == null) return Result.NOT_INVITED_BY_YOU;
+        if (from == to) return Result.ALREADY_INVITED;
+        if (to.used() >= allowance(to)) return Result.NO_SLOTS_LEFT;
+        from.invited.remove(id);
+        to.invited.put(id, profile.get().getName());
+        data().setDirty();
+        KronwerkeCore.LOGGER.info("{} moved from {} to {}", profile.get().getName(), from.name, to.name);
+        return Result.OK;
+    }
+
     public void setSlots(SlotData.StreamerEntry streamer, int slots) {
         streamer.slotOverride = slots;
         data().setDirty();
