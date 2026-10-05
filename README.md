@@ -132,6 +132,14 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 `/kw menu` (also `/kw invite` or `/kw revoke` without a name) opens a screen on the client: the slots as a row, every invited player with head, name and online dot, a remove button, and a field to invite the next one. The screen talks to the server through two packets (`net/KwNetwork`); the text commands keep working for consoles and bots. `/kw` alone lists the commands with clickable lines.
 
+## Bosses
+
+`bosses.scaling` lists the bosses that grow with the group (the Cataclysm and Mowzie's bosses, the Chaos Guardian, the dragon and the wither by default). Every player near the boss beyond the first adds `healthPerPlayer` (60 percent) health and `damagePerPlayer` (15 percent) damage, capped at `maxPlayers`. With two or more players the boss uses three extra attacks every `attackInterval` ticks: lightning on one player, a shockwave around itself, and a rage that heals it and makes it hit harder for a few seconds. All of it runs on events; the boss mods stay untouched (Cataclysm's licence allows no derivatives). A player who comes within 96 blocks of the Chaos Guardian gets the four lines on how the fight works, once per session.
+
+## The test world
+
+`/kw testworld` (operators) teleports into `kronwerke:testworld`, a void dimension the pack defines, and builds the screenshot scenes from `kronwerke:shots/build` on the first visit: one grey concrete box per scene with signs. `/kw testworld back` returns to spawn.
+
 ## Tab list and ranks
 
 Ranks are scoreboard teams with a glyph prefix from the Nautical Ranks resource pack the modpack ships: owner (`tab.owners` in the config), admin (operators), streamer (players with whitelist slots) and member. The tab list header shows the season and `tab.line`, the footer the running goal and the player count.

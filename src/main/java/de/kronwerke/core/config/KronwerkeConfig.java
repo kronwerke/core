@@ -27,6 +27,13 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BOSSES;
+    public static final ModConfigSpec.DoubleValue BOSS_HEALTH_PER_PLAYER;
+    public static final ModConfigSpec.DoubleValue BOSS_DAMAGE_PER_PLAYER;
+    public static final ModConfigSpec.IntValue BOSS_MAX_PLAYERS;
+    public static final ModConfigSpec.IntValue BOSS_ATTACK_INTERVAL;
+    public static final ModConfigSpec.DoubleValue BOSS_LIGHTNING_DAMAGE;
+    public static final ModConfigSpec.DoubleValue BOSS_SHOCKWAVE_DAMAGE;
     public static final ModConfigSpec.ConfigValue<String> TAB_LINE;
 
     static {
@@ -69,6 +76,28 @@ public final class KronwerkeConfig {
                 .defineInRange("radius", 96, 0, 2048);
         BLAST_PROOF = b.comment("Blocks no explosion removes, anywhere: block ids, or a namespace prefix ending in *. Bedrock, end portal frames, end portals and gateways and reinforced deepslate are always kept.")
                 .defineListAllowEmpty("blastProof", java.util.List.of("cataclysm:altar_of_*", "cataclysm:boss_respawner", "cataclysm:*spawner*"), o -> o instanceof String);
+        b.pop();
+
+        b.push("bosses");
+        BOSSES = b.comment("Bosses that grow with the group and use the extra attacks.")
+                .defineListAllowEmpty("scaling", java.util.List.of(
+                        "cataclysm:ender_guardian", "cataclysm:ender_golem", "cataclysm:netherite_monstrosity", "cataclysm:ignis",
+                        "cataclysm:the_harbinger", "cataclysm:the_leviathan", "cataclysm:maledictus", "cataclysm:ancient_remnant",
+                        "cataclysm:scylla", "cataclysm:wadjet", "cataclysm:the_watcher",
+                        "mowziesmobs:frostmaw", "mowziesmobs:wroughtnaut", "mowziesmobs:umvuthi", "mowziesmobs:sculptor",
+                        "draconicevolution:chaos_guardian", "minecraft:ender_dragon", "minecraft:wither"), o -> o instanceof String);
+        BOSS_HEALTH_PER_PLAYER = b.comment("Extra health per player beyond the first, as a fraction of the base (0.5 = plus 50 percent each).")
+                .defineInRange("healthPerPlayer", 0.6, 0.0, 10.0);
+        BOSS_DAMAGE_PER_PLAYER = b.comment("Extra damage per player beyond the first, as a fraction of the base.")
+                .defineInRange("damagePerPlayer", 0.15, 0.0, 10.0);
+        BOSS_MAX_PLAYERS = b.comment("Players beyond this do not scale the boss further.")
+                .defineInRange("maxPlayers", 8, 1, 50);
+        BOSS_ATTACK_INTERVAL = b.comment("Ticks between the extra attacks when two or more players fight the boss (240 = 12 seconds). Must be a multiple of 40.")
+                .defineInRange("attackInterval", 240, 40, 12000);
+        BOSS_LIGHTNING_DAMAGE = b.comment("Damage of the lightning attack.")
+                .defineInRange("lightningDamage", 8.0, 0.0, 200.0);
+        BOSS_SHOCKWAVE_DAMAGE = b.comment("Damage of the shockwave.")
+                .defineInRange("shockwaveDamage", 6.0, 0.0, 200.0);
         b.pop();
 
         b.push("tab");

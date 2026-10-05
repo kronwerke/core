@@ -45,6 +45,8 @@ public final class KwCommand {
                 .executes(KwCommand::hub)
                 .then(Commands.literal("help").executes(KwCommand::help))
                 .then(Commands.literal("team").requires(s -> s.hasPermission(2)).executes(KwCommand::team))
+                .then(Commands.literal("testworld").requires(s -> s.hasPermission(2)).executes(KwCommand::testworld)
+                        .then(Commands.literal("back").executes(KwCommand::testworldBack)))
                 .then(Commands.literal("menu").executes(KwCommand::menu))
                 .then(Commands.literal("whitelist").executes(KwCommand::menu))
                 .then(Commands.literal("invite")
@@ -105,6 +107,7 @@ public final class KwCommand {
         }
         if (c.getSource().hasPermission(2)) {
             line(c, "/kw team", "Plätze aller Streamer, Spieler verschieben oder rauswerfen");
+            line(c, "/kw testworld", "Die Screenshot-Welt mit den grauen Boxen, /kw testworld back zum Spawn");
             line(c, "/kw admin ...", "Plätze, Ziele, Obelisk, Bypass. /kw admin ohne Rest zeigt die Liste");
         }
         return 1;
@@ -121,6 +124,47 @@ public final class KwCommand {
     private static int hub(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         if (!(c.getSource().getEntity() instanceof ServerPlayer p)) return help(c);
         de.kronwerke.core.net.KwNetwork.sendHub(p, "", false);
+        return 1;
+    }
+
+    /** The screenshot world: a void dimension with one grey box per scene, built on the first visit. */
+    private static int testworld(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
+                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("kronwerke", "testworld"));
+        net.minecraft.server.level.ServerLevel level = c.getSource().getServer().getLevel(key);
+        if (level == null) {
+            fail(c, "Die Testwelt kronwerke:testworld gibt es nicht. Das Pack bringt sie mit (kubejs/data/kronwerke/dimension).");
+            return 0;
+        }
+        var pad = new net.minecraft.core.BlockPos(-4, 63, -4);
+        level.getChunk(pad);
+        if (!level.getBlockState(pad).is(net.minecraft.world.level.block.Blocks.SMOOTH_STONE)) {
+            var fn = c.getSource().getServer().getFunctions().get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("kronwerke", "shots/build"));
+            if (fn.isPresent()) {
+                // the boxes span 250 by 240 blocks; the chunks have to be there before fill can touch them
+                var console = c.getSource().getServer().createCommandSourceStack().withSuppressedOutput();
+                for (int cx = -1; cx <= 16; cx++) {
+                    for (int cz = -1; cz <= 15; cz++) level.getChunk(cx, cz);
+                }
+                c.getSource().getServer().getFunctions().execute(fn.get(), console.withLevel(level).withPermission(4));
+                ok(c, "Die Szenen werden gebaut.");
+            } else {
+                fail(c, "Die Funktion kronwerke:shots/build fehlt.");
+            }
+        }
+        c.getSource().getServer().getCommands().performPrefixedCommand(c.getSource().getServer().createCommandSourceStack().withSuppressedOutput(),
+                "execute in kronwerke:testworld run tp " + p.getGameProfile().getName() + " -3.5 64 -3.5 0 0");
+        if (!p.isCreative()) p.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
+        ok(c, "Testwelt. /kw testworld back bringt dich zum Spawn.");
+        return 1;
+    }
+
+    private static int testworldBack(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        var s = c.getSource().getServer().overworld().getSharedSpawnPos();
+        c.getSource().getServer().getCommands().performPrefixedCommand(c.getSource().getServer().createCommandSourceStack().withSuppressedOutput(),
+                "execute in minecraft:overworld run tp " + p.getGameProfile().getName() + " " + (s.getX() + 0.5) + " " + s.getY() + " " + (s.getZ() + 0.5));
         return 1;
     }
 
