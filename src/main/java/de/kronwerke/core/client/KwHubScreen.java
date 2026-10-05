@@ -4,7 +4,8 @@ import de.kronwerke.core.net.KwNetwork;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
+import de.kronwerke.core.client.ui.FlatButton;
+import de.kronwerke.core.client.ui.Ui;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -19,7 +20,7 @@ import java.util.Locale;
 public final class KwHubScreen extends Screen {
     private static final int W = 340;
     private KwNetwork.HubPayload data;
-    private int left, top, panelH;
+    private int left, top, panelH, bodyH, scroll;
 
     private KwHubScreen(KwNetwork.HubPayload data) {
         super(Component.literal("Kronwerke"));
@@ -57,24 +58,33 @@ public final class KwHubScreen extends Screen {
 
     @Override
     protected void init() {
-        panelH = bodyHeight() + 30 + 20;
+        // the body scrolls when five goals and a long item list do not fit the screen
+        bodyH = Math.min(bodyHeight(), height - 20 - 30 - 44);
+        panelH = bodyH + 30 + 44;
         left = (width - W) / 2;
         top = Math.max(10, (height - panelH) / 2);
-        int y = top + bodyHeight() + 6;
+        int y = top + bodyH + 8;
         int x = left + 8;
-        addRenderableWidget(Button.builder(Component.literal("Hand abgeben"), b -> send("deposit")).bounds(x, y, 90, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Alles abgeben"), b -> send("deposit_all")).bounds(x + 96, y, 90, 20).build());
+        addRenderableWidget(FlatButton.primary(x, y, 90, "Hand abgeben", () -> send("deposit")));
+        addRenderableWidget(FlatButton.of(x + 96, y, 90, "Alles abgeben", () -> send("deposit_all")));
         int bx = left + W - 8;
         if (data.admin()) {
-            bx -= 60;
-            addRenderableWidget(Button.builder(Component.literal("Team"), b -> send("admin")).bounds(bx, y, 56, 20).build());
-            bx -= 4;
+            bx -= 56;
+            addRenderableWidget(FlatButton.of(bx, y, 56, "Admin", () -> send("admin")));
+            bx -= 6;
         }
         if (data.streamer()) {
-            bx -= 70;
-            addRenderableWidget(Button.builder(Component.literal("Whitelist"), b -> send("menu")).bounds(bx, y, 66, 20).build());
+            bx -= 66;
+            addRenderableWidget(FlatButton.of(bx, y, 66, "Whitelist", () -> send("menu")));
         }
-        addRenderableWidget(Button.builder(Component.literal("Schließen"), b -> onClose()).bounds(left + W - 8 - 70, y + 24, 70, 20).build());
+        addRenderableWidget(FlatButton.of(left + W - 8 - 70, y + 22, 70, "Schließen", this::onClose));
+    }
+
+    @Override
+    public boolean mouseScrolled(double mx, double my, double sx, double sy) {
+        int max = Math.max(0, bodyHeight() - bodyH);
+        scroll = (int) Math.max(0, Math.min(max, scroll - sy * 11));
+        return true;
     }
 
     private void send(String action) {
@@ -83,34 +93,36 @@ public final class KwHubScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        // Screen.render draws this first and the buttons after it, so the panel lives here
         renderTransparentBackground(g);
+        drawPanel(g);
     }
 
-    @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        renderBackground(g, mouseX, mouseY, partial);
-        g.fill(left - 1, top - 1, left + W + 1, top + panelH + 1, 0xFF3a3146);
-        g.fill(left, top, left + W, top + panelH, 0xF0120f18);
+    private void drawPanel(GuiGraphics g) {
+        Ui.panel(g, left, top, left + W, top + panelH);
         g.drawString(font, Component.literal("Kronwerke Season 2").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), left + 8, top + 8, 0xFFFFFF);
         g.drawString(font, Component.literal("Die fünf Stufen und was der Obelisk braucht").withStyle(ChatFormatting.GRAY), left + 8, top + 19, 0xFFFFFF);
-        int y = top + 32;
+        g.enableScissor(left, top + 30, left + W, top + bodyH + 4);
+        int y = top + 32 - scroll;
         int n = 1;
         for (KwNetwork.GoalView gv : data.goals()) {
             int colour = gv.percent() >= 100 ? 0xFF55ff55 : gv.active() ? 0xFFd4a24a : 0xFF555555;
-            g.drawString(font, Component.literal(n + ". " + gv.title()), left + 8, y, colour);
-            // the bar
+            // the bar, the state left of it, the title in what is left
             int bx0 = left + W - 8 - 110, bx1 = left + W - 8;
             g.fill(bx0, y + 1, bx1, y + 8, 0xFF2a2435);
             g.fill(bx0, y + 1, bx0 + (int) ((bx1 - bx0) * Math.min(100, gv.percent()) / 100.0), y + 8, colour);
             String st = gv.active() && !gv.state().equals("wartet auf das Event") ? gv.percent() + "%" : gv.state();
-            g.drawString(font, Component.literal(st).withStyle(ChatFormatting.GRAY), bx0 - 6 - font.width(st), y, 0xFFFFFF);
+            int stX = bx0 - 6 - font.width(st);
+            g.drawString(font, Component.literal(st).withStyle(ChatFormatting.GRAY), stX, y, 0xFFFFFF);
+            g.drawString(font, Ui.fit(font, n + ". " + gv.title(), stX - 8 - left - 8), left + 8, y, colour);
             y += 14;
             if (gv.active()) {
                 y += 2;
                 for (KwNetwork.ItemView it : gv.items()) {
                     boolean done = it.have() >= it.need();
-                    g.drawString(font, Component.literal("   " + it.pillar() + ": ").withStyle(ChatFormatting.DARK_GRAY).append(Component.literal(it.name()).withStyle(done ? ChatFormatting.GREEN : ChatFormatting.AQUA)), left + 8, y, 0xFFFFFF);
                     String c = fmt(it.have()) + " / " + fmt(it.need());
+                    Component line = Component.literal("   " + it.pillar() + ": ").withStyle(ChatFormatting.DARK_GRAY).append(Component.literal(it.name()).withStyle(done ? ChatFormatting.GREEN : ChatFormatting.AQUA));
+                    g.drawString(font, Ui.fit(font, line, W - 16 - font.width(c) - 8), left + 8, y, 0xFFFFFF);
                     g.drawString(font, Component.literal(c).withStyle(done ? ChatFormatting.GREEN : ChatFormatting.WHITE), left + W - 8 - font.width(c), y, 0xFFFFFF);
                     y += 11;
                 }
@@ -118,10 +130,10 @@ public final class KwHubScreen extends Screen {
             }
             n++;
         }
+        g.disableScissor();
         if (!data.message().isEmpty()) {
-            g.drawString(font, Component.literal(data.message()).withStyle(data.error() ? ChatFormatting.RED : ChatFormatting.GREEN), left + 8, top + bodyHeight() + 6 + 30, 0xFFFFFF);
+            g.drawString(font, Ui.fit(font, data.message(), W - 16 - 80), left + 8, top + bodyH + 8 + 26, data.error() ? 0xFFff6b6b : 0xFF7fd88a, false);
         }
-        super.render(g, mouseX, mouseY, partial);
     }
 
     @Override

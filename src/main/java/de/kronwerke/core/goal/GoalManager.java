@@ -377,6 +377,16 @@ public final class GoalManager {
         refreshBossBar();
     }
 
+    /** A new season: every goal, the leaderboards, the starter kits and the recent deposits. */
+    public void resetAll() {
+        data().resetAll();
+        synchronized (recent) {
+            recent.clear();
+        }
+        activatePending();
+        refreshBossBar();
+    }
+
     public void reset(Goal g) {
         data().reset(g.id());
         activatePending();

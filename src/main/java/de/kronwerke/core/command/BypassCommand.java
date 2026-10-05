@@ -93,12 +93,12 @@ public final class BypassCommand {
     private static int set(CommandContext<CommandSourceStack> c, ServerPlayer p, boolean on) throws CommandSyntaxException {
         List<String> changed = apply(c.getSource().getServer(), p, on);
         String name = p.getGameProfile().getName();
-        String what = changed.isEmpty() ? "no stages changed" : String.join(", ", changed);
-        c.getSource().sendSuccess(() -> Component.literal("Stage bypass " + (on ? "on" : "off") + " for " + name + ": " + what)
+        String what = changed.isEmpty() ? "keine Stufe geändert" : changed.size() + (changed.size() == 1 ? " Stufe" : " Stufen") + (on ? " offen" : " wieder zu");
+        c.getSource().sendSuccess(() -> Component.literal("Bypass " + (on ? "an" : "aus") + " für " + name + ": " + what)
                 .withStyle(on ? ChatFormatting.GOLD : ChatFormatting.GREEN), true);
         if (c.getSource().getPlayer() != p) {
-            p.sendSystemMessage(Component.literal(on ? "Stage bypass on: every stage is open for you now."
-                    : "Stage bypass off: you are back on the community's stages.").withStyle(ChatFormatting.GOLD));
+            p.sendSystemMessage(Component.literal(on ? "Bypass an: jede Stufe ist für dich offen."
+                    : "Bypass aus: du bist wieder auf den Stufen der Gemeinschaft.").withStyle(ChatFormatting.GOLD));
         }
         return 1;
     }
@@ -108,8 +108,8 @@ public final class BypassCommand {
                 .map(u -> name(c, u))
                 .sorted()
                 .toList();
-        c.getSource().sendSuccess(() -> Component.literal(names.isEmpty() ? "Nobody has the stage bypass on."
-                : "Stage bypass on: " + String.join(", ", names)).withStyle(ChatFormatting.GOLD), false);
+        c.getSource().sendSuccess(() -> Component.literal(names.isEmpty() ? "Niemand hat den Bypass an."
+                : "Bypass an: " + String.join(", ", names)).withStyle(ChatFormatting.GOLD), false);
         return names.size();
     }
 

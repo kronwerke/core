@@ -108,6 +108,7 @@ public class KronwerkeCore {
 
     private void onServerStarted(ServerStartedEvent event) {
         SlotManager.get().init(event.getServer());
+        de.kronwerke.core.season.Season.init(event.getServer());
         GoalManager.get().init(event.getServer());
         Obelisk.get().init(event.getServer());
         TabList.init(event.getServer());
@@ -121,6 +122,7 @@ public class KronwerkeCore {
     }
 
     private void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) de.kronwerke.core.season.Season.get().catchUp(sp);
         GoalManager.get().onPlayerJoin(event.getEntity());
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) TabList.onJoin(sp);
     }

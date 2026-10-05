@@ -115,14 +115,63 @@ public final class KwNetwork {
                 StreamerView::new);
     }
 
-    /** The admin screen: every streamer with slots and the players in them. */
-    public record AdminPayload(List<StreamerView> streamers, String message, boolean error) implements CustomPacketPayload {
+    public record GoalRow(String id, String title, String state, int percent) {
+        static void write(RegistryFriendlyByteBuf b, GoalRow g) {
+            b.writeUtf(g.id);
+            b.writeUtf(g.title);
+            b.writeUtf(g.state);
+            b.writeVarInt(g.percent);
+        }
+
+        static GoalRow read(RegistryFriendlyByteBuf b) {
+            return new GoalRow(b.readUtf(), b.readUtf(), b.readUtf(), b.readVarInt());
+        }
+    }
+
+    public record PlayerRow(String name, String where, boolean bypass, boolean creative) {
+        static void write(RegistryFriendlyByteBuf b, PlayerRow p) {
+            b.writeUtf(p.name);
+            b.writeUtf(p.where);
+            b.writeBoolean(p.bypass);
+            b.writeBoolean(p.creative);
+        }
+
+        static PlayerRow read(RegistryFriendlyByteBuf b) {
+            return new PlayerRow(b.readUtf(), b.readUtf(), b.readBoolean(), b.readBoolean());
+        }
+    }
+
+    /**
+     * The admin panel: season, goals, streamers with their slots, the players online, the
+     * obelisk and the test world, plus the tab to show and a line about the last action.
+     */
+    public record AdminPayload(int tab, boolean seasonRunning, int seasonNumber, List<GoalRow> goals,
+                               List<StreamerView> streamers, List<PlayerRow> players, String obelisk,
+                               boolean testWorldBuilt, String message, boolean error) implements CustomPacketPayload {
         public static final Type<AdminPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "admin"));
-        public static final StreamCodec<RegistryFriendlyByteBuf, AdminPayload> CODEC = StreamCodec.composite(
-                StreamerView.CODEC.apply(ByteBufCodecs.list()), AdminPayload::streamers,
-                ByteBufCodecs.STRING_UTF8, AdminPayload::message,
-                ByteBufCodecs.BOOL, AdminPayload::error,
-                AdminPayload::new);
+        public static final StreamCodec<RegistryFriendlyByteBuf, AdminPayload> CODEC = StreamCodec.of((b, a) -> {
+            b.writeVarInt(a.tab);
+            b.writeBoolean(a.seasonRunning);
+            b.writeVarInt(a.seasonNumber);
+            b.writeCollection(a.goals, (bb, g) -> GoalRow.write((RegistryFriendlyByteBuf) bb, g));
+            b.writeVarInt(a.streamers.size());
+            for (StreamerView sv : a.streamers) StreamerView.CODEC.encode(b, sv);
+            b.writeCollection(a.players, (bb, p) -> PlayerRow.write((RegistryFriendlyByteBuf) bb, p));
+            b.writeUtf(a.obelisk);
+            b.writeBoolean(a.testWorldBuilt);
+            b.writeUtf(a.message);
+            b.writeBoolean(a.error);
+        }, b -> {
+            int tab = b.readVarInt();
+            boolean running = b.readBoolean();
+            int number = b.readVarInt();
+            List<GoalRow> goals = b.readList(bb -> GoalRow.read((RegistryFriendlyByteBuf) bb));
+            int n = b.readVarInt();
+            List<StreamerView> streamers = new ArrayList<>();
+            for (int i = 0; i < n; i++) streamers.add(StreamerView.CODEC.decode(b));
+            List<PlayerRow> players = b.readList(bb -> PlayerRow.read((RegistryFriendlyByteBuf) bb));
+            return new AdminPayload(tab, running, number, goals, streamers, players, b.readUtf(), b.readBoolean(), b.readUtf(), b.readBoolean());
+        });
 
         @Override
         public Type<? extends CustomPacketPayload> type() {
@@ -131,7 +180,7 @@ public final class KwNetwork {
     }
 
     public static void register(RegisterPayloadHandlersEvent event) {
-        PayloadRegistrar r = event.registrar("2").optional();
+        PayloadRegistrar r = event.registrar("3").optional();
         r.playToClient(SlotsPayload.TYPE, SlotsPayload.CODEC, KwNetwork::onSlots);
         r.playToClient(HubPayload.TYPE, HubPayload.CODEC, (payload, ctx) -> {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.KwHubScreen.receive(payload));
@@ -167,6 +216,11 @@ public final class KwNetwork {
     }
 
     public static void sendAdmin(ServerPlayer p, String message, boolean error) {
+        sendAdmin(p, -1, message, error);
+    }
+
+    /** tab -1 keeps whatever tab the client shows. */
+    public static void sendAdmin(ServerPlayer p, int tab, String message, boolean error) {
         if (!p.hasPermissions(2)) return;
         SlotManager sm = SlotManager.get();
         List<StreamerView> list = new ArrayList<>();
@@ -174,7 +228,28 @@ public final class KwNetwork {
             list.add(new StreamerView(e.name, e.used(), sm.allowance(e), e.granted, new ArrayList<>(e.invited.values())));
         }
         list.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
-        PacketDistributor.sendToPlayer(p, new AdminPayload(list, message, error));
+        de.kronwerke.core.goal.GoalManager gm = de.kronwerke.core.goal.GoalManager.get();
+        de.kronwerke.core.goal.GoalData d = gm.progressData();
+        List<GoalRow> goals = new ArrayList<>();
+        for (de.kronwerke.core.goal.Goal g : gm.allGoals()) {
+            boolean done = d.isCompleted(g.id());
+            boolean active = gm.isActive(g);
+            String state = done ? "geschafft" : active ? (gm.isHeld(g) ? "wartet" : "läuft") : "gesperrt";
+            goals.add(new GoalRow(g.id(), g.title(), state, done ? 100 : active ? (int) Math.floor(gm.fraction(g) * 100) : 0));
+        }
+        List<PlayerRow> players = new ArrayList<>();
+        for (ServerPlayer o : p.getServer().getPlayerList().getPlayers()) {
+            String where = o.level().dimension().location().getPath().replace('_', ' ');
+            players.add(new PlayerRow(o.getGameProfile().getName(), where, d.hasBypass(o.getUUID()), o.isCreative()));
+        }
+        players.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        de.kronwerke.core.obelisk.ObeliskData od = de.kronwerke.core.obelisk.Obelisk.get().data();
+        String obelisk = od.isSet() ? od.pos().getX() + " " + od.pos().getY() + " " + od.pos().getZ()
+                + (od.dimension().equals("minecraft:overworld") ? "" : " (" + od.dimension() + ")") : "";
+        var tw = de.kronwerke.core.world.TestWorld.level(p.getServer());
+        boolean built = tw != null && de.kronwerke.core.world.TestWorld.built(tw);
+        de.kronwerke.core.season.Season season = de.kronwerke.core.season.Season.get();
+        PacketDistributor.sendToPlayer(p, new AdminPayload(tab, season.running(), season.number(), goals, list, players, obelisk, built, message, error));
     }
 
     private static void onSlots(SlotsPayload payload, IPayloadContext ctx) {
@@ -229,7 +304,11 @@ public final class KwNetwork {
                     return;
                 }
                 case "admin" -> {
-                    sendAdmin(p, "", false);
+                    sendAdmin(p, 0, "", false);
+                    return;
+                }
+                case "adm" -> {
+                    de.kronwerke.core.admin.AdminActions.run(p, name);
                     return;
                 }
                 case "admin_slots" -> {

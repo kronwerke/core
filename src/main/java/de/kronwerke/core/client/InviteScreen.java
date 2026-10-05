@@ -110,27 +110,30 @@ public final class InviteScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        // no blur: the menu is small and the world behind it stays readable
+        // Screen.render draws this first and the buttons after it, so the panel lives here
         renderTransparentBackground(g);
+        drawPanel(g);
     }
 
-    @Override
-    public void render(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        renderBackground(g, mouseX, mouseY, partial);
+    private void drawPanel(GuiGraphics g) {
         int h = height();
         g.fill(left - 1, top - 1, left + W + 1, top + h + 1, 0xFF3a3146);
         g.fill(left, top, left + W, top + h, 0xF0120f18);
         g.drawString(font, Component.literal("Deine Whitelist").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), left + 8, top + 8, 0xFFFFFF);
-        // the slots as a row of squares
-        int sx = left + W - 8 - data.total() * 10;
-        for (int i = 0; i < data.total(); i++) {
-            int c = i < data.used() ? 0xFFd4a24a : 0xFF3a3146;
-            g.fill(sx + i * 10, top + 9, sx + i * 10 + 7, top + 16, c);
+        // the slots as a row of squares, when they fit next to the title
+        int titleEnd = left + 8 + font.width(Component.literal("Deine Whitelist").withStyle(ChatFormatting.BOLD)) + 10;
+        int step = data.total() <= 0 ? 10 : Math.min(10, (left + W - 8 - titleEnd) / data.total());
+        if (step >= 4) {
+            int sx = left + W - 8 - data.total() * step;
+            for (int i = 0; i < data.total(); i++) {
+                int c = i < data.used() ? 0xFFd4a24a : 0xFF3a3146;
+                g.fill(sx + i * step, top + 9, sx + i * step + step - 3, top + 16, c);
+            }
         }
         g.drawString(font, Component.literal(data.used() + " von " + data.total() + " Plätzen vergeben").withStyle(ChatFormatting.GRAY), left + 8, top + 24, 0xFFFFFF);
         int y = top + 48;
         if (data.entries().isEmpty()) {
-            g.drawString(font, Component.literal("Noch niemand eingetragen. Name unten eingeben, Einladen, fertig.").withStyle(ChatFormatting.DARK_GRAY), left + 8, y + 8, 0xFFFFFF);
+            g.drawWordWrap(font, Component.literal("Noch niemand eingetragen. Name unten eingeben, Einladen, fertig.").withStyle(ChatFormatting.DARK_GRAY), left + 8, y + 3, W - 16, 0xFFFFFF);
         }
         for (KwNetwork.Entry e : data.entries()) {
             PlayerSkin skin = SKINS.get(e.id());
@@ -139,15 +142,15 @@ public final class InviteScreen extends Screen {
             } else {
                 g.fill(left + 8, y + 2, left + 28, y + 22, 0xFF2a2435);
             }
-            g.drawString(font, e.name(), left + 34, y + 8, 0xFFFFFF);
+            String shown = de.kronwerke.core.client.ui.Ui.fit(font, e.name(), W - 8 - 70 - 34 - 20);
+            g.drawString(font, shown, left + 34, y + 8, 0xFFFFFF);
             int dot = e.online() ? 0xFF55ff55 : 0xFF555555;
-            g.fill(left + 34 + font.width(e.name()) + 6, y + 10, left + 34 + font.width(e.name()) + 11, y + 15, dot);
+            g.fill(left + 34 + font.width(shown) + 6, y + 10, left + 34 + font.width(shown) + 11, y + 15, dot);
             y += ROW_H;
         }
         if (!data.message().isEmpty()) {
             g.drawWordWrap(font, Component.literal(data.message()).withStyle(data.error() ? ChatFormatting.RED : ChatFormatting.GREEN), left + 8, name.getY() + 30 + 5, W - 16 - 90, 0xFFFFFF);
         }
-        super.render(g, mouseX, mouseY, partial);
     }
 
     @Override

@@ -146,6 +146,20 @@ public class GoalData extends SavedData {
         setDirty();
     }
 
+    /** Everything but the bypass list: a new season. */
+    public void resetAll() {
+        progress.clear();
+        targets.clear();
+        factors.clear();
+        activated.clear();
+        released.clear();
+        completed.clear();
+        contributions.clear();
+        kits.clear();
+        staged.clear();
+        setDirty();
+    }
+
     // ---- nbt ----
 
     private static void putLongMap(CompoundTag tag, String name, Map<String, Long> m) {

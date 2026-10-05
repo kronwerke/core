@@ -67,6 +67,13 @@ public final class KwCommand {
                         .executes(c -> top(c, null))
                         .then(Commands.argument("goal", StringArgumentType.word()).executes(c -> top(c, StringArgumentType.getString(c, "goal")))))
                 .then(Commands.literal("admin").requires(s -> s.hasPermission(2))
+                        .executes(KwCommand::adminPanel)
+                        .then(Commands.literal("season")
+                                .executes(KwCommand::seasonInfo)
+                                .then(Commands.literal("start").executes(KwCommand::seasonStart))
+                                .then(Commands.literal("pause").executes(c -> { de.kronwerke.core.season.Season.get().pause(); ok(c, "Zurück in der Vorbereitung."); return 1; }))
+                                .then(Commands.literal("json").executes(KwCommand::seasonJson)))
+                        .then(Commands.literal("start-season").executes(KwCommand::seasonStart))
                         .then(Commands.literal("slots")
                                 .then(Commands.argument("streamer", StringArgumentType.word())
                                         .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(KwCommand::adminSlots))))
@@ -109,7 +116,8 @@ public final class KwCommand {
         if (c.getSource().hasPermission(2)) {
             line(c, "/kw team", "Plätze aller Streamer, Spieler verschieben oder rauswerfen");
             line(c, "/kw testworld", "Die Screenshot-Welt mit den grauen Boxen, /kw testworld back zum Spawn");
-            line(c, "/kw admin ...", "Plätze, Ziele, Obelisk, Bypass. /kw admin ohne Rest zeigt die Liste");
+            line(c, "/kw admin", "Das Admin-Menü: Season, Ziele, Team, Obelisk, Spieler");
+            line(c, "/kw admin season start", "Setzt alle Ziele zurück und startet die Season");
         }
         return 1;
     }
@@ -177,7 +185,35 @@ public final class KwCommand {
 
     private static int team(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
-        de.kronwerke.core.net.KwNetwork.sendAdmin(p, "", false);
+        de.kronwerke.core.net.KwNetwork.sendAdmin(p, 2, "", false);
+        return 1;
+    }
+
+    /** /kw admin: the panel for players, the list of admin commands for the console. */
+    private static int adminPanel(CommandContext<CommandSourceStack> c) {
+        if (c.getSource().getEntity() instanceof ServerPlayer p) {
+            de.kronwerke.core.net.KwNetwork.sendAdmin(p, 0, "", false);
+            return 1;
+        }
+        return help(c);
+    }
+
+    private static int seasonInfo(CommandContext<CommandSourceStack> c) {
+        var s = de.kronwerke.core.season.Season.get();
+        ok(c, s.running() ? "Season " + s.number() + " läuft." : "Vorbereitung. /kw admin season start setzt alle Ziele zurück und startet die Season.");
+        return 1;
+    }
+
+    private static int seasonStart(CommandContext<CommandSourceStack> c) {
+        de.kronwerke.core.season.Season.get().start();
+        ok(c, "Season " + de.kronwerke.core.season.Season.get().number() + " läuft. Alle Ziele, Ranglisten und Startpakete sind zurückgesetzt.");
+        return 1;
+    }
+
+    /** For the bot: the season in one line of JSON. */
+    private static int seasonJson(CommandContext<CommandSourceStack> c) {
+        var s = de.kronwerke.core.season.Season.get();
+        c.getSource().sendSuccess(() -> Component.literal("OK {\"running\":" + s.running() + ",\"number\":" + s.number() + ",\"startedAt\":" + s.startedAt() + "}"), false);
         return 1;
     }
 
