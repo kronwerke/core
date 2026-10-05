@@ -138,7 +138,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## The test world
 
-`/kw testworld` (operators) teleports into `kronwerke:testworld`, a void dimension the pack defines, and builds the screenshot scenes from `kronwerke:shots/build` on the first visit: one grey concrete box per scene with signs. `/kw testworld back` returns to spawn.
+`/kw testworld` (operators) teleports into `kronwerke:testworld`, a void dimension the pack defines, and builds the screenshot scenes on the first visit. `/kw testworld rebuild` builds them again (from the console too) and removes the scene mobs first; `/kw testworld back` returns to spawn. The pack lists the rows of boxes with their area in `data/kronwerke/shots/rows.json`; Core loads a row's chunks and runs its function, one row per server tick, so a rebuild on the live server only stutters briefly.
 
 ## Tab list and ranks
 

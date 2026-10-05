@@ -56,6 +56,7 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onPlace);
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onBreak);
         NeoForge.EVENT_BUS.addListener(Obelisk.get()::onServerTick);
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> de.kronwerke.core.world.TestWorld.tick(e.getServer()));
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onPlace);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onMultiPlace);

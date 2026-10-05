@@ -46,7 +46,8 @@ public final class KwCommand {
                 .then(Commands.literal("help").executes(KwCommand::help))
                 .then(Commands.literal("team").requires(s -> s.hasPermission(2)).executes(KwCommand::team))
                 .then(Commands.literal("testworld").requires(s -> s.hasPermission(2)).executes(KwCommand::testworld)
-                        .then(Commands.literal("back").executes(KwCommand::testworldBack)))
+                        .then(Commands.literal("back").executes(KwCommand::testworldBack))
+                        .then(Commands.literal("rebuild").executes(KwCommand::testworldRebuild)))
                 .then(Commands.literal("menu").executes(KwCommand::menu))
                 .then(Commands.literal("whitelist").executes(KwCommand::menu))
                 .then(Commands.literal("invite")
@@ -130,34 +131,40 @@ public final class KwCommand {
     /** The screenshot world: a void dimension with one grey box per scene, built on the first visit. */
     private static int testworld(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
-        var key = net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.DIMENSION,
-                net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("kronwerke", "testworld"));
-        net.minecraft.server.level.ServerLevel level = c.getSource().getServer().getLevel(key);
+        var server = c.getSource().getServer();
+        var level = de.kronwerke.core.world.TestWorld.level(server);
         if (level == null) {
             fail(c, "Die Testwelt kronwerke:testworld gibt es nicht. Das Pack bringt sie mit (kubejs/data/kronwerke/dimension).");
             return 0;
         }
-        var pad = new net.minecraft.core.BlockPos(-4, 63, -4);
-        level.getChunk(pad);
-        if (!level.getBlockState(pad).is(net.minecraft.world.level.block.Blocks.SMOOTH_STONE)) {
-            var fn = c.getSource().getServer().getFunctions().get(net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("kronwerke", "shots/build"));
-            if (fn.isPresent()) {
-                // the boxes span 250 by 240 blocks; the chunks have to be there before fill can touch them
-                var console = c.getSource().getServer().createCommandSourceStack().withSuppressedOutput();
-                for (int cx = -1; cx <= 16; cx++) {
-                    for (int cz = -1; cz <= 15; cz++) level.getChunk(cx, cz);
-                }
-                c.getSource().getServer().getFunctions().execute(fn.get(), console.withLevel(level).withPermission(4));
-                ok(c, "Die Szenen werden gebaut.");
-            } else {
-                fail(c, "Die Funktion kronwerke:shots/build fehlt.");
-            }
+        if (!de.kronwerke.core.world.TestWorld.built(level) && !de.kronwerke.core.world.TestWorld.busy()) {
+            if (startBuild(c, false) < 0) return 0;
         }
-        c.getSource().getServer().getCommands().performPrefixedCommand(c.getSource().getServer().createCommandSourceStack().withSuppressedOutput(),
-                "execute in kronwerke:testworld run tp " + p.getGameProfile().getName() + " -3.5 64 -3.5 0 0");
+        server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(),
+                "execute in kronwerke:testworld run tp " + p.getGameProfile().getName() + " -3.5 64 -3.5 135 20");
         if (!p.isCreative()) p.setGameMode(net.minecraft.world.level.GameType.CREATIVE);
-        ok(c, "Testwelt. /kw testworld back bringt dich zum Spawn.");
+        ok(c, "Testwelt. /kw testworld back bringt dich zum Spawn, /kw testworld rebuild baut alles neu.");
         return 1;
+    }
+
+    private static int testworldRebuild(CommandContext<CommandSourceStack> c) {
+        if (de.kronwerke.core.world.TestWorld.level(c.getSource().getServer()) == null) {
+            fail(c, "Die Testwelt kronwerke:testworld gibt es nicht.");
+            return 0;
+        }
+        return startBuild(c, true) < 0 ? 0 : 1;
+    }
+
+    private static int startBuild(CommandContext<CommandSourceStack> c, boolean clearMobs) {
+        var src = c.getSource();
+        int rows = de.kronwerke.core.world.TestWorld.build(src.getServer(), clearMobs,
+                msg -> src.sendSuccess(() -> Component.literal(msg).withStyle(ChatFormatting.GRAY), false));
+        if (rows < 0) {
+            fail(c, "kronwerke:shots/rows.json fehlt. Das Pack erzeugt es mit tools/shots/build.py.");
+            return -1;
+        }
+        ok(c, "Die Szenen werden gebaut, eine Reihe pro Tick (" + rows + " Reihen).");
+        return rows;
     }
 
     private static int testworldBack(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
