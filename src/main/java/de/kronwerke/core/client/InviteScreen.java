@@ -1,22 +1,23 @@
 package de.kronwerke.core.client;
 
 import com.mojang.authlib.GameProfile;
+import de.kronwerke.core.client.ui.FlatButton;
+import de.kronwerke.core.client.ui.KwScreen;
+import de.kronwerke.core.client.ui.Ui;
 import de.kronwerke.core.net.KwNetwork;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.PlayerFaceRenderer;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.entity.SkullBlockEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -25,17 +26,14 @@ import java.util.UUID;
  * dot and a remove button, and a field to invite the next one. Opened by /kw invite without
  * a name, or /kw menu. Heads come from the skin service the way the tab list draws them.
  */
-public final class InviteScreen extends Screen {
-    private static final int ROW_H = 24;
-    private static final int W = 260;
+public final class InviteScreen extends KwScreen {
+    private static final int ROW_H = 26;
     private static final Map<UUID, PlayerSkin> SKINS = new HashMap<>();
     private static final Map<UUID, Boolean> PENDING = new HashMap<>();
 
     private KwNetwork.SlotsPayload data;
     private EditBox name;
-    private Button invite;
-    private final List<Button> removes = new ArrayList<>();
-    private int left, top;
+    private FlatButton invite;
 
     private InviteScreen(KwNetwork.SlotsPayload data) {
         super(Component.literal("Whitelist"));
@@ -54,38 +52,41 @@ public final class InviteScreen extends Screen {
     }
 
     @Override
+    protected int panelWidth() {
+        return 300;
+    }
+
+    @Override
+    protected int panelHeight() {
+        return HEAD + 40 + ROW_H * Math.max(1, data.entries().size()) + 12 + 18 + 8 + 14 + 12;
+    }
+
+    private int listY() {
+        return top + HEAD + 40;
+    }
+
+    @Override
     protected void init() {
-        left = (width - W) / 2;
-        top = Math.max(20, (height - height()) / 2);
-        name = new EditBox(font, left + 8, top + 48 + ROW_H * Math.max(1, data.entries().size()) + 10, W - 16 - 84, 20, Component.literal("Name"));
+        super.init();
+        int fy = listY() + ROW_H * Math.max(1, data.entries().size()) + 12;
+        name = new EditBox(font, left + 16, fy + 5, w - 24 - 90 - 8, 10, Component.literal("Name"));
+        name.setBordered(false);
+        name.setTextColor(Ui.TEXT);
         name.setMaxLength(16);
         name.setHint(Component.literal("Minecraft-Name").withStyle(ChatFormatting.DARK_GRAY));
         name.setResponder(s -> invite.active = !s.isBlank() && data.used() < data.total());
         addRenderableWidget(name);
-        invite = Button.builder(Component.literal("Einladen"), b -> send("invite", name.getValue())).bounds(left + W - 8 - 80, name.getY(), 80, 20).build();
+        invite = FlatButton.primary(left + w - 12 - 84, fy, 84, "Einladen", () -> send("invite", name.getValue())).icon(new ItemStack(Items.NAME_TAG));
+        invite.tip(data.used() < data.total() ? "Trägt den Namen in deinen nächsten freien Platz ein" : "Alle Plätze sind vergeben");
         invite.active = false;
         addRenderableWidget(invite);
-        addRenderableWidget(Button.builder(Component.literal("Schließen"), b -> onClose()).bounds(left + W - 8 - 80, name.getY() + 30, 80, 20).build());
-        rebuild();
-        setInitialFocus(name);
-    }
-
-    private int height() {
-        return 48 + ROW_H * Math.max(1, data.entries().size()) + 10 + 20 + 30 + 20 + 16;
-    }
-
-    private void rebuild() {
-        removes.forEach(this::removeWidget);
-        removes.clear();
-        int y = top + 48;
+        int y = listY();
         for (KwNetwork.Entry e : data.entries()) {
-            Button b = Button.builder(Component.literal("Entfernen"), bt -> send("revoke", e.name())).bounds(left + W - 8 - 70, y + 2, 70, 20).build();
-            removes.add(b);
-            addRenderableWidget(b);
+            addRenderableWidget(FlatButton.confirm(left + w - 12 - 76, y + 3, 76, "Entfernen", "Sicher?", FlatButton.Style.DANGER, () -> send("revoke", e.name())).tip("Nimmt " + e.name() + " von der Whitelist", "Der Platz wird wieder frei"));
             y += ROW_H;
             fetchSkin(e);
         }
-        if (invite != null) invite.active = name != null && !name.getValue().isBlank() && data.used() < data.total();
+        setInitialFocus(name);
     }
 
     private void send(String action, String who) {
@@ -109,47 +110,54 @@ public final class InviteScreen extends Screen {
     }
 
     @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        // Screen.render draws this first and the buttons after it, so the panel lives here
-        renderTransparentBackground(g);
-        drawPanel(g);
+    protected void drawHeaderRight(GuiGraphics g, int x1, int y) {
+        String chip = data.used() + " / " + data.total();
+        Ui.chip(g, font, chip, x1 - font.width(chip) - 8, y, data.used() < data.total() ? 0xFF2f6e3a : 0xFF8a6420);
     }
 
-    private void drawPanel(GuiGraphics g) {
-        int h = height();
-        g.fill(left - 1, top - 1, left + W + 1, top + h + 1, 0xFF3a3146);
-        g.fill(left, top, left + W, top + h, 0xF0120f18);
-        g.drawString(font, Component.literal("Deine Whitelist").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), left + 8, top + 8, 0xFFFFFF);
-        // the slots as a row of squares, when they fit next to the title
-        int titleEnd = left + 8 + font.width(Component.literal("Deine Whitelist").withStyle(ChatFormatting.BOLD)) + 10;
-        int step = data.total() <= 0 ? 10 : Math.min(10, (left + W - 8 - titleEnd) / data.total());
-        if (step >= 4) {
-            int sx = left + W - 8 - data.total() * step;
+    @Override
+    protected void drawContent(GuiGraphics g, int mouseX, int mouseY, float partial) {
+        g.drawString(font, "Deine Plätze", left + 12, top + HEAD + 8, Ui.MUTED, false);
+        // the slots as a row of small frames, filled ones in brass
+        int sx = left + 12 + font.width("Deine Plätze") + 10;
+        int step = data.total() <= 0 ? 10 : Math.min(12, (left + w - 12 - sx) / Math.max(1, data.total()));
+        if (step >= 5) {
             for (int i = 0; i < data.total(); i++) {
-                int c = i < data.used() ? 0xFFd4a24a : 0xFF3a3146;
-                g.fill(sx + i * step, top + 9, sx + i * step + step - 3, top + 16, c);
+                int x = sx + i * step;
+                boolean used = i < data.used();
+                g.fill(x, top + HEAD + 7, x + step - 3, top + HEAD + 16, used ? Ui.GOLD : 0xFF2a2435);
+                if (used) g.fill(x + 1, top + HEAD + 8, x + step - 4, top + HEAD + 9, Ui.GOLD_LIGHT);
+                if (in(mouseX, mouseY, x, top + HEAD + 7, x + step - 3, top + HEAD + 16)) hover(used ? "Platz " + (i + 1) + ", vergeben" : "Platz " + (i + 1) + ", frei");
             }
         }
-        g.drawString(font, Component.literal(data.used() + " von " + data.total() + " Plätzen vergeben").withStyle(ChatFormatting.GRAY), left + 8, top + 24, 0xFFFFFF);
-        int y = top + 48;
+        g.drawString(font, data.used() + " von " + data.total() + " Plätzen vergeben", left + 12, top + HEAD + 20, Ui.MUTED, false);
+        Ui.ornament(g, left + 12, top + HEAD + 33, left + w - 12);
+        int y = listY();
+        int rows = Math.max(1, data.entries().size());
+        Ui.inset(g, left + 10, y - 2, left + w - 10, y + ROW_H * rows + 2);
         if (data.entries().isEmpty()) {
-            g.drawWordWrap(font, Component.literal("Noch niemand eingetragen. Name unten eingeben, Einladen, fertig.").withStyle(ChatFormatting.DARK_GRAY), left + 8, y + 3, W - 16, 0xFFFFFF);
+            g.drawWordWrap(font, Component.literal("Noch niemand eingetragen. Name unten eingeben, Einladen, fertig.").withStyle(ChatFormatting.DARK_GRAY), left + 14, y + 7, w - 28, 0xFFFFFF);
         }
         for (KwNetwork.Entry e : data.entries()) {
             PlayerSkin skin = SKINS.get(e.id());
+            Ui.slot(g, left + 14, y + 2);
             if (skin != null) {
-                PlayerFaceRenderer.draw(g, skin, left + 8, y + 2, 20);
+                PlayerFaceRenderer.draw(g, skin, left + 15, y + 3, 16);
             } else {
-                g.fill(left + 8, y + 2, left + 28, y + 22, 0xFF2a2435);
+                g.fill(left + 15, y + 3, left + 31, y + 19, 0xFF1a1620);
             }
-            String shown = de.kronwerke.core.client.ui.Ui.fit(font, e.name(), W - 8 - 70 - 34 - 20);
-            g.drawString(font, shown, left + 34, y + 8, 0xFFFFFF);
-            int dot = e.online() ? 0xFF55ff55 : 0xFF555555;
-            g.fill(left + 34 + font.width(shown) + 6, y + 10, left + 34 + font.width(shown) + 11, y + 15, dot);
+            String shown = Ui.fit(font, e.name(), w - 12 - 76 - 44 - 20);
+            g.drawString(font, shown, left + 38, y + 7, Ui.TEXT, false);
+            int dx = left + 38 + font.width(shown) + 6;
+            g.fill(dx, y + 9, dx + 5, y + 14, e.online() ? 0xFF55ff55 : Ui.DIM);
+            if (in(mouseX, mouseY, left + 14, y, dx + 6, y + ROW_H)) hover(e.name(), e.online() ? "Online" : "Offline");
             y += ROW_H;
         }
+        // the frame of the name field; the field itself has no border of its own
+        Ui.inset(g, left + 12, name.getY() - 5, left + 12 + w - 24 - 90, name.getY() + 13);
+        if (name.isFocused()) g.fill(left + 13, name.getY() + 12, left + 12 + w - 24 - 90 - 1, name.getY() + 13, Ui.GOLD);
         if (!data.message().isEmpty()) {
-            g.drawWordWrap(font, Component.literal(data.message()).withStyle(data.error() ? ChatFormatting.RED : ChatFormatting.GREEN), left + 8, name.getY() + 30 + 5, W - 16 - 90, 0xFFFFFF);
+            g.drawWordWrap(font, Component.literal(data.message()).withStyle(data.error() ? ChatFormatting.RED : ChatFormatting.GREEN), left + 12, name.getY() + 19, w - 24, 0xFFFFFF);
         }
     }
 
@@ -160,10 +168,5 @@ public final class InviteScreen extends Screen {
             return true;
         }
         return super.keyPressed(key, scan, mods);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
     }
 }

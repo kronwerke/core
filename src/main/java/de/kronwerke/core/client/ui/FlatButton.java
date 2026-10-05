@@ -5,18 +5,29 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+
+import java.util.List;
 
 /**
- * A flat button in the Kronwerke colours. A button with a confirm text needs two clicks:
- * the first one arms it (it turns red and shows the confirm text for a few seconds), the
- * second one runs it.
+ * A button in the Kronwerke sprites, with an optional item icon on the left and a tooltip.
+ * A button with a confirm text needs two clicks: the first one arms it (it turns red and
+ * shows the confirm text for a few seconds), the second one runs it.
  */
 public class FlatButton extends AbstractButton {
     public enum Style { NORMAL, PRIMARY, DANGER }
 
+    private static final ResourceLocation NORMAL = Ui.sprite("button"), NORMAL_HOVER = Ui.sprite("button_hover");
+    private static final ResourceLocation PRIMARY = Ui.sprite("button_primary"), PRIMARY_HOVER = Ui.sprite("button_primary_hover");
+    private static final ResourceLocation DANGER = Ui.sprite("button_danger"), DANGER_HOVER = Ui.sprite("button_danger_hover");
+    private static final ResourceLocation DISABLED = Ui.sprite("button_disabled");
+
     private final Runnable action;
     private final Style style;
     private final Component confirm;
+    private ItemStack icon = ItemStack.EMPTY;
+    private List<Component> tip = List.of();
     private long armedUntil;
 
     public FlatButton(int x, int y, int w, int h, Component label, Style style, Component confirm, Runnable action) {
@@ -27,15 +38,29 @@ public class FlatButton extends AbstractButton {
     }
 
     public static FlatButton of(int x, int y, int w, String label, Runnable action) {
-        return new FlatButton(x, y, w, 16, Component.literal(label), Style.NORMAL, null, action);
+        return new FlatButton(x, y, w, 18, Component.literal(label), Style.NORMAL, null, action);
     }
 
     public static FlatButton primary(int x, int y, int w, String label, Runnable action) {
-        return new FlatButton(x, y, w, 16, Component.literal(label), Style.PRIMARY, null, action);
+        return new FlatButton(x, y, w, 18, Component.literal(label), Style.PRIMARY, null, action);
     }
 
     public static FlatButton confirm(int x, int y, int w, String label, String confirm, Style style, Runnable action) {
-        return new FlatButton(x, y, w, 16, Component.literal(label), style, Component.literal(confirm), action);
+        return new FlatButton(x, y, w, 18, Component.literal(label), style, Component.literal(confirm), action);
+    }
+
+    public FlatButton icon(ItemStack stack) {
+        this.icon = stack;
+        return this;
+    }
+
+    public FlatButton tip(String... lines) {
+        this.tip = java.util.Arrays.stream(lines).map(s -> (Component) Component.literal(s)).toList();
+        return this;
+    }
+
+    public List<Component> tipLines() {
+        return tip;
     }
 
     private boolean armed() {
@@ -55,29 +80,37 @@ public class FlatButton extends AbstractButton {
     @Override
     protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partial) {
         boolean hover = isHoveredOrFocused() && active;
-        int bg, fg = Ui.TEXT;
+        ResourceLocation sprite;
+        int fg = Ui.TEXT;
         if (!active) {
-            bg = 0xFF1a1620;
+            sprite = DISABLED;
             fg = Ui.DIM;
         } else if (armed()) {
-            bg = Ui.RED_HOVER;
+            sprite = DANGER_HOVER;
         } else if (style == Style.DANGER) {
-            bg = hover ? Ui.RED : Ui.RAISED;
+            sprite = hover ? DANGER_HOVER : NORMAL;
             fg = hover ? Ui.TEXT : 0xFFff8a8a;
         } else if (style == Style.PRIMARY) {
-            bg = hover ? 0xFFe2b25a : Ui.GOLD;
+            sprite = hover ? PRIMARY_HOVER : PRIMARY;
             fg = 0xFF1a1208;
         } else {
-            bg = hover ? Ui.HOVER : Ui.RAISED;
+            sprite = hover ? NORMAL_HOVER : NORMAL;
+            if (hover) fg = Ui.GOLD_LIGHT;
         }
-        int x0 = getX(), y0 = getY(), x1 = x0 + width, y1 = y0 + height;
-        g.fill(x0 + 1, y0, x1 - 1, y1, bg);
-        g.fill(x0, y0 + 1, x1, y1 - 1, bg);
-        if (active && style != Style.PRIMARY && !armed()) g.fill(x0 + 1, y0, x1 - 1, y0 + 1, 0x22FFFFFF);
+        int x0 = getX(), y0 = getY();
+        g.blitSprite(sprite, x0, y0, width, height);
         var font = Minecraft.getInstance().font;
         Component label = armed() ? confirm : getMessage();
-        String text = Ui.fit(font, label.getString(), width - 6);
-        g.drawString(font, text, x0 + (width - font.width(text)) / 2, y0 + (height - 8) / 2, fg, false);
+        int iconW = icon.isEmpty() ? 0 : 18;
+        String text = Ui.fit(font, label.getString(), width - 6 - iconW);
+        int tx = x0 + iconW + (width - iconW - font.width(text)) / 2;
+        if (!icon.isEmpty()) {
+            g.pose().pushPose();
+            g.pose().translate(x0 + 2, y0 + (height - 16) / 2.0, 0);
+            g.renderItem(icon, 0, 0);
+            g.pose().popPose();
+        }
+        g.drawString(font, text, tx, y0 + (height - 8) / 2, fg, false);
     }
 
     @Override

@@ -1,5 +1,52 @@
 # Changelog
 
+## 0.10.0
+
+- Every screen sits on the same frame: a slate panel with a brass border, a header band with the name of the screen and a close cross, tooltips on every button, a short grow-in when it opens. The sprites come from `tools/textures/gui.py` and live under `textures/gui/sprites`, nine-sliced so they stay sharp at any size.
+- The hub shows the five stages as a path of rings on the left, the running one breathing, and the selected stage on the right: its progress ring, its description and, while it runs, every item with icon, count and a shimmering bar, grouped by pillar. Hovering an item tells how much is missing. Clicking a stage shows it.
+- The admin panel has the same frame with a tab rail, rings for the goals, player heads in the team and player lists, and a tooltip on every action.
+- The whitelist screen shows the slots as a row of brass marks, the invited players in slots, and a styled name field. The language question is two cards.
+- The hub payload carries each item's id and each goal's description for the icons and the text.
+
+## 0.9.0
+
+- The obelisk is nineteen blocks tall: a stepped 9x9 plinth, a 3x3 trunk with two glowing rune bands, a cap, the tip and the crystal. Four pedestals at the corners show the last item of the stone, tech and magic pillar and of any deposit, with the pillar's progress above it, and a trail of light runs from the pedestal to the trunk.
+- The leaderboard wall carves the top contributors of the running goal into dark stone in gold letters; `/kw admin obelisk board` puts it up in front of you. The feeder zone grows to ten blocks.
+- `/kw admin` opens a panel with five tabs: overview (season, test world, own bypass and game mode), goals, team, obelisk and players. Buttons run the matching `/kw` command as the player and show its answer; the ones that cannot be undone need a second click.
+- The season is in preparation until `/kw admin season start` (or the panel) resets every goal, leaderboard and starter kit; players who were offline lose their goal stages on their next join. `/kw admin season json` for the bot.
+- Text fits its column everywhere, the hub scrolls when the goals do not fit, and the screens no longer dim the background twice.
+
+## 0.8.2
+
+- Bosses on the list get more health and damage per player near them and, with two or more players, lightning, a shockwave and a rage every few seconds. The Chaos Guardian fight is explained once to a player who comes close.
+- `/kw testworld` builds and enters the screenshot world; the rows come from `rows.json` in the pack, one row per tick. `/kw testworld rebuild` builds everything again, from the console as well.
+
+## 0.8.1
+
+- `/kw` opens the hub: the five goals with bars and the running goal's items, deposits from there. `/kw team` lists every streamer with slots, changes allowances, takes places away and moves players between streamers.
+
+## 0.8.0
+
+- The obelisk core builds a plinth, a step, the shaft segments and the crystal with a beacon style beam around itself; `/kw admin obelisk build` places it. Machines feed the obelisk through the intake block, credited to its owner; containers no longer become feeders.
+- Inside the spawn protection, the zone around the obelisk (`feederRadius`) lets anyone place intakes, hoppers, pipes and belts and take back their own blocks.
+- The client asks for the language after the first join. Bedrock, end portals, reinforced deepslate and the Cataclysm altars survive every explosion.
+
+## 0.7.3
+
+- `/kw menu` opens a screen with the slots, the invited players with heads and online dots, a remove button each and a field to invite the next one. `/kw` alone lists the commands with clickable lines; the slot messages are German.
+
+## 0.7.2
+
+- Owner, admin, streamer and member as scoreboard teams with the Nautical Ranks glyphs as prefix, so the badge shows in the tab list, above heads and in chat. The tab list header carries the season, the footer the running goal and the player count.
+
+## 0.7.1
+
+- A square around the overworld spawn (`spawn.radius`) where only operators build: no breaking or placing, no explosion damage, no mob griefing, no hostile spawns, no PvP. Containers next to the obelisk stay allowed.
+
+## 0.7.0
+
+- The obelisk gets a block of its own, unbreakable outside creative mode, registering itself when an operator places it. Every player receives a waystone and warp dust on the first join. Dimensions open with a stage (Nether with 2, End with 4). Player facing messages are German with translatable keys, and items in goals are shown by name instead of id.
+
 ## 0.6.2
 
 - FTB Quests could fail to load a large quest book ("this.wrapped is null") when the entries of the reward tables pushed its object map over the fill limit while it was being read. Core makes FTB Quests read from a copy, so the size of the book no longer matters.

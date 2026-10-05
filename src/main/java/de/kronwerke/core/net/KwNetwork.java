@@ -69,9 +69,10 @@ public final class KwNetwork {
     }
 
     /** One goal as the hub shows it. */
-    public record GoalView(String title, String state, int percent, boolean active, List<ItemView> items) {
+    public record GoalView(String title, String description, String state, int percent, boolean active, List<ItemView> items) {
         public static final StreamCodec<RegistryFriendlyByteBuf, GoalView> CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, GoalView::title,
+                ByteBufCodecs.STRING_UTF8, GoalView::description,
                 ByteBufCodecs.STRING_UTF8, GoalView::state,
                 ByteBufCodecs.VAR_INT, GoalView::percent,
                 ByteBufCodecs.BOOL, GoalView::active,
@@ -79,9 +80,11 @@ public final class KwNetwork {
                 GoalView::new);
     }
 
-    public record ItemView(String pillar, String name, long have, long need) {
+    /** One item of a pillar: id is the item id or #tag the client draws the icon from. */
+    public record ItemView(String pillar, String id, String name, long have, long need) {
         public static final StreamCodec<RegistryFriendlyByteBuf, ItemView> CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, ItemView::pillar,
+                ByteBufCodecs.STRING_UTF8, ItemView::id,
                 ByteBufCodecs.STRING_UTF8, ItemView::name,
                 ByteBufCodecs.VAR_LONG, ItemView::have,
                 ByteBufCodecs.VAR_LONG, ItemView::need,
@@ -204,11 +207,11 @@ public final class KwNetwork {
             if (active) {
                 for (de.kronwerke.core.goal.Goal.Pillar pillar : g.pillars()) {
                     for (de.kronwerke.core.goal.Goal.PillarItem it : pillar.items()) {
-                        items.add(new ItemView(pillar.title(), de.kronwerke.core.Text.item(it.item()).getString(), d.progress(g.id(), it.item()), d.target(g.id(), it.item())));
+                        items.add(new ItemView(pillar.title(), it.item(), de.kronwerke.core.Text.item(it.item()).getString(), d.progress(g.id(), it.item()), d.target(g.id(), it.item())));
                     }
                 }
             }
-            goals.add(new GoalView(g.title(), state, percent, active, items));
+            goals.add(new GoalView(g.title(), g.description() == null ? "" : g.description(), state, percent, active, items));
         }
         boolean admin = p.hasPermissions(2);
         boolean streamer = admin || de.kronwerke.core.config.KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get();
