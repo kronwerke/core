@@ -124,6 +124,10 @@ The obelisk is the `kronwerke:obelisk` block: a pillar four blocks tall with a c
 
 With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test players that exist only as inventory and data: `/kw test join Anna`, `/kw test give Anna create:andesite_alloy 200`, `/kw test deposit Anna all`, `/kw test kits Anna`. That is how deposits, the hold point, completion, stages and starter kits are checked over RCON on a headless server. Never turn it on in a season.
 
+## Tab list and ranks
+
+Ranks are scoreboard teams with a glyph prefix from the Nautical Ranks resource pack the modpack ships: owner (`tab.owners` in the config), admin (operators), streamer (players with whitelist slots) and member. The tab list header shows the season and `tab.line`, the footer the running goal and the player count.
+
 ## Spawn, join kit and locked dimensions
 
 - `spawn.radius` (96) protects the square around the overworld spawn: no breaking or placing by players without op, no block damage from explosions, no mob griefing, no hostile spawns, no PvP. Containers next to the obelisk stay allowed, so feeders work. 0 turns it off.

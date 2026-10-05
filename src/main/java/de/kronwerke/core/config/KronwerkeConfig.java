@@ -24,6 +24,8 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
+    public static final ModConfigSpec.ConfigValue<String> TAB_LINE;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -63,6 +65,13 @@ public final class KronwerkeConfig {
         b.push("spawn");
         SPAWN_RADIUS = b.comment("Half the side of the protected square around the overworld spawn, in blocks. 0 turns the protection off. Operators and creative players build freely; containers next to the obelisk stay allowed for feeders.")
                 .defineInRange("radius", 96, 0, 2048);
+        b.pop();
+
+        b.push("tab");
+        OWNERS = b.comment("Players shown with the owner rank. Operators get admin, players with whitelist slots streamer, everyone else member.")
+                .defineListAllowEmpty("owners", java.util.List.of("Elchi_Sam"), o -> o instanceof String);
+        TAB_LINE = b.comment("The second line of the tab list header.")
+                .define("line", "ein Projekt von Elchi Studios");
         b.pop();
 
         b.push("obelisk");

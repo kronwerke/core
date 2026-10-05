@@ -11,6 +11,7 @@ import de.kronwerke.core.obelisk.Obelisk;
 import de.kronwerke.core.privacy.LogPruner;
 import de.kronwerke.core.slot.SlotManager;
 import de.kronwerke.core.spawn.SpawnGuard;
+import de.kronwerke.core.tab.TabList;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.EventPriority;
 import net.neoforged.bus.api.IEventBus;
@@ -55,6 +56,7 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onPlace);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onMultiPlace);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onExplosion);
+        NeoForge.EVENT_BUS.addListener(TabList::onTick);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onMobGriefing);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onSpawn);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onDamage);
@@ -98,6 +100,7 @@ public class KronwerkeCore {
         SlotManager.get().init(event.getServer());
         GoalManager.get().init(event.getServer());
         Obelisk.get().init(event.getServer());
+        TabList.init(event.getServer());
         LogPruner.prune(FMLPaths.GAMEDIR.get().resolve("logs"), KronwerkeConfig.LOG_DAYS.get());
         LOGGER.info("Kronwerke Core ready. {} goals loaded, {} streamers with slots.",
                 GoalManager.get().goalCount(), SlotManager.get().streamerCount());
@@ -109,6 +112,7 @@ public class KronwerkeCore {
 
     private void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         GoalManager.get().onPlayerJoin(event.getEntity());
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) TabList.onJoin(sp);
     }
 
     private void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
