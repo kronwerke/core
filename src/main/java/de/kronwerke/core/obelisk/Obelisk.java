@@ -32,10 +32,10 @@ import java.util.UUID;
 
 /**
  * The obelisk at spawn: the {@link ObeliskBlock} an operator placed, or any block an admin
- * points at with /kw admin obelisk set. Right click it to deposit what you hold, sneak and right click to
- * deposit everything that fits. A chest, barrel or any other container placed right next to
- * it becomes a feeder of the player who placed it: whatever a factory pipes into it goes into
- * the goal under that player's name. Everything stays server side, clients need nothing.
+ * points at with /kw admin obelisk set. Right click it to deposit what you hold, sneak and
+ * right click to deposit everything that fits. Items from machines come in through the
+ * {@link ObeliskIntakeBlock} next to it, credited to the player who placed the intake.
+ * Containers as feeders are off by default (obelisk.containerFeeders).
  */
 public final class Obelisk {
     private static final Obelisk INSTANCE = new Obelisk();
@@ -60,8 +60,8 @@ public final class Obelisk {
         ObeliskData d = data();
         if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return false;
         if (d.pos().equals(pos)) return true;
-        // the upper half of the pillar counts as well
-        return d.pos().equals(pos.below()) && level.getBlockState(pos).is(ObeliskBlocks.OBELISK_TOP.get());
+        // every block of the build counts: plinth, shaft, crystal
+        return ObeliskStructure.contains(d.pos(), pos, level.getBlockState(pos));
     }
 
     private static int distance(BlockPos a, BlockPos b) {
@@ -114,6 +114,7 @@ public final class Obelisk {
     // ---- feeders ----
 
     public void onPlace(BlockEvent.EntityPlaceEvent event) {
+        if (!KronwerkeConfig.CONTAINER_FEEDERS.get()) return;
         if (server == null || !(event.getEntity() instanceof ServerPlayer player) || !(event.getLevel() instanceof ServerLevel level)) return;
         ObeliskData d = data();
         if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return;

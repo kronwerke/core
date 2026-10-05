@@ -19,5 +19,8 @@
   "kronwerke.dimension.eternal_starlight.starlight": "Eternal Starlight",
   "kronwerke.dimension.mahoutsukai.reality_marble": "Das Reality Marble",
   "block.kronwerke.obelisk": "Obelisk",
-  "block.kronwerke.obelisk_top": "Obelisk (Spitze)"
+  "block.kronwerke.obelisk_top": "Obelisk (Spitze)",
+  "block.kronwerke.obelisk_shaft": "Obelisk (Schaft)",
+  "block.kronwerke.obelisk_plinth": "Obelisk-Sockel",
+  "block.kronwerke.obelisk_intake": "Zubringer"
 }

@@ -16,6 +16,7 @@ import net.minecraft.network.chat.Component;
 
 /**
  * /kw admin obelisk ...
+ *   build <pos>                places the obelisk block at pos and the whole build around it
  *   set <pos>                  the block at pos becomes the obelisk (in the caller's dimension)
  *   clear                      no obelisk
  *   info                       where it is and every feeder with its owner
@@ -28,6 +29,7 @@ final class ObeliskCommand {
     static LiteralArgumentBuilder<CommandSourceStack> build() {
         return Commands.literal("obelisk")
                 .then(Commands.literal("set").then(Commands.argument("pos", BlockPosArgument.blockPos()).executes(ObeliskCommand::set)))
+                .then(Commands.literal("build").then(Commands.argument("pos", BlockPosArgument.blockPos()).executes(ObeliskCommand::buildAt)))
                 .then(Commands.literal("clear").executes(c -> {
                     Obelisk.get().data().clear();
                     ok(c, "OK no obelisk");
@@ -42,6 +44,22 @@ final class ObeliskCommand {
                     ok(c, "OK drained " + n);
                     return 1;
                 }));
+    }
+
+    /** Places the core at pos and builds the whole obelisk around it; the old build, if any, is removed first. */
+    private static int buildAt(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
+        BlockPos pos = BlockPosArgument.getLoadedBlockPos(c, "pos");
+        var level = c.getSource().getLevel();
+        ObeliskData d = Obelisk.get().data();
+        if (d.isSet() && level.dimension().location().toString().equals(d.dimension()) && level.getBlockState(d.pos()).is(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK.get())) {
+            level.removeBlock(d.pos(), false);
+        }
+        level.setBlock(pos, de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK.get().defaultBlockState(), 3);
+        de.kronwerke.core.obelisk.ObeliskStructure.build(level, pos);
+        String dim = level.dimension().location().toString();
+        d.set(dim, pos);
+        ok(c, "OK obelisk built at " + dim + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+        return 1;
     }
 
     private static int set(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {

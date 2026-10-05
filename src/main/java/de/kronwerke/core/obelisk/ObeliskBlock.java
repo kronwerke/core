@@ -7,7 +7,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.state.BlockState;
@@ -16,9 +15,10 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 /**
- * The obelisk at spawn: the base block of a pillar four blocks tall (the upper half is
- * {@link ObeliskTopBlock}, placed and removed with this one). It cannot be broken outside
- * creative mode and registers itself as the obelisk when an operator places it. Everything
+ * The core of the obelisk. An operator places it and {@link ObeliskStructure} builds the
+ * rest around it: the 5x5 plinth, the shaft and the crystal. It cannot be broken outside
+ * creative mode and registers itself as the obelisk; breaking it in creative mode takes the
+ * whole build with it. Everything
  * the obelisk does (deposits, feeders, the goals) lives in {@link Obelisk}; this block is the
  * thing players see and click.
  */
@@ -26,9 +26,8 @@ public class ObeliskBlock extends Block {
     public static final MapCodec<ObeliskBlock> CODEC = simpleCodec(ObeliskBlock::new);
 
     private static final VoxelShape SHAPE = Shapes.or(
-            Block.box(0, 0, 0, 16, 4, 16),
-            Block.box(1, 4, 1, 15, 6, 15),
-            Block.box(2, 6, 2, 14, 32, 14));
+            Block.box(1, 0, 1, 15, 4, 15),
+            Block.box(2, 4, 2, 14, 16, 14));
 
     public ObeliskBlock(Properties properties) {
         super(properties);
@@ -50,23 +49,9 @@ public class ObeliskBlock extends Block {
     }
 
     @Override
-    protected boolean canSurvive(BlockState state, LevelReader level, BlockPos pos) {
-        BlockState above = level.getBlockState(pos.above());
-        return above.isAir() || above.canBeReplaced() || above.is(ObeliskBlocks.OBELISK_TOP.get());
-    }
-
-    @Override
-    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
-        super.onPlace(state, level, pos, oldState, movedByPiston);
-        if (!level.isClientSide() && !level.getBlockState(pos.above()).is(ObeliskBlocks.OBELISK_TOP.get())) {
-            level.setBlock(pos.above(), ObeliskBlocks.OBELISK_TOP.get().defaultBlockState(), Block.UPDATE_ALL);
-        }
-    }
-
-    @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
-        if (!state.is(newState.getBlock()) && !level.isClientSide() && level.getBlockState(pos.above()).is(ObeliskBlocks.OBELISK_TOP.get())) {
-            level.removeBlock(pos.above(), false);
+        if (!state.is(newState.getBlock()) && level instanceof net.minecraft.server.level.ServerLevel sl) {
+            ObeliskStructure.clear(sl, pos);
         }
         super.onRemove(state, level, pos, newState, movedByPiston);
     }
@@ -74,7 +59,8 @@ public class ObeliskBlock extends Block {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (level.isClientSide() || !(placer instanceof Player player) || !player.hasPermissions(2)) return;
+        if (!(level instanceof net.minecraft.server.level.ServerLevel sl) || !(placer instanceof Player player) || !player.hasPermissions(2)) return;
+        ObeliskStructure.build(sl, pos);
         Obelisk.get().data().set(level.dimension().location().toString(), pos);
     }
 

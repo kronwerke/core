@@ -263,6 +263,27 @@ public final class GoalManager {
      * feeder. Takes from the stack and returns how many were taken. announce=false leaves the
      * chat message to the caller.
      */
+    /** How many of the stack a deposit would take right now, without taking anything. */
+    public long wouldTake(ItemStack stack) {
+        if (stack.isEmpty()) return 0;
+        for (Goal g : activeGoals()) {
+            if (isHeld(g)) continue;
+            for (Goal.PillarItem it : g.allItems()) {
+                if (!it.matches(stack)) continue;
+                long remaining = data().target(g.id(), it.item()) - data().progress(g.id(), it.item());
+                long take = Math.min(remaining, stack.getCount());
+                if (take <= 0) continue;
+                if (g.holdFraction() < 1.0 && !data().isReleased(g.id())) {
+                    long allowed = (long) Math.ceil(total(g) * g.holdFraction()) - done(g);
+                    take = Math.min(take, Math.max(0, allowed) / it.points());
+                    if (take <= 0) continue;
+                }
+                return take;
+            }
+        }
+        return 0;
+    }
+
     public long deposit(UUID who, Component name, ItemStack stack, boolean announce) {
         if (stack.isEmpty()) return 0;
         for (Goal g : activeGoals()) {

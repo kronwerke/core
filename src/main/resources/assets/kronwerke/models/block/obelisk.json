@@ -3,90 +3,20 @@
  "render_type": "minecraft:cutout",
  "textures": {
   "particle": "kronwerke:block/obelisk_shaft",
-  "plinth_side": "kronwerke:block/obelisk_plinth_side",
-  "plinth_top": "kronwerke:block/obelisk_plinth_top",
+  "band": "kronwerke:block/obelisk_band",
   "shaft": "kronwerke:block/obelisk_shaft",
-  "runes": "kronwerke:block/obelisk_runes",
-  "band": "kronwerke:block/obelisk_band"
+  "runes": "kronwerke:block/obelisk_runes"
  },
  "elements": [
   {
    "from": [
-    0,
-    0,
-    0
-   ],
-   "to": [
-    16,
-    4,
-    16
-   ],
-   "faces": {
-    "north": {
-     "texture": "#plinth_side",
-     "uv": [
-      0,
-      6.0,
-      16,
-      10.0
-     ]
-    },
-    "south": {
-     "texture": "#plinth_side",
-     "uv": [
-      0,
-      6.0,
-      16,
-      10.0
-     ]
-    },
-    "east": {
-     "texture": "#plinth_side",
-     "uv": [
-      0,
-      6.0,
-      16,
-      10.0
-     ]
-    },
-    "west": {
-     "texture": "#plinth_side",
-     "uv": [
-      0,
-      6.0,
-      16,
-      10.0
-     ]
-    },
-    "up": {
-     "texture": "#plinth_top",
-     "uv": [
-      0,
-      0,
-      16,
-      16
-     ]
-    },
-    "down": {
-     "texture": "#plinth_top",
-     "uv": [
-      0,
-      0,
-      16,
-      16
-     ]
-    }
-   }
-  },
-  {
-   "from": [
     1,
-    4,
+    0,
     1
    ],
    "to": [
     15,
-    6,
+    4,
     15
    ],
    "faces": {
@@ -94,36 +24,36 @@
      "texture": "#band",
      "uv": [
       1,
-      7.0,
+      6.0,
       15,
-      9.0
+      10.0
      ]
     },
     "south": {
      "texture": "#band",
      "uv": [
       1,
-      7.0,
+      6.0,
       15,
-      9.0
+      10.0
      ]
     },
     "east": {
      "texture": "#band",
      "uv": [
       1,
-      7.0,
+      6.0,
       15,
-      9.0
+      10.0
      ]
     },
     "west": {
      "texture": "#band",
      "uv": [
       1,
-      7.0,
+      6.0,
       15,
-      9.0
+      10.0
      ]
     },
     "up": {
@@ -149,80 +79,12 @@
   {
    "from": [
     2,
-    6,
+    4,
     2
    ],
    "to": [
     14,
-    19,
-    14
-   ],
-   "faces": {
-    "north": {
-     "texture": "#shaft",
-     "uv": [
-      2,
-      1.5,
-      14,
-      14.5
-     ]
-    },
-    "south": {
-     "texture": "#shaft",
-     "uv": [
-      2,
-      1.5,
-      14,
-      14.5
-     ]
-    },
-    "east": {
-     "texture": "#shaft",
-     "uv": [
-      2,
-      1.5,
-      14,
-      14.5
-     ]
-    },
-    "west": {
-     "texture": "#shaft",
-     "uv": [
-      2,
-      1.5,
-      14,
-      14.5
-     ]
-    },
-    "up": {
-     "texture": "#band",
-     "uv": [
-      2,
-      2,
-      14,
-      14
-     ]
-    },
-    "down": {
-     "texture": "#band",
-     "uv": [
-      2,
-      2,
-      14,
-      14
-     ]
-    }
-   }
-  },
-  {
-   "from": [
-    2,
-    19,
-    2
-   ],
-   "to": [
-    14,
-    32,
+    16,
     14
    ],
    "faces": {
@@ -230,36 +92,36 @@
      "texture": "#runes",
      "uv": [
       2,
-      1.5,
+      2.0,
       14,
-      14.5
+      14.0
      ]
     },
     "south": {
      "texture": "#runes",
      "uv": [
       2,
-      1.5,
+      2.0,
       14,
-      14.5
+      14.0
      ]
     },
     "east": {
      "texture": "#runes",
      "uv": [
       2,
-      1.5,
+      2.0,
       14,
-      14.5
+      14.0
      ]
     },
     "west": {
      "texture": "#runes",
      "uv": [
       2,
-      1.5,
+      2.0,
       14,
-      14.5
+      14.0
      ]
     },
     "up": {

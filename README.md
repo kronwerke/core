@@ -89,10 +89,12 @@ On first start the mod writes `config/kronwerke/goals.json` with the first two s
 
 ### The obelisk
 
-The obelisk is the `kronwerke:obelisk` block: a pillar four blocks tall with a crystal on top, unbreakable outside creative mode. An operator places it (creative tab Operator Utilities, or `/give`) and it registers itself; `/kw admin obelisk set <pos>` still turns any other block into the obelisk.
+The obelisk is a build: the `kronwerke:obelisk` core in the middle of a 5x5 plinth, a 3x3 step, four shaft segments and the crystal on top with a beacon style beam, eight blocks tall and unbreakable outside creative mode. An operator places the core (creative tab Operator Utilities, or `/give`) or runs `/kw admin obelisk build <pos>`, and the rest appears around it; breaking the core in creative mode removes the build. `/kw admin obelisk set <pos>` still turns any other block into the obelisk. Every block of the build takes deposits.
+
+Machines feed the obelisk through the **intake** (`kronwerke:obelisk_intake`, functional blocks tab): a pedestal a player places within `feederRadius` of the core. Whatever a pipe, hopper or belt pushes into it goes into the goal under that player's name; what the goal does not want is refused, so the pipe keeps it. The old behaviour where any container next to the obelisk became a feeder is off (`obelisk.containerFeeders`).
 
 - **Right click** it to hand in the stack in your hand. Sneak and right click to hand in everything in your inventory that the goal takes. When nothing fits, it says what it wants.
-- **Feeders.** A chest, barrel or any other container placed within `feederRadius` blocks of the obelisk (3 by default) becomes a feeder of the player who placed it, up to `feedersPerPlayer` (2). Every `feederInterval` seconds the mod takes whatever the goal can use out of every feeder and counts it for its owner. Anything the goal does not want stays in the container. Pipe a factory into your feeder and it pays into the goal while you sleep.
+- **Feeders (off by default).** With `containerFeeders`, a chest, barrel or any other container placed within `feederRadius` blocks of the obelisk becomes a feeder of the player who placed it, up to `feedersPerPlayer`, drained every `feederInterval` seconds. The intake replaces this.
 - The hold point applies to feeders too: at 98 percent they stop being emptied until the event.
 - Players need build rights next to the obelisk to place a feeder. Admins can also set one with `/kw admin obelisk feeder <pos> <player>`.
 
@@ -134,9 +136,10 @@ Ranks are scoreboard teams with a glyph prefix from the Nautical Ranks resource 
 
 ## Spawn, join kit and locked dimensions
 
-- `spawn.radius` (96) protects the square around the overworld spawn: no breaking or placing by players without op, no block damage from explosions, no mob griefing, no hostile spawns, no PvP. Containers next to the obelisk stay allowed, so feeders work. 0 turns it off.
+- `spawn.radius` (96) protects the square around the overworld spawn: no breaking or placing by players without op, no block damage from explosions, no mob griefing, no hostile spawns, no PvP. Intakes next to the obelisk stay allowed. 0 turns it off.
+- `spawn.blastProof` lists blocks no explosion removes anywhere (bedrock, end portal frames and portals, end gateways and reinforced deepslate are always kept; the Cataclysm altars and boss respawners by default). Patterns with `*` work.
 
-- Every player gets the `join.kit` items once, on the first join (a waystone and warp dust by default).
+- Every player gets the `join.kit` items once, on the first join (a waystone and warp dust by default). The client asks for the language (Deutsch or English) after the first join and remembers the answer in its config.
 - `dimensions.locked` lists dimensions as `dimension=stage`. A player without the stage cannot enter, by portal or by command; creative players can. The Nether opens with stage 2, the End with stage 4 by default.
 - Items in goals and messages are shown by name, tags as "Bruchstein (alle Arten)".
 

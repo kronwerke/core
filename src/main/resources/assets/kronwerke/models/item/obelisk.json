@@ -1,5 +1,5 @@
 {
- "parent": "kronwerke:block/obelisk",
+ "parent": "kronwerke:block/obelisk_top",
  "display": {
   "gui": {
    "rotation": [
@@ -9,21 +9,16 @@
    ],
    "translation": [
     0,
-    -5,
+    -2,
     0
    ],
    "scale": [
-    0.35,
-    0.35,
-    0.35
+    0.5,
+    0.5,
+    0.5
    ]
   },
   "ground": {
-   "translation": [
-    0,
-    3,
-    0
-   ],
    "scale": [
     0.25,
     0.25,
@@ -33,13 +28,13 @@
   "fixed": {
    "translation": [
     0,
-    -6,
+    -4,
     0
    ],
    "scale": [
-    0.4,
-    0.4,
-    0.4
+    0.5,
+    0.5,
+    0.5
    ]
   },
   "thirdperson_righthand": {
@@ -48,15 +43,10 @@
     45,
     0
    ],
-   "translation": [
-    0,
-    1,
-    0
-   ],
    "scale": [
-    0.2,
-    0.2,
-    0.2
+    0.3,
+    0.3,
+    0.3
    ]
   },
   "firstperson_righthand": {
@@ -67,13 +57,13 @@
    ],
    "translation": [
     0,
-    -3,
+    -2,
     0
    ],
    "scale": [
-    0.2,
-    0.2,
-    0.2
+    0.3,
+    0.3,
+    0.3
    ]
   }
  }

@@ -1,0 +1,80 @@
+{
+ "parent": "minecraft:block/block",
+ "render_type": "minecraft:cutout",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_shaft",
+  "shaft": "kronwerke:block/obelisk_shaft",
+  "runes": "kronwerke:block/obelisk_runes",
+  "band": "kronwerke:block/obelisk_band"
+ },
+ "elements": [
+  {
+   "from": [
+    2,
+    0,
+    2
+   ],
+   "to": [
+    14,
+    16,
+    14
+   ],
+   "faces": {
+    "north": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      0.0,
+      14,
+      16.0
+     ]
+    },
+    "south": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      0.0,
+      14,
+      16.0
+     ]
+    },
+    "east": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      0.0,
+      14,
+      16.0
+     ]
+    },
+    "west": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      0.0,
+      14,
+      16.0
+     ]
+    },
+    "up": {
+     "texture": "#band",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    },
+    "down": {
+     "texture": "#band",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    }
+   }
+  }
+ ]
+}

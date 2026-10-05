@@ -1,0 +1,218 @@
+{
+ "parent": "minecraft:block/block",
+ "render_type": "minecraft:cutout",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_plinth_side",
+  "plinth": "kronwerke:block/obelisk_plinth_side",
+  "top": "kronwerke:block/obelisk_plinth_top",
+  "band": "kronwerke:block/obelisk_band",
+  "shaft": "kronwerke:block/obelisk_shaft",
+  "funnel": "kronwerke:block/obelisk_funnel"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    4,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#plinth",
+     "uv": [
+      0,
+      6.0,
+      16,
+      10.0
+     ]
+    },
+    "south": {
+     "texture": "#plinth",
+     "uv": [
+      0,
+      6.0,
+      16,
+      10.0
+     ]
+    },
+    "east": {
+     "texture": "#plinth",
+     "uv": [
+      0,
+      6.0,
+      16,
+      10.0
+     ]
+    },
+    "west": {
+     "texture": "#plinth",
+     "uv": [
+      0,
+      6.0,
+      16,
+      10.0
+     ]
+    },
+    "up": {
+     "texture": "#top",
+     "uv": [
+      0,
+      0,
+      16,
+      16
+     ]
+    },
+    "down": {
+     "texture": "#top",
+     "uv": [
+      0,
+      0,
+      16,
+      16
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    2,
+    4,
+    2
+   ],
+   "to": [
+    14,
+    12,
+    14
+   ],
+   "faces": {
+    "north": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      4.0,
+      14,
+      12.0
+     ]
+    },
+    "south": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      4.0,
+      14,
+      12.0
+     ]
+    },
+    "east": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      4.0,
+      14,
+      12.0
+     ]
+    },
+    "west": {
+     "texture": "#shaft",
+     "uv": [
+      2,
+      4.0,
+      14,
+      12.0
+     ]
+    },
+    "up": {
+     "texture": "#band",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    },
+    "down": {
+     "texture": "#band",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    1,
+    12,
+    1
+   ],
+   "to": [
+    15,
+    16,
+    15
+   ],
+   "faces": {
+    "north": {
+     "texture": "#band",
+     "uv": [
+      1,
+      6.0,
+      15,
+      10.0
+     ]
+    },
+    "south": {
+     "texture": "#band",
+     "uv": [
+      1,
+      6.0,
+      15,
+      10.0
+     ]
+    },
+    "east": {
+     "texture": "#band",
+     "uv": [
+      1,
+      6.0,
+      15,
+      10.0
+     ]
+    },
+    "west": {
+     "texture": "#band",
+     "uv": [
+      1,
+      6.0,
+      15,
+      10.0
+     ]
+    },
+    "up": {
+     "texture": "#funnel",
+     "uv": [
+      1,
+      1,
+      15,
+      15
+     ]
+    },
+    "down": {
+     "texture": "#funnel",
+     "uv": [
+      1,
+      1,
+      15,
+      15
+     ]
+    }
+   }
+  }
+ ]
+}

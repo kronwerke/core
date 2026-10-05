@@ -12,6 +12,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue BROADCAST_DEPOSITS;
     public static final ModConfigSpec.IntValue BROADCAST_DEPOSIT_MIN;
     public static final ModConfigSpec.IntValue FEEDER_RADIUS;
+    public static final ModConfigSpec.BooleanValue CONTAINER_FEEDERS;
     public static final ModConfigSpec.IntValue FEEDERS_PER_PLAYER;
     public static final ModConfigSpec.IntValue FEEDER_INTERVAL;
     public static final ModConfigSpec.IntValue SCALE_BASE_PLAYERS;
@@ -24,6 +25,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
     public static final ModConfigSpec.ConfigValue<String> TAB_LINE;
 
@@ -65,6 +67,8 @@ public final class KronwerkeConfig {
         b.push("spawn");
         SPAWN_RADIUS = b.comment("Half the side of the protected square around the overworld spawn, in blocks. 0 turns the protection off. Operators and creative players build freely; containers next to the obelisk stay allowed for feeders.")
                 .defineInRange("radius", 96, 0, 2048);
+        BLAST_PROOF = b.comment("Blocks no explosion removes, anywhere: block ids, or a namespace prefix ending in *. Bedrock, end portal frames, end portals and gateways and reinforced deepslate are always kept.")
+                .defineListAllowEmpty("blastProof", java.util.List.of("cataclysm:altar_of_*", "cataclysm:boss_respawner", "cataclysm:*spawner*"), o -> o instanceof String);
         b.pop();
 
         b.push("tab");
@@ -75,7 +79,9 @@ public final class KronwerkeConfig {
         b.pop();
 
         b.push("obelisk");
-        FEEDER_RADIUS = b.comment("A container placed this many blocks from the obelisk or closer becomes a feeder of the player who placed it.")
+        CONTAINER_FEEDERS = b.comment("Old behaviour: any container placed next to the obelisk becomes a feeder. Off, the intake block is the only way in for machines.")
+                .define("containerFeeders", false);
+        FEEDER_RADIUS = b.comment("An intake (or, with containerFeeders, a container) this many blocks from the obelisk's core or closer is connected.")
                 .defineInRange("feederRadius", 3, 1, 16);
         FEEDERS_PER_PLAYER = b.comment("How many feeders one player can have.")
                 .defineInRange("feedersPerPlayer", 2, 0, 64);

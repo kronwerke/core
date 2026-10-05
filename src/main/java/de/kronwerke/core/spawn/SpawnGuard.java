@@ -25,8 +25,8 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
  * The area around the world spawn, kept the way the team built it. Inside spawn.radius
  * blocks of the overworld spawn nobody but operators breaks or places blocks, no explosion
  * takes a block, no mob griefs, no hostile mob spawns and no player hurts another. Doors,
- * buttons, waystones and the obelisk keep working. A container next to the obelisk may be
- * placed by anyone, so feeders keep working; nothing else may.
+ * buttons, waystones and the obelisk keep working. An intake next to the obelisk may be
+ * placed by anyone and taken back by its owner; nothing else may.
  */
 public final class SpawnGuard {
     private SpawnGuard() {
@@ -52,7 +52,7 @@ public final class SpawnGuard {
         if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return false;
         BlockPos o = d.pos();
         int r = KronwerkeConfig.FEEDER_RADIUS.get();
-        return Math.abs(pos.getX() - o.getX()) <= r && Math.abs(pos.getY() - o.getY()) <= r && Math.abs(pos.getZ() - o.getZ()) <= r;
+        return Math.abs(pos.getX() - o.getX()) <= r + 2 && Math.abs(pos.getY() - o.getY()) <= r + 2 && Math.abs(pos.getZ() - o.getZ()) <= r + 2;
     }
 
     private static void tell(Entity entity) {
@@ -63,7 +63,8 @@ public final class SpawnGuard {
 
     public static void onBreak(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !inside(level, event.getPos()) || mayBuild(event.getPlayer())) return;
-        // a player takes back their own feeder
+        // a player takes back their own intake or feeder
+        if (level.getBlockEntity(event.getPos()) instanceof de.kronwerke.core.obelisk.ObeliskIntakeBlockEntity be && event.getPlayer().getUUID().equals(be.owner())) return;
         if (nearObelisk(level, event.getPos()) && event.getPlayer().getUUID().equals(Obelisk.get().data().feeder(event.getPos()))) return;
         event.setCanceled(true);
         tell(event.getPlayer());
@@ -71,7 +72,8 @@ public final class SpawnGuard {
 
     public static void onPlace(BlockEvent.EntityPlaceEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !inside(level, event.getPos()) || mayBuild(event.getEntity())) return;
-        if (nearObelisk(level, event.getPos()) && level.getCapability(Capabilities.ItemHandler.BLOCK, event.getPos(), null) != null) return;
+        if (nearObelisk(level, event.getPos()) && (event.getPlacedBlock().is(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK_INTAKE.get())
+                || (KronwerkeConfig.CONTAINER_FEEDERS.get() && level.getCapability(Capabilities.ItemHandler.BLOCK, event.getPos(), null) != null))) return;
         event.setCanceled(true);
         tell(event.getEntity());
     }
@@ -87,9 +89,37 @@ public final class SpawnGuard {
         }
     }
 
+    /** Spawn stays whole, and a few blocks survive every explosion anywhere: bedrock, end portal frames, boss altars. */
     public static void onExplosion(ExplosionEvent.Detonate event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
-        event.getAffectedBlocks().removeIf(p -> inside(level, p));
+        event.getAffectedBlocks().removeIf(p -> inside(level, p) || keeps(level.getBlockState(p)));
+    }
+
+    /** A pattern is an id, or an id with * standing for anything. */
+    static boolean matches(String id, String pattern) {
+        if (!pattern.contains("*")) return id.equals(pattern);
+        String[] parts = pattern.split("\\*", -1);
+        int at = 0;
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (part.isEmpty()) continue;
+            int found = i == 0 ? (id.startsWith(part) ? 0 : -1) : id.indexOf(part, at);
+            if (found < 0) return false;
+            at = found + part.length();
+            if (i == parts.length - 1 && !id.endsWith(part)) return false;
+        }
+        return true;
+    }
+
+    private static boolean keeps(BlockState state) {
+        if (state.is(net.minecraft.world.level.block.Blocks.BEDROCK) || state.is(net.minecraft.world.level.block.Blocks.END_PORTAL_FRAME)
+                || state.is(net.minecraft.world.level.block.Blocks.END_PORTAL) || state.is(net.minecraft.world.level.block.Blocks.END_GATEWAY)
+                || state.is(net.minecraft.world.level.block.Blocks.REINFORCED_DEEPSLATE)) return true;
+        String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+        for (String keep : KronwerkeConfig.BLAST_PROOF.get()) {
+            if (matches(id, keep)) return true;
+        }
+        return false;
     }
 
     public static void onMobGriefing(EntityMobGriefingEvent event) {

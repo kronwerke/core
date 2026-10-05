@@ -40,6 +40,9 @@ public class KronwerkeCore {
 
     public KronwerkeCore(IEventBus modBus, ModContainer container) {
         container.registerConfig(ModConfig.Type.COMMON, KronwerkeConfig.SPEC);
+        if (FMLEnvironment.dist == Dist.CLIENT) {
+            de.kronwerke.core.client.ClientSetup.register(container, modBus);
+        }
         quietRcon();
         de.kronwerke.core.obelisk.ObeliskBlocks.register(modBus);
         modBus.addListener(de.kronwerke.core.net.KwNetwork::register);
