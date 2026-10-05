@@ -299,9 +299,11 @@ public final class GoalManager {
                     take = Math.min(take, Math.max(0, allowed) / it.points());
                     if (take <= 0) continue;
                 }
+                ItemStack shown = stack.copyWithCount(1);
                 stack.shrink((int) take);
                 long now = data().add(g.id(), it.item(), who, take);
                 remember(g.id(), name, it.item(), take);
+                de.kronwerke.core.obelisk.Obelisk.get().onDeposit(g, it, shown, who, take);
                 if (announce && KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
                     server.getPlayerList().broadcastSystemMessage(Text.t("goal.deposit", "%s gibt %s %s ab (%s/%s)", name,
                             Component.literal(Text.number(take)).withStyle(ChatFormatting.WHITE), Text.item(it.item()),

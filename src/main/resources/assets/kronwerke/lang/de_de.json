@@ -22,5 +22,9 @@
   "block.kronwerke.obelisk_top": "Obelisk (Spitze)",
   "block.kronwerke.obelisk_shaft": "Obelisk (Schaft)",
   "block.kronwerke.obelisk_plinth": "Obelisk-Sockel",
-  "block.kronwerke.obelisk_intake": "Zubringer"
+  "block.kronwerke.obelisk_intake": "Zubringer",
+  "block.kronwerke.obelisk_trunk": "Obelisk (Stamm)",
+  "block.kronwerke.obelisk_runes": "Obelisk (Runenband)",
+  "block.kronwerke.obelisk_pedestal": "Obelisk-Säule",
+  "block.kronwerke.obelisk_board": "Ranglisten-Tafel"
 }

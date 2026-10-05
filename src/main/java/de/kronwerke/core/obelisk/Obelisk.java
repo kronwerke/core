@@ -139,11 +139,162 @@ public final class Obelisk {
         d.removeFeeder(event.getPos());
     }
 
+    private int displayTicks;
+
     public void onServerTick(ServerTickEvent.Post event) {
         if (server == null) return;
+        if (++displayTicks >= 100) {
+            displayTicks = 0;
+            refreshDisplays();
+        }
         if (++ticks < KronwerkeConfig.FEEDER_INTERVAL.get() * 20) return;
         ticks = 0;
         drain();
+    }
+
+    // ---- pedestals and the leaderboard wall ----
+
+    private ServerLevel obeliskLevel() {
+        ObeliskData d = data();
+        if (!d.isSet()) return null;
+        return server.getLevel(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(d.dimension())));
+    }
+
+    private ObeliskPedestalBlockEntity pedestal(ServerLevel level, int index) {
+        BlockPos p = ObeliskStructure.pedestal(data().pos(), index);
+        if (!level.isLoaded(p)) return null;
+        return level.getBlockEntity(p) instanceof ObeliskPedestalBlockEntity pe ? pe : null;
+    }
+
+    /** Share of a pillar that is done, by points. */
+    private static int pillarPercent(GoalManager gm, Goal g, Goal.Pillar pillar) {
+        long need = 0, have = 0;
+        for (Goal.PillarItem it : pillar.items()) {
+            long t = gm.progressData().target(g.id(), it.item());
+            need += t * it.points();
+            have += Math.min(t, gm.progressData().progress(g.id(), it.item())) * it.points();
+        }
+        return need <= 0 ? 0 : (int) Math.floor(100.0 * have / need);
+    }
+
+    /** Called by the goal manager for every deposit: the pedestal of the pillar shows the item, a trail runs to the trunk. */
+    public void onDeposit(Goal g, Goal.PillarItem item, ItemStack shown, UUID who, long amount) {
+        if (server == null) return;
+        ServerLevel level = obeliskLevel();
+        if (level == null) return;
+        GoalManager gm = GoalManager.get();
+        int index = -1;
+        for (int i = 0; i < g.pillars().size() && i < 3; i++) {
+            if (g.pillars().get(i).items().contains(item)) index = i;
+        }
+        String line = nameOf(who) + "  +" + Text.number(amount);
+        if (index >= 0) {
+            Goal.Pillar pillar = g.pillars().get(index);
+            ObeliskPedestalBlockEntity pe = pedestal(level, index);
+            if (pe != null) pe.show(shown, pillar.title() + "  " + pillarPercent(gm, g, pillar) + "%", line);
+            trail(level, index);
+        }
+        ObeliskPedestalBlockEntity last = pedestal(level, 3);
+        if (last != null) last.show(shown, "Zuletzt", line);
+        trail(level, 3);
+    }
+
+    private void trail(ServerLevel level, int index) {
+        BlockPos from = ObeliskStructure.pedestal(data().pos(), index);
+        BlockPos to = data().pos().above(5);
+        for (int i = 0; i <= 14; i++) {
+            double t = i / 14.0;
+            double x = from.getX() + 0.5 + (to.getX() - from.getX()) * t;
+            double y = from.getY() + 1.4 + (to.getY() - from.getY() - 0.9) * t + Math.sin(t * Math.PI) * 1.5;
+            double z = from.getZ() + 0.5 + (to.getZ() - from.getZ()) * t;
+            level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD, x, y, z, 1, 0, 0, 0, 0);
+        }
+    }
+
+    /** Every five seconds: the pillar progress above the pedestals and the lines of the wall. */
+    public void refreshDisplays() {
+        ServerLevel level = obeliskLevel();
+        if (level == null) return;
+        GoalManager gm = GoalManager.get();
+        List<Goal> active = gm.activeGoals();
+        Goal g = active.isEmpty() ? null : active.get(0);
+        for (int i = 0; i < 3; i++) {
+            ObeliskPedestalBlockEntity pe = pedestal(level, i);
+            if (pe == null) continue;
+            if (g == null || i >= g.pillars().size()) {
+                pe.show(null, "", pe.line());
+                continue;
+            }
+            Goal.Pillar pillar = g.pillars().get(i);
+            pe.show(null, pillar.title() + "  " + pillarPercent(gm, g, pillar) + "%", pe.line());
+        }
+        refreshBoard(level, g);
+    }
+
+    private void refreshBoard(ServerLevel level, Goal active) {
+        ObeliskData d = data();
+        if (d.board() == null || !level.isLoaded(d.board())) return;
+        if (!(level.getBlockEntity(d.board()) instanceof ObeliskBoardBlockEntity be)) return;
+        GoalManager gm = GoalManager.get();
+        Goal g = active;
+        if (g == null) {
+            for (Goal each : gm.allGoals()) if (gm.progressData().isCompleted(each.id())) g = each;
+        }
+        List<String> lines = new ArrayList<>();
+        lines.add("Die fleißigsten Hände");
+        var season = de.kronwerke.core.season.Season.get();
+        String sub = g == null ? "" : g.title();
+        if (!season.running()) sub = sub.isEmpty() ? "Vorbereitung" : sub + ", Vorbereitung";
+        lines.add(sub);
+        if (g != null) {
+            int rank = 1;
+            for (Map.Entry<UUID, Long> e : gm.leaderboard(g, Math.max(3, d.boardHeight() * 3 - 3))) {
+                lines.add(rank++ + ".  " + nameOf(e.getKey()) + "\t" + Text.number(e.getValue()));
+            }
+        }
+        if (lines.size() == 2) lines.add("Noch hat niemand etwas gegeben.\t");
+        be.show(lines);
+    }
+
+    /** Puts the wall up in front of the player, facing them; an older wall is taken down first. */
+    public String placeBoard(ServerPlayer player, int width, int height) {
+        ServerLevel level = player.serverLevel();
+        ObeliskData d = data();
+        removeBoard();
+        net.minecraft.core.Direction look = player.getDirection();
+        net.minecraft.core.Direction facing = look.getOpposite();
+        net.minecraft.core.Direction right = look.getClockWise();
+        BlockPos center = player.blockPosition().relative(look, 4);
+        BlockPos anchor = center.relative(right, -(width / 2));
+        var state = ObeliskBlocks.OBELISK_BOARD.get().defaultBlockState().setValue(ObeliskBoardBlock.FACING, facing);
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                BlockPos p = anchor.relative(right, i).above(j);
+                level.setBlock(p, state.setValue(ObeliskBoardBlock.ANCHOR, i == 0 && j == 0), 3);
+            }
+        }
+        if (level.getBlockEntity(anchor) instanceof ObeliskBoardBlockEntity be) be.setSize(width, height);
+        d.setBoard(anchor, facing.getName(), width, height);
+        refreshDisplays();
+        return "Die Ranglisten-Wand steht bei " + anchor.getX() + " " + anchor.getY() + " " + anchor.getZ() + ".";
+    }
+
+    public boolean removeBoard() {
+        ObeliskData d = data();
+        if (d.board() == null) return false;
+        ServerLevel level = obeliskLevel();
+        if (level == null) level = server.overworld();
+        net.minecraft.core.Direction facing = net.minecraft.core.Direction.byName(d.boardFacing());
+        if (facing == null) facing = net.minecraft.core.Direction.NORTH;
+        net.minecraft.core.Direction right = facing.getOpposite().getClockWise();
+        for (int i = 0; i < d.boardWidth(); i++) {
+            for (int j = 0; j < d.boardHeight(); j++) {
+                BlockPos p = d.board().relative(right, i).above(j);
+                if (level.getBlockState(p).is(ObeliskBlocks.OBELISK_BOARD.get())) level.removeBlock(p, false);
+            }
+        }
+        d.setBoard(null, "north", 0, 0);
+        return true;
     }
 
     /** Moves everything the active goal can take out of every feeder. Returns what was moved. */
@@ -187,10 +338,9 @@ public final class Obelisk {
         if (!KronwerkeConfig.BROADCAST_DEPOSITS.get()) return;
         delivered.forEach((item, n) -> {
             if (n < KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) return;
-            server.getPlayerList().broadcastSystemMessage(Component.literal("")
-                    .append(name.copy().withStyle(ChatFormatting.WHITE))
-                    .append(Component.literal("'s feeder delivered " + n + " ").withStyle(ChatFormatting.GRAY))
-                    .append(Component.literal(item).withStyle(ChatFormatting.AQUA)), false);
+            server.getPlayerList().broadcastSystemMessage(Text.t("obelisk.feeder_delivered", "Zubringer von %s liefert %s %s",
+                    name.copy().withStyle(ChatFormatting.WHITE), Component.literal(Text.number(n)).withStyle(ChatFormatting.WHITE),
+                    Component.literal(item).withStyle(ChatFormatting.AQUA)).withStyle(ChatFormatting.GRAY), false);
         });
     }
 

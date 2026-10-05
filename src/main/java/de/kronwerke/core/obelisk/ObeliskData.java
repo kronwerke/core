@@ -22,6 +22,10 @@ public class ObeliskData extends SavedData {
     private String dimension;
     private BlockPos pos;
     private final Map<BlockPos, UUID> feeders = new LinkedHashMap<>();
+    /** the leaderboard wall: its anchor, the way it faces, its size */
+    private BlockPos board;
+    private String boardFacing = "north";
+    private int boardWidth, boardHeight;
 
     public boolean isSet() {
         return pos != null && dimension != null;
@@ -46,6 +50,30 @@ public class ObeliskData extends SavedData {
         dimension = null;
         pos = null;
         feeders.clear();
+        setDirty();
+    }
+
+    public BlockPos board() {
+        return board;
+    }
+
+    public String boardFacing() {
+        return boardFacing;
+    }
+
+    public int boardWidth() {
+        return boardWidth;
+    }
+
+    public int boardHeight() {
+        return boardHeight;
+    }
+
+    public void setBoard(BlockPos anchor, String facing, int width, int height) {
+        board = anchor == null ? null : anchor.immutable();
+        boardFacing = facing;
+        boardWidth = width;
+        boardHeight = height;
         setDirty();
     }
 
@@ -79,6 +107,13 @@ public class ObeliskData extends SavedData {
             CompoundTag f = list.getCompound(i);
             d.feeders.put(BlockPos.of(f.getLong("pos")), f.getUUID("owner"));
         }
+        if (tag.contains("board")) {
+            CompoundTag b = tag.getCompound("board");
+            d.board = BlockPos.of(b.getLong("pos"));
+            d.boardFacing = b.getString("facing");
+            d.boardWidth = b.getInt("width");
+            d.boardHeight = b.getInt("height");
+        }
         return d;
     }
 
@@ -96,6 +131,14 @@ public class ObeliskData extends SavedData {
             list.add(f);
         });
         tag.put("feeders", list);
+        if (board != null) {
+            CompoundTag b = new CompoundTag();
+            b.putLong("pos", board.asLong());
+            b.putString("facing", boardFacing);
+            b.putInt("width", boardWidth);
+            b.putInt("height", boardHeight);
+            tag.put("board", b);
+        }
         return tag;
     }
 }

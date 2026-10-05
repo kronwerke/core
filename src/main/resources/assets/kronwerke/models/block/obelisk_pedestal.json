@@ -1,0 +1,216 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_pedestal_side",
+  "side": "kronwerke:block/obelisk_pedestal_side",
+  "plinth": "kronwerke:block/obelisk_plinth_side",
+  "cap": "kronwerke:block/obelisk_cap",
+  "top": "kronwerke:block/obelisk_plinth_top"
+ },
+ "elements": [
+  {
+   "from": [
+    3,
+    0,
+    3
+   ],
+   "to": [
+    13,
+    2,
+    13
+   ],
+   "faces": {
+    "north": {
+     "texture": "#plinth",
+     "uv": [
+      3,
+      14,
+      13,
+      16
+     ]
+    },
+    "south": {
+     "texture": "#plinth",
+     "uv": [
+      3,
+      14,
+      13,
+      16
+     ]
+    },
+    "east": {
+     "texture": "#plinth",
+     "uv": [
+      3,
+      14,
+      13,
+      16
+     ]
+    },
+    "west": {
+     "texture": "#plinth",
+     "uv": [
+      3,
+      14,
+      13,
+      16
+     ]
+    },
+    "up": {
+     "texture": "#top",
+     "uv": [
+      3,
+      3,
+      13,
+      13
+     ]
+    },
+    "down": {
+     "texture": "#top",
+     "uv": [
+      3,
+      3,
+      13,
+      13
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    5,
+    2,
+    5
+   ],
+   "to": [
+    11,
+    12,
+    11
+   ],
+   "faces": {
+    "north": {
+     "texture": "#plinth",
+     "uv": [
+      5,
+      4,
+      11,
+      14
+     ]
+    },
+    "south": {
+     "texture": "#plinth",
+     "uv": [
+      5,
+      4,
+      11,
+      14
+     ]
+    },
+    "east": {
+     "texture": "#plinth",
+     "uv": [
+      5,
+      4,
+      11,
+      14
+     ]
+    },
+    "west": {
+     "texture": "#plinth",
+     "uv": [
+      5,
+      4,
+      11,
+      14
+     ]
+    },
+    "up": {
+     "texture": "#top",
+     "uv": [
+      5,
+      5,
+      11,
+      11
+     ]
+    },
+    "down": {
+     "texture": "#top",
+     "uv": [
+      5,
+      5,
+      11,
+      11
+     ]
+    }
+   }
+  },
+  {
+   "from": [
+    2,
+    12,
+    2
+   ],
+   "to": [
+    14,
+    16,
+    14
+   ],
+   "faces": {
+    "north": {
+     "texture": "#side",
+     "uv": [
+      2,
+      0,
+      14,
+      4
+     ]
+    },
+    "south": {
+     "texture": "#side",
+     "uv": [
+      2,
+      0,
+      14,
+      4
+     ]
+    },
+    "east": {
+     "texture": "#side",
+     "uv": [
+      2,
+      0,
+      14,
+      4
+     ]
+    },
+    "west": {
+     "texture": "#side",
+     "uv": [
+      2,
+      0,
+      14,
+      4
+     ]
+    },
+    "up": {
+     "texture": "#cap",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    },
+    "down": {
+     "texture": "#cap",
+     "uv": [
+      2,
+      2,
+      14,
+      14
+     ]
+    }
+   }
+  }
+ ]
+}

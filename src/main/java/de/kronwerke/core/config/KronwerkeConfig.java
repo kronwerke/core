@@ -111,7 +111,7 @@ public final class KronwerkeConfig {
         CONTAINER_FEEDERS = b.comment("Old behaviour: any container placed next to the obelisk becomes a feeder. Off, the intake block is the only way in for machines.")
                 .define("containerFeeders", false);
         FEEDER_RADIUS = b.comment("The zone around the obelisk's core, in blocks: intakes work there, and inside the spawn protection anyone may place and take back their own hoppers, pipes and belts there.")
-                .defineInRange("feederRadius", 8, 1, 32);
+                .defineInRange("feederRadius", 10, 1, 32);
         FEEDERS_PER_PLAYER = b.comment("How many feeders one player can have.")
                 .defineInRange("feedersPerPlayer", 2, 0, 64);
         FEEDER_INTERVAL = b.comment("Empty the feeders into the active goal every this many seconds.")

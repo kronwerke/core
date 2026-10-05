@@ -13,6 +13,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 
 /**
  * /kw admin obelisk ...
@@ -36,6 +37,17 @@ final class ObeliskCommand {
                     return 1;
                 }))
                 .then(Commands.literal("info").executes(ObeliskCommand::info))
+                .then(Commands.literal("board")
+                        .executes(c -> board(c, 7, 4))
+                        .then(Commands.literal("remove").executes(c -> {
+                            if (Obelisk.get().removeBoard()) ok(c, "Die Ranglisten-Wand ist abgebaut.");
+                            else fail(c, "Es steht keine Ranglisten-Wand.");
+                            return 1;
+                        }))
+                        .then(Commands.argument("width", com.mojang.brigadier.arguments.IntegerArgumentType.integer(3, 15))
+                                .then(Commands.argument("height", com.mojang.brigadier.arguments.IntegerArgumentType.integer(2, 8))
+                                        .executes(c -> board(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "width"),
+                                                com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "height"))))))
                 .then(Commands.literal("feeder").then(Commands.argument("pos", BlockPosArgument.blockPos())
                         .then(Commands.argument("player", StringArgumentType.word()).executes(ObeliskCommand::feeder))))
                 .then(Commands.literal("unfeeder").then(Commands.argument("pos", BlockPosArgument.blockPos()).executes(ObeliskCommand::unfeeder)))
@@ -59,6 +71,13 @@ final class ObeliskCommand {
         String dim = level.dimension().location().toString();
         d.set(dim, pos);
         ok(c, "OK obelisk built at " + dim + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+        return 1;
+    }
+
+    /** The leaderboard wall, four blocks in front of the player and facing them. */
+    private static int board(CommandContext<CommandSourceStack> c, int width, int height) throws CommandSyntaxException {
+        ServerPlayer p = c.getSource().getPlayerOrException();
+        ok(c, Obelisk.get().placeBoard(p, width, height));
         return 1;
     }
 

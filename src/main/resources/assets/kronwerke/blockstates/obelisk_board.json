@@ -1,0 +1,36 @@
+{
+ "variants": {
+  "anchor=false,facing=north": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 0
+  },
+  "anchor=true,facing=north": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 0
+  },
+  "anchor=false,facing=east": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 90
+  },
+  "anchor=true,facing=east": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 90
+  },
+  "anchor=false,facing=south": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 180
+  },
+  "anchor=true,facing=south": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 180
+  },
+  "anchor=false,facing=west": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 270
+  },
+  "anchor=true,facing=west": {
+   "model": "kronwerke:block/obelisk_board",
+   "y": 270
+  }
+ }
+}

@@ -46,6 +46,18 @@ public final class ObeliskBlocks {
     public static final DeferredBlock<ObeliskPartBlock> OBELISK_PLINTH = BLOCKS.register("obelisk_plinth",
             () -> new ObeliskPartBlock(stone(0).sound(SoundType.DEEPSLATE_BRICKS), Shapes.block()));
 
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_TRUNK = BLOCKS.register("obelisk_trunk",
+            () -> new ObeliskPartBlock(stone(0).sound(SoundType.DEEPSLATE_BRICKS), Shapes.block()));
+
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_RUNES = BLOCKS.register("obelisk_runes",
+            () -> new ObeliskPartBlock(stone(12).sound(SoundType.DEEPSLATE_BRICKS), Shapes.block()));
+
+    public static final DeferredBlock<ObeliskPedestalBlock> OBELISK_PEDESTAL = BLOCKS.register("obelisk_pedestal",
+            () -> new ObeliskPedestalBlock(stone(7).sound(SoundType.DEEPSLATE_BRICKS)));
+
+    public static final DeferredBlock<ObeliskBoardBlock> OBELISK_BOARD = BLOCKS.register("obelisk_board",
+            () -> new ObeliskBoardBlock(stone(0).sound(SoundType.POLISHED_DEEPSLATE)));
+
     public static final DeferredBlock<ObeliskTopBlock> OBELISK_TOP = BLOCKS.register("obelisk_top",
             () -> new ObeliskTopBlock(stone(15).sound(SoundType.AMETHYST)));
 
@@ -62,6 +74,10 @@ public final class ObeliskBlocks {
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ObeliskTopBlockEntity>> OBELISK_TOP_ENTITY = ENTITIES.register("obelisk_top",
             () -> BlockEntityType.Builder.of(ObeliskTopBlockEntity::new, OBELISK_TOP.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ObeliskPedestalBlockEntity>> OBELISK_PEDESTAL_ENTITY = ENTITIES.register("obelisk_pedestal",
+            () -> BlockEntityType.Builder.of(ObeliskPedestalBlockEntity::new, OBELISK_PEDESTAL.get()).build(null));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ObeliskBoardBlockEntity>> OBELISK_BOARD_ENTITY = ENTITIES.register("obelisk_board",
+            () -> BlockEntityType.Builder.of(ObeliskBoardBlockEntity::new, OBELISK_BOARD.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ObeliskIntakeBlockEntity>> OBELISK_INTAKE_ENTITY = ENTITIES.register("obelisk_intake",
             () -> BlockEntityType.Builder.of(ObeliskIntakeBlockEntity::new, OBELISK_INTAKE.get()).build(null));
 

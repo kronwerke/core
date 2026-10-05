@@ -13,8 +13,11 @@ public final class ClientSetup {
 
     public static void register(ModContainer container, net.neoforged.bus.api.IEventBus modBus) {
         container.registerConfig(ModConfig.Type.CLIENT, KronwerkeClientConfig.SPEC);
-        modBus.addListener((net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers e) ->
-                e.registerBlockEntityRenderer(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK_TOP_ENTITY.get(), ObeliskBeamRenderer::new));
+        modBus.addListener((net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers e) -> {
+            e.registerBlockEntityRenderer(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK_TOP_ENTITY.get(), ObeliskBeamRenderer::new);
+            e.registerBlockEntityRenderer(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK_PEDESTAL_ENTITY.get(), PedestalRenderer::new);
+            e.registerBlockEntityRenderer(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK_BOARD_ENTITY.get(), BoardRenderer::new);
+        });
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> LanguageScreen.showIfNeeded());
     }
 }

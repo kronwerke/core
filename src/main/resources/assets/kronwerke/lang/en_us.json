@@ -28,5 +28,9 @@
   "block.kronwerke.obelisk_top": "Obelisk (top)",
   "block.kronwerke.obelisk_shaft": "Obelisk (shaft)",
   "block.kronwerke.obelisk_plinth": "Obelisk plinth",
-  "block.kronwerke.obelisk_intake": "Obelisk intake"
+  "block.kronwerke.obelisk_intake": "Obelisk intake",
+  "block.kronwerke.obelisk_trunk": "Obelisk (trunk)",
+  "block.kronwerke.obelisk_runes": "Obelisk (rune band)",
+  "block.kronwerke.obelisk_pedestal": "Obelisk pedestal",
+  "block.kronwerke.obelisk_board": "Leaderboard slab"
 }

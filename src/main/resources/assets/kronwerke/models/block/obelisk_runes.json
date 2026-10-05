@@ -1,0 +1,66 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_runes",
+  "runes": "kronwerke:block/obelisk_runes",
+  "top": "kronwerke:block/obelisk_trunk"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    16,
+    16
+   ],
+   "neoforge_data": {
+    "block_light": 15,
+    "sky_light": 15
+   },
+   "faces": {
+    "north": {
+     "texture": "#runes",
+     "cullface": "north"
+    },
+    "south": {
+     "texture": "#runes",
+     "cullface": "south"
+    },
+    "east": {
+     "texture": "#runes",
+     "cullface": "east"
+    },
+    "west": {
+     "texture": "#runes",
+     "cullface": "west"
+    }
+   }
+  },
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    16,
+    16
+   ],
+   "faces": {
+    "up": {
+     "texture": "#top",
+     "cullface": "up"
+    },
+    "down": {
+     "texture": "#top",
+     "cullface": "down"
+    }
+   }
+  }
+ ]
+}
