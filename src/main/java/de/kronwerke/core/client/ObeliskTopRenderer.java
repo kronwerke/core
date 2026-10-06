@@ -68,6 +68,7 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         long gameTime = be.getLevel() == null ? 0 : be.getLevel().getGameTime();
         float time = gameTime + partialTick;
         int tier = be.tier();
+        ObeliskEffects.seen(be, be.getBlockPos().getX() + 0.5, be.getBlockPos().getY() + BASE_Y, be.getBlockPos().getZ() + 0.5);
         int mood = be.mood();
         float[] c = colour(be.percent(), mood, tier);
 
@@ -152,6 +153,26 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
             pose.mulPose(Axis.YP.rotationDegrees(-time * 3 + i * 120));
             pose.mulPose(Axis.ZP.rotationDegrees(held ? 60 : 20));
             octahedron(pose, vc, 0.2f, 0.08f, tint, glow, (frame + i * 2) % FRAMES, 0.9f);
+            pose.popPose();
+        }
+
+        // the rite's great beam: it comes down from the sky during the intake, and after the
+        // burst it wraps the whole trunk in gold and tightens back to the ordinary beam
+        if (riteT >= ObeliskRite.T_INTAKE && riteT < ObeliskRite.T_ROLL) {
+            pose.pushPose();
+            if (riteT < ObeliskRite.T_BURST) {
+                float p = (riteT - ObeliskRite.T_INTAKE) / ObeliskRite.INTAKE;
+                p = p * p;
+                int bottom = (int) (BASE_Y + 1 + 420 * (1 - p));
+                float radius = 0.4f + 2.6f * p;
+                BeaconRenderer.renderBeaconBeam(pose, buffer, BeaconRenderer.BEAM_LOCATION, partialTick, 1.0f, gameTime, bottom, 1024 - bottom, 0xFFFFFF, radius, radius + 0.6f);
+            } else {
+                float p = riteT < ObeliskRite.T_REFORM ? 0f : (riteT - ObeliskRite.T_REFORM) / ObeliskRite.REFORM;
+                float radius = Mth.lerp(p * p, 3.2f, 0.25f);
+                int gold = 0xF6D68C, white = 0xFFFFFF;
+                BeaconRenderer.renderBeaconBeam(pose, buffer, BeaconRenderer.BEAM_LOCATION, partialTick, 1.0f, gameTime, -17, 1024, gold, radius, radius + 1.2f);
+                BeaconRenderer.renderBeaconBeam(pose, buffer, BeaconRenderer.BEAM_LOCATION, partialTick, 0.5f, gameTime * 3, -17, 1024, white, radius * 0.55f, radius * 0.55f + 0.3f);
+            }
             pose.popPose();
         }
 

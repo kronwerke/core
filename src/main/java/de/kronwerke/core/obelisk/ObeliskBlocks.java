@@ -52,6 +52,20 @@ public final class ObeliskBlocks {
     public static final DeferredBlock<ObeliskPartBlock> OBELISK_RUNES = BLOCKS.register("obelisk_runes",
             () -> new ObeliskPartBlock(stone(12).sound(SoundType.DEEPSLATE_BRICKS), Shapes.block()));
 
+    // the blocks the tiers add around the build
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_BRASS = BLOCKS.register("obelisk_brass",
+            () -> new ObeliskPartBlock(stone(0).sound(SoundType.COPPER), Shapes.block()));
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_PYLON = BLOCKS.register("obelisk_pylon",
+            () -> new ObeliskPartBlock(stone(6).sound(SoundType.DEEPSLATE_BRICKS), Shapes.block()));
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_LANTERN = BLOCKS.register("obelisk_lantern",
+            () -> new ObeliskPartBlock(stone(15).sound(SoundType.LANTERN), Shapes.block()));
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_EMBER = BLOCKS.register("obelisk_ember",
+            () -> new ObeliskPartBlock(stone(9).sound(SoundType.DEEPSLATE), Shapes.block()));
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_ARCH = BLOCKS.register("obelisk_arch",
+            () -> new ObeliskPartBlock(stone(5).sound(SoundType.AMETHYST), Shapes.block()));
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_CROWN = BLOCKS.register("obelisk_crown",
+            () -> new ObeliskPartBlock(stone(12).sound(SoundType.COPPER), Shapes.block()));
+
     public static final DeferredBlock<ObeliskPedestalBlock> OBELISK_PEDESTAL = BLOCKS.register("obelisk_pedestal",
             () -> new ObeliskPedestalBlock(stone(7).sound(SoundType.DEEPSLATE_BRICKS)));
 
@@ -67,6 +81,13 @@ public final class ObeliskBlocks {
 
     public static final DeferredItem<Item> OBELISK_ITEM = ITEMS.register("obelisk",
             () -> new BlockItem(OBELISK.get(), new Item.Properties().fireResistant()));
+    public static final java.util.List<DeferredItem<Item>> TIER_ITEMS = java.util.List.of(
+            ITEMS.register("obelisk_brass", () -> new BlockItem(OBELISK_BRASS.get(), new Item.Properties())),
+            ITEMS.register("obelisk_pylon", () -> new BlockItem(OBELISK_PYLON.get(), new Item.Properties())),
+            ITEMS.register("obelisk_lantern", () -> new BlockItem(OBELISK_LANTERN.get(), new Item.Properties())),
+            ITEMS.register("obelisk_ember", () -> new BlockItem(OBELISK_EMBER.get(), new Item.Properties())),
+            ITEMS.register("obelisk_arch", () -> new BlockItem(OBELISK_ARCH.get(), new Item.Properties())),
+            ITEMS.register("obelisk_crown", () -> new BlockItem(OBELISK_CROWN.get(), new Item.Properties())));
     public static final DeferredItem<Item> OBELISK_PLINTH_ITEM = ITEMS.register("obelisk_plinth",
             () -> new BlockItem(OBELISK_PLINTH.get(), new Item.Properties().fireResistant()));
     public static final DeferredItem<Item> OBELISK_INTAKE_ITEM = ITEMS.register("obelisk_intake",
@@ -96,6 +117,7 @@ public final class ObeliskBlocks {
         if (event.getTabKey() == CreativeModeTabs.OP_BLOCKS) {
             event.accept(OBELISK_ITEM.get());
             event.accept(OBELISK_PLINTH_ITEM.get());
+            for (DeferredItem<Item> it : TIER_ITEMS) event.accept(it.get());
         }
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(OBELISK_INTAKE_ITEM.get());

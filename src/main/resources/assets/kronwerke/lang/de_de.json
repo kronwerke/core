@@ -26,5 +26,11 @@
   "block.kronwerke.obelisk_trunk": "Obelisk (Stamm)",
   "block.kronwerke.obelisk_runes": "Obelisk (Runenband)",
   "block.kronwerke.obelisk_pedestal": "Obelisk-Säule",
-  "block.kronwerke.obelisk_board": "Ranglisten-Tafel"
+  "block.kronwerke.obelisk_board": "Ranglisten-Tafel",
+  "block.kronwerke.obelisk_brass": "Obelisk-Messingintarsie",
+  "block.kronwerke.obelisk_pylon": "Obelisk-Pylon",
+  "block.kronwerke.obelisk_lantern": "Obelisk-Laterne",
+  "block.kronwerke.obelisk_ember": "Obelisk-Glutstein",
+  "block.kronwerke.obelisk_arch": "Obelisk-Bogenstein",
+  "block.kronwerke.obelisk_crown": "Obelisk-Krone"
 }

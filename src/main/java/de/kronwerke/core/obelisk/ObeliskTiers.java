@@ -6,7 +6,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EndRodBlock;
-import net.minecraft.world.level.block.LanternBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.ArrayList;
@@ -19,13 +18,13 @@ import java.util.List;
  *
  * <ul>
  * <li>Tier 1: the ground around the plinth is paved, a ring of deepslate tiles with brass
- * lines towards the four directions.</li>
- * <li>Tier 2: four pylons with lanterns at the edges of the pavement.</li>
- * <li>Tier 3: an outer ring of blackstone with crying obsidian at the corners, the lanterns
- * turn to soul lanterns.</li>
- * <li>Tier 4: four buttresses of end stone climb from the corners to the trunk, each with
- * an end rod at its foot.</li>
- * <li>Tier 5: a crown ring under the cap with eight end rods.</li>
+ * inlay lines towards the four directions.</li>
+ * <li>Tier 2: four pylons with a cyan core and a lantern at the edges of the pavement.</li>
+ * <li>Tier 3: an outer ring of blackstone with ember stones whose veins breathe, embers climb
+ * the pylons.</li>
+ * <li>Tier 4: four buttresses of arch stone with amethyst veins climb from the corners to the
+ * trunk, amethyst at their tops and an end rod at their feet.</li>
+ * <li>Tier 5: a crown of gilded stone under the cap with eight end rods.</li>
  * </ul>
  *
  * Everything placed is remembered in {@link ObeliskData#extras()}, so a rebuild takes it
@@ -51,7 +50,7 @@ public final class ObeliskTiers {
                     ring(core, r, (dx, dz) -> {
                         boolean line = dx == 0 || dz == 0;
                         boolean corner = Math.abs(dx) == Math.abs(dz);
-                        BlockState s = line ? Blocks.WAXED_CUT_COPPER.defaultBlockState()
+                        BlockState s = line ? ObeliskBlocks.OBELISK_BRASS.get().defaultBlockState()
                                 : corner || outer ? Blocks.POLISHED_DEEPSLATE.defaultBlockState() : Blocks.DEEPSLATE_TILES.defaultBlockState();
                         out.add(new Placement(core.offset(dx, -1, dz), s, true));
                     });
@@ -60,19 +59,20 @@ public final class ObeliskTiers {
             case 2 -> {
                 for (Direction d : Direction.Plane.HORIZONTAL) {
                     BlockPos foot = core.relative(d, 6);
-                    out.add(new Placement(foot, Blocks.CHISELED_DEEPSLATE.defaultBlockState(), false));
-                    out.add(new Placement(foot.above(), Blocks.POLISHED_DEEPSLATE_WALL.defaultBlockState(), false));
-                    out.add(new Placement(foot.above(2), Blocks.LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, false), false));
+                    out.add(new Placement(foot, ObeliskBlocks.OBELISK_PYLON.get().defaultBlockState(), false));
+                    out.add(new Placement(foot.above(), ObeliskBlocks.OBELISK_PYLON.get().defaultBlockState(), false));
+                    out.add(new Placement(foot.above(2), ObeliskBlocks.OBELISK_LANTERN.get().defaultBlockState(), false));
                 }
             }
             case 3 -> {
                 ring(core, 7, (dx, dz) -> {
-                    boolean corner = Math.abs(dx) == Math.abs(dz);
-                    BlockState s = corner ? Blocks.CRYING_OBSIDIAN.defaultBlockState() : Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
+                    boolean ember = Math.abs(dx) == Math.abs(dz) || dx == 0 || dz == 0;
+                    BlockState s = ember ? ObeliskBlocks.OBELISK_EMBER.get().defaultBlockState() : Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
                     out.add(new Placement(core.offset(dx, -1, dz), s, true));
                 });
+                // embers climb the pylons
                 for (Direction d : Direction.Plane.HORIZONTAL) {
-                    out.add(new Placement(core.relative(d, 6).above(2), Blocks.SOUL_LANTERN.defaultBlockState().setValue(LanternBlock.HANGING, false), true));
+                    out.add(new Placement(core.relative(d, 6).above(), ObeliskBlocks.OBELISK_EMBER.get().defaultBlockState(), true));
                 }
             }
             case 4 -> {
@@ -80,7 +80,7 @@ public final class ObeliskTiers {
                 for (int[] c : ObeliskStructure.CORNERS) {
                     int sx = Integer.signum(c[0]), sz = Integer.signum(c[1]);
                     for (int i = 0; i < arc.length; i++) {
-                        BlockState s = i >= arc.length - 2 ? Blocks.AMETHYST_BLOCK.defaultBlockState() : Blocks.DEEPSLATE_TILES.defaultBlockState();
+                        BlockState s = i >= arc.length - 2 ? Blocks.AMETHYST_BLOCK.defaultBlockState() : ObeliskBlocks.OBELISK_ARCH.get().defaultBlockState();
                         out.add(new Placement(core.offset(sx * arc[i][0], arc[i][1], sz * arc[i][0]), s, false));
                     }
                     out.add(new Placement(core.offset(sx * 7, 1, sz * 7), Blocks.END_ROD.defaultBlockState().setValue(EndRodBlock.FACING, Direction.UP), false));
@@ -88,7 +88,7 @@ public final class ObeliskTiers {
             }
             case 5 -> {
                 ring(core, 2, (dx, dz) -> {
-                    out.add(new Placement(core.offset(dx, 15, dz), ObeliskBlocks.OBELISK_TRUNK.get().defaultBlockState(), false));
+                    out.add(new Placement(core.offset(dx, 15, dz), ObeliskBlocks.OBELISK_CROWN.get().defaultBlockState(), false));
                 });
                 ring(core, 2, (dx, dz) -> {
                     if (dx == 0 || dz == 0 || Math.abs(dx) == Math.abs(dz)) {

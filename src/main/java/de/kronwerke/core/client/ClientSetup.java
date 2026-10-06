@@ -6,7 +6,7 @@ import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.common.NeoForge;
 
-/** Client only: the client config and the language question after the first join. */
+/** Client only: the client config, the renderers, the obelisk's effects on the picture and the language question after the first join. */
 public final class ClientSetup {
     private ClientSetup() {
     }
@@ -19,5 +19,10 @@ public final class ClientSetup {
             e.registerBlockEntityRenderer(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK_BOARD_ENTITY.get(), BoardRenderer::new);
         });
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> LanguageScreen.showIfNeeded());
+        ObeliskEffects.register(modBus);
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent e) ->
+                e.registerSpriteSet(de.kronwerke.core.obelisk.KwParticles.RUNE.get(), RuneParticle.Provider::new));
+        modBus.addListener((net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent e) ->
+                e.registerReloadListener((net.minecraft.server.packs.resources.ResourceManagerReloadListener) m -> ObeliskEffects.onReload()));
     }
 }

@@ -1,0 +1,19 @@
+{
+    "targets": [ "swap" ],
+    "passes": [
+        {
+            "name": "kronwerke:veil",
+            "intarget": "minecraft:main",
+            "outtarget": "swap",
+            "uniforms": [
+                { "name": "Strength", "values": [ 0.0 ] },
+                { "name": "Time", "values": [ 0.0 ] }
+            ]
+        },
+        {
+            "name": "blit",
+            "intarget": "swap",
+            "outtarget": "minecraft:main"
+        }
+    ]
+}

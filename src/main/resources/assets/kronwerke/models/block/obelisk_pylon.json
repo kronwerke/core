@@ -1,0 +1,95 @@
+{
+ "parent": "minecraft:block/block",
+ "render_type": "minecraft:cutout",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_pylon",
+  "base_side": "kronwerke:block/obelisk_pylon",
+  "glow_side": "kronwerke:block/obelisk_pylon_glow",
+  "base_top": "kronwerke:block/obelisk_pylon_top",
+  "glow_top": "kronwerke:block/obelisk_pylon_top_glow",
+  "base_bottom": "kronwerke:block/obelisk_pylon_top",
+  "glow_bottom": "kronwerke:block/obelisk_pylon_top_glow"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    16,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#base_side",
+     "cullface": "north"
+    },
+    "south": {
+     "texture": "#base_side",
+     "cullface": "south"
+    },
+    "east": {
+     "texture": "#base_side",
+     "cullface": "east"
+    },
+    "west": {
+     "texture": "#base_side",
+     "cullface": "west"
+    },
+    "up": {
+     "texture": "#base_top",
+     "cullface": "up"
+    },
+    "down": {
+     "texture": "#base_bottom",
+     "cullface": "down"
+    }
+   }
+  },
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    16,
+    16
+   ],
+   "neoforge_data": {
+    "block_light": 15,
+    "sky_light": 15
+   },
+   "faces": {
+    "north": {
+     "texture": "#glow_side",
+     "cullface": "north"
+    },
+    "south": {
+     "texture": "#glow_side",
+     "cullface": "south"
+    },
+    "east": {
+     "texture": "#glow_side",
+     "cullface": "east"
+    },
+    "west": {
+     "texture": "#glow_side",
+     "cullface": "west"
+    },
+    "up": {
+     "texture": "#glow_top",
+     "cullface": "up"
+    },
+    "down": {
+     "texture": "#glow_bottom",
+     "cullface": "down"
+    }
+   }
+  }
+ ]
+}

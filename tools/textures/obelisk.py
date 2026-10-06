@@ -110,6 +110,34 @@ def crystal(frames=8):
     return strip
 
 
+# four small glyphs for the rune particle, 8 x 8, cyan on nothing
+PARTICLE_GLYPHS = [
+    ["..####..", ".#....#.", ".#....#.", "..####..", "...##...", "..#..#..", ".#....#.", "........"],
+    ["...##...", "..#..#..", ".#....#.", "#......#", ".#....#.", "..#..#..", "...##...", "........"],
+    ["#......#", ".#....#.", "..#..#..", "...##...", "...##...", "..#..#..", ".#....#.", "#......#"],
+    ["..####..", ".#....#.", "#..##..#", "#.#..#.#", "#.#..#.#", "#..##..#", ".#....#.", "..####.."],
+]
+
+
+def particle_glyph(rows):
+    im = Image.new("RGBA", (8, 8), (0, 0, 0, 0))
+    px = im.load()
+    for y in range(8):
+        for x in range(8):
+            if rows[y][x] == "#":
+                px[x, y] = (200, 250, 255, 255)
+    # a soft halo one pixel around the glyph
+    out = im.copy()
+    op = out.load()
+    for y in range(8):
+        for x in range(8):
+            if im.getpixel((x, y))[3] == 0:
+                near = any(0 <= x + dx < 8 and 0 <= y + dy < 8 and im.getpixel((x + dx, y + dy))[3] > 0 for dx in (-1, 0, 1) for dy in (-1, 0, 1))
+                if near:
+                    op[x, y] = (120, 220, 255, 110)
+    return out
+
+
 def write(name, im, frametime, interpolate=True):
     os.makedirs(OUT, exist_ok=True)
     im.save(os.path.join(OUT, name + ".png"), optimize=True)
@@ -120,4 +148,8 @@ def write(name, im, frametime, interpolate=True):
 if __name__ == "__main__":
     write("obelisk_runes", runes(), 4)
     write("obelisk_crystal", crystal(), 3)
+    pdir = os.path.join(OUT, "..", "particle")
+    os.makedirs(pdir, exist_ok=True)
+    for i, rows in enumerate(PARTICLE_GLYPHS):
+        particle_glyph(rows).save(os.path.join(pdir, f"rune_{i}.png"))
     print("ok", OUT)

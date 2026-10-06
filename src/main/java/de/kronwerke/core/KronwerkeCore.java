@@ -45,6 +45,7 @@ public class KronwerkeCore {
         }
         quietRcon();
         de.kronwerke.core.obelisk.ObeliskBlocks.register(modBus);
+        de.kronwerke.core.obelisk.KwParticles.register(modBus);
         modBus.addListener(de.kronwerke.core.net.KwNetwork::register);
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
@@ -124,7 +125,10 @@ public class KronwerkeCore {
     private void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) de.kronwerke.core.season.Season.get().catchUp(sp);
         GoalManager.get().onPlayerJoin(event.getEntity());
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) TabList.onJoin(sp);
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
+            TabList.onJoin(sp);
+            Obelisk.get().onJoin(sp);
+        }
     }
 
     private void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {

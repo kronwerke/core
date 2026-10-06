@@ -214,13 +214,36 @@ public final class Obelisk {
         return last > 0 && System.currentTimeMillis() - last > 24L * 60 * 60 * 1000;
     }
 
+    private static final ResourceLocation LIFT = ResourceLocation.fromNamespaceAndPath(de.kronwerke.core.KronwerkeCore.MOD_ID, "obelisk_lift");
+
+    /** From the fourth stage the ground around the obelisk lets go a little: players on the plinth weigh half. */
+    private void lift(ServerLevel level, BlockPos core) {
+        boolean on = tier() >= 4;
+        for (ServerPlayer p : level.players()) {
+            var attr = p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.GRAVITY);
+            if (attr == null) continue;
+            boolean near = on && Math.abs(p.getX() - core.getX() - 0.5) < 11 && Math.abs(p.getZ() - core.getZ() - 0.5) < 11
+                    && p.getY() > core.getY() - 3 && p.getY() < core.getY() + 24;
+            boolean has = attr.hasModifier(LIFT);
+            if (near && !has) {
+                attr.addTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(LIFT, -0.5,
+                        net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_MULTIPLIED_TOTAL));
+                p.displayClientMessage(Text.t("obelisk.lift", "Der Boden lässt dich ein Stück los.").withStyle(ChatFormatting.LIGHT_PURPLE), true);
+            } else if (!near && has) {
+                attr.removeModifier(LIFT);
+            }
+        }
+    }
+
     private void ambient() {
         ObeliskData d = data();
         if (!d.isSet() || ++ambientTicks % 20 != 0) return;
         ServerLevel level = obeliskLevel();
         if (level == null) return;
         BlockPos core = d.pos();
-        if (!level.isLoaded(core) || !level.hasNearbyAlivePlayer(core.getX() + 0.5, core.getY() + 10, core.getZ() + 0.5, 48)) return;
+        if (!level.isLoaded(core)) return;
+        lift(level, core);
+        if (!level.hasNearbyAlivePlayer(core.getX() + 0.5, core.getY() + 10, core.getZ() + 0.5, 48)) return;
         ObeliskTopBlockEntity top = top(level);
         if (top != null && top.rite() > 0) return;
         GoalManager gm = GoalManager.get();
@@ -375,7 +398,8 @@ public final class Obelisk {
             int y = 3 + i;
             scheduler.at(i, () -> {
                 for (net.minecraft.core.Direction d : net.minecraft.core.Direction.Plane.HORIZONTAL) {
-                    level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD, cx + d.getStepX() * 1.6, core.getY() + y + 0.5, cz + d.getStepZ() * 1.6, 1, 0, 0, 0, 0);
+                    level.sendParticles(y % 3 == 0 ? KwParticles.RUNE.get() : net.minecraft.core.particles.ParticleTypes.END_ROD,
+                            cx + d.getStepX() * 1.6, core.getY() + y + 0.5, cz + d.getStepZ() * 1.6, 1, 0, 0, 0, 0);
                 }
             });
         }
@@ -457,6 +481,22 @@ public final class Obelisk {
             }
         }
         refreshBoard(level, g);
+    }
+
+    private de.kronwerke.core.net.KwNetwork.SkyPayload sky;
+
+    /** Tears the sky open for every player in the obelisk's dimension; late joiners get it on login. */
+    public void tearSky(ServerLevel level, long start, int duration, int tier, double x, double y, double z) {
+        sky = new de.kronwerke.core.net.KwNetwork.SkyPayload(start, duration, tier, x, y, z);
+        for (ServerPlayer p : level.players()) net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, sky);
+    }
+
+    /** Called when a player joins: a sky that is still open is shown to them too. */
+    public void onJoin(ServerPlayer p) {
+        if (sky == null || server == null) return;
+        ServerLevel level = obeliskLevel();
+        if (level == null || p.level() != level || level.getGameTime() > sky.start() + sky.duration()) return;
+        net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, sky);
     }
 
     /** A goal just completed: the rite, and the build grows. */

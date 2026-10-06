@@ -32,5 +32,11 @@
   "block.kronwerke.obelisk_trunk": "Obelisk (trunk)",
   "block.kronwerke.obelisk_runes": "Obelisk (rune band)",
   "block.kronwerke.obelisk_pedestal": "Obelisk pedestal",
-  "block.kronwerke.obelisk_board": "Leaderboard slab"
+  "block.kronwerke.obelisk_board": "Leaderboard slab",
+  "block.kronwerke.obelisk_brass": "Obelisk brass inlay",
+  "block.kronwerke.obelisk_pylon": "Obelisk pylon",
+  "block.kronwerke.obelisk_lantern": "Obelisk lantern",
+  "block.kronwerke.obelisk_ember": "Obelisk ember stone",
+  "block.kronwerke.obelisk_arch": "Obelisk arch stone",
+  "block.kronwerke.obelisk_crown": "Obelisk crown"
 }

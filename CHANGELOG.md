@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.13.0
+
+- The sky tears open when a stage completes: every player in the obelisk's dimension sees a galaxy instead of the sky, drawn by the mod's own shader (a spiral with core, arms, dust lanes and star fields, three lit planets, one with a ring), opening from the zenith with a brass edge and closing again after twenty seconds per stage reached. While it is open the air darkens and the whole picture is graded cooler with a vignette (post shader `veil`). Late joiners get the open sky too.
+- The rite's great beam: during the intake a column of light comes down from the sky into the crystal, after the burst a gold beam three blocks wide wraps the whole trunk and tightens back to the ordinary beam while the new tier is built. The burst and every huge gift send a shockwave over the screen (post shader `shockwave`: the picture is pushed outward in a ring with a brass glow) and shake the camera.
+- The tiers are built from the obelisk's own blocks with glow layers: brass inlay for the paving lines, pylons with a cyan core and pulsing lanterns, ember stones with breathing crimson veins, arch stones with amethyst veins, a gilded crown with glinting glyphs. `tools/textures/tiers.py` draws them.
+- Rune glyph particles rise from the rune bands, the pulse of a deposit and the intake of the rite.
+- From the third stage the air near the obelisk takes the colour of its tier (amber, then violet, gold when done); from the fourth stage curtains of aurora hang over the obelisk at night, and players on the plinth weigh half.
+- Shader packs (Iris or Oculus) may override the mod's shaders; the obelisk then falls back to what the pack allows.
+
 ## 0.12.0
 
 - The obelisk grows with every completed stage: paving with brass lines, pylons with lanterns, an outer ring of blackstone with crying obsidian, buttresses of deepslate and amethyst climbing to the trunk, a crown of end rods under the cap. What stood there before is remembered and comes back on a rebuild. `/kw admin obelisk tier <n>` previews a tier, `tier auto` follows the goals again.

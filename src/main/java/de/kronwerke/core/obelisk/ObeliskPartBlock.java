@@ -43,7 +43,8 @@ public class ObeliskPartBlock extends Block {
         if (!level.getBlockState(pos.relative(d)).isAir()) return;
         double x = pos.getX() + 0.5 + d.getStepX() * 0.56 + (d.getStepX() == 0 ? random.nextDouble() * 0.8 - 0.4 : 0);
         double z = pos.getZ() + 0.5 + d.getStepZ() * 0.56 + (d.getStepZ() == 0 ? random.nextDouble() * 0.8 - 0.4 : 0);
-        level.addParticle(net.minecraft.core.particles.ParticleTypes.GLOW, x, pos.getY() + random.nextDouble(), z,
+        var type = random.nextInt(3) == 0 ? KwParticles.RUNE.get() : net.minecraft.core.particles.ParticleTypes.GLOW;
+        level.addParticle(type, x, pos.getY() + random.nextDouble(), z,
                 d.getStepX() * 0.004, 0.02 + random.nextDouble() * 0.02, d.getStepZ() * 0.004);
     }
 

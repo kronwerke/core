@@ -74,7 +74,7 @@ public final class ObeliskRite {
                 level.playSound(null, BlockPos.containing(cx, y, cz), SoundEvents.NOTE_BLOCK_BELL.value(), SoundSource.BLOCKS, 1.5f, scale[seg]);
                 for (int a = 0; a < 16; a++) {
                     double ang = a / 16.0 * Math.PI * 2;
-                    level.sendParticles(ParticleTypes.END_ROD, cx + Math.cos(ang) * 1.7, y + 0.5, cz + Math.sin(ang) * 1.7, 1, 0, 0.02, 0, 0);
+                    level.sendParticles(a % 4 == 0 ? KwParticles.RUNE.get() : ParticleTypes.END_ROD, cx + Math.cos(ang) * 1.7, y + 0.5, cz + Math.sin(ang) * 1.7, 1, 0, 0.02, 0, 0);
                 }
             });
         }
@@ -96,6 +96,8 @@ public final class ObeliskRite {
             int n = newTier;
             title(server, Component.literal("STUFE " + roman(n) + " GESCHAFFT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                     Component.literal(done.title()).withStyle(ChatFormatting.YELLOW));
+            // the sky tears open for everyone, and stays open longer with every stage
+            ob.tearSky(level, level.getGameTime(), 400 * Math.max(1, n), n, cx, tipY, cz);
         });
         // the dome: rings of light that run outward along the ground
         for (int t = 0; t < 12; t++) {

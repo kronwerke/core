@@ -29,6 +29,24 @@ public final class KwNetwork {
     private KwNetwork() {
     }
 
+    /** The sky torn open for everyone: when it started (game time), how long it stays, which tier was reached. */
+    public record SkyPayload(long start, int duration, int tier, double x, double y, double z) implements CustomPacketPayload {
+        public static final Type<SkyPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "sky"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, SkyPayload> CODEC = StreamCodec.composite(
+                ByteBufCodecs.VAR_LONG, SkyPayload::start,
+                ByteBufCodecs.VAR_INT, SkyPayload::duration,
+                ByteBufCodecs.VAR_INT, SkyPayload::tier,
+                ByteBufCodecs.DOUBLE, SkyPayload::x,
+                ByteBufCodecs.DOUBLE, SkyPayload::y,
+                ByteBufCodecs.DOUBLE, SkyPayload::z,
+                SkyPayload::new);
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public record SlotsPayload(int used, int total, List<Entry> entries, boolean open, String message, boolean error) implements CustomPacketPayload {
         public static final Type<SlotsPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "slots"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SlotsPayload> CODEC = StreamCodec.composite(
@@ -190,6 +208,9 @@ public final class KwNetwork {
         });
         r.playToClient(AdminPayload.TYPE, AdminPayload.CODEC, (payload, ctx) -> {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.AdminScreen.receive(payload));
+        });
+        r.playToClient(SkyPayload.TYPE, SkyPayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.sky(payload));
         });
         r.playToServer(ActionPayload.TYPE, ActionPayload.CODEC, KwNetwork::onAction);
     }
