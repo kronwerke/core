@@ -1,7 +1,10 @@
 {
  "variants": {
-  "": {
+  "lit=true": {
    "model": "kronwerke:block/obelisk_lantern"
+  },
+  "lit=false": {
+   "model": "kronwerke:block/obelisk_lantern_unlit"
   }
  }
 }

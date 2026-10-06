@@ -18,11 +18,20 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class ObeliskPartBlock extends Block {
     public static final MapCodec<ObeliskPartBlock> CODEC = simpleCodec(p -> new ObeliskPartBlock(p, Shapes.block()));
 
+    /** Lit while the obelisk is awake; the sleeping stone puts its lanterns, embers and glows out. */
+    public static final net.minecraft.world.level.block.state.properties.BooleanProperty LIT = net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT;
+
     private final VoxelShape shape;
 
     public ObeliskPartBlock(Properties properties, VoxelShape shape) {
         super(properties);
         this.shape = shape;
+        registerDefaultState(stateDefinition.any().setValue(LIT, true));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
+        builder.add(LIT);
     }
 
     @Override
@@ -37,6 +46,7 @@ public class ObeliskPartBlock extends Block {
 
     @Override
     public void animateTick(BlockState state, net.minecraft.world.level.Level level, BlockPos pos, net.minecraft.util.RandomSource random) {
+        if (!state.getValue(LIT)) return;
         double x = pos.getX() + random.nextDouble(), z = pos.getZ() + random.nextDouble();
         if (this == ObeliskBlocks.OBELISK_RUNES.get()) {
             // the rune bands let a few glowing motes rise from their faces towards the crystal

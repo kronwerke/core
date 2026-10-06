@@ -1,7 +1,10 @@
 {
  "variants": {
-  "": {
+  "lit=true": {
    "model": "kronwerke:block/obelisk_paving"
+  },
+  "lit=false": {
+   "model": "kronwerke:block/obelisk_paving_unlit"
   }
  }
 }

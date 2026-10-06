@@ -140,7 +140,8 @@ def lantern(frames=8):
                 c = BRASS_LIGHT if (x in (0, 15) or y in (0, 15)) else BRASS if (x + y) % 2 else BRASS_DARK
                 px[x, y] = clamp(c) + (255,)
             else:
-                px[x, y] = clamp(CYAN_DEEP) + (255,)
+                # dark glass in the base; the light itself lives in the glow layer, so a sleeping lantern is dark
+                px[x, y] = clamp(mix(SLATE_DARK, CYAN_DEEP, 0.35)) + (255,)
     strip = Image.new("RGBA", (16, 16 * frames), (0, 0, 0, 0))
     for f in range(frames):
         g = empty()
@@ -281,14 +282,18 @@ def model(name, textures, glow_textures, light):
     for key in ("side", "top", "bottom"):
         m["textures"]["base_" + key] = "kronwerke:block/" + textures[key]
         m["textures"]["glow_" + key] = "kronwerke:block/" + glow_textures[key]
+    # the sleeping obelisk puts its lights out: the same cube without the glow layer
+    unlit = {"parent": "minecraft:block/block", "textures": dict(m["textures"]), "elements": [m["elements"][0]]}
     out = os.path.join(ASSETS, "models", "block")
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, name + ".json"), "w") as f:
         json.dump(m, f, indent=1)
+    with open(os.path.join(out, name + "_unlit.json"), "w") as f:
+        json.dump(unlit, f, indent=1)
     bs = os.path.join(ASSETS, "blockstates")
     os.makedirs(bs, exist_ok=True)
     with open(os.path.join(bs, name + ".json"), "w") as f:
-        json.dump({"variants": {"": {"model": "kronwerke:block/" + name}}}, f, indent=1)
+        json.dump({"variants": {"lit=true": {"model": "kronwerke:block/" + name}, "lit=false": {"model": "kronwerke:block/" + name + "_unlit"}}}, f, indent=1)
     item = os.path.join(ASSETS, "models", "item")
     os.makedirs(item, exist_ok=True)
     with open(os.path.join(item, name + ".json"), "w") as f:

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.3
+
+- The sleeping stone has its own picture: after a day without a gift the lanterns, embers, pylons, arch stones, shards, the crown's glints and the paving's runes go out (every tier block carries `lit`), dust sifts down the trunk, one slow heartbeat sounds every thirty seconds, the hum is a murmur. The first gift after that is the awakening: the lights come back ring by ring from the plinth outward with a sound for each ring, runes run up the trunk, and everyone near reads "Der Stein erwacht".
+- `/kw admin obelisk sleep` puts the stone to sleep for a preview; the next gift wakes it.
+- The lantern's glass is dark in the base texture, so a lantern without its light looks out.
+
 ## 0.15.2
 
 - The gift is a moment now. The item given flies from the giver's hand to the crystal (`GiftPayload` to everyone within eighty blocks), spinning, with a trail of light in its pillar's colour, and is taken in; the amount rises from the crystal in that colour, with the item's name for anything beyond a handful; a ring of light runs out over the pavement, wider for a bigger gift. Gifts from the intake or a feeder rise out of the plinth instead of a hand.

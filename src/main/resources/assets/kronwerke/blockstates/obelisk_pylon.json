@@ -1,7 +1,10 @@
 {
  "variants": {
-  "": {
+  "lit=true": {
    "model": "kronwerke:block/obelisk_pylon"
+  },
+  "lit=false": {
+   "model": "kronwerke:block/obelisk_pylon_unlit"
   }
  }
 }

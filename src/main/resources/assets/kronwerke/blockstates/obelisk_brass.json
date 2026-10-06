@@ -1,7 +1,10 @@
 {
  "variants": {
-  "": {
+  "lit=true": {
    "model": "kronwerke:block/obelisk_brass"
+  },
+  "lit=false": {
+   "model": "kronwerke:block/obelisk_brass_unlit"
   }
  }
 }

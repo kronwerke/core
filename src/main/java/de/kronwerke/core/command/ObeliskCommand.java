@@ -58,6 +58,14 @@ final class ObeliskCommand {
                     ok(c, "OK drained " + n);
                     return 1;
                 }))
+                .then(Commands.literal("sleep").executes(c -> {
+                    // for previews: the stone falls asleep as if nobody had given anything for a day
+                    Obelisk.get().data().touch(System.currentTimeMillis() - 25L * 60 * 60 * 1000);
+                    Obelisk.get().refreshDisplays();
+                    de.kronwerke.core.goal.GoalManager.get().refreshBossBar();
+                    ok(c, "OK the obelisk sleeps until the next gift");
+                    return 1;
+                }))
                 .then(Commands.literal("rite").executes(c -> {
                     String r = Obelisk.get().rehearse();
                     if (r.startsWith("OK")) ok(c, r);

@@ -1,0 +1,52 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_arch",
+  "base_side": "kronwerke:block/obelisk_arch",
+  "glow_side": "kronwerke:block/obelisk_arch_glow",
+  "base_top": "kronwerke:block/obelisk_arch",
+  "glow_top": "kronwerke:block/obelisk_arch_glow",
+  "base_bottom": "kronwerke:block/obelisk_arch",
+  "glow_bottom": "kronwerke:block/obelisk_arch_glow"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    0,
+    0
+   ],
+   "to": [
+    16,
+    16,
+    16
+   ],
+   "faces": {
+    "north": {
+     "texture": "#base_side",
+     "cullface": "north"
+    },
+    "south": {
+     "texture": "#base_side",
+     "cullface": "south"
+    },
+    "east": {
+     "texture": "#base_side",
+     "cullface": "east"
+    },
+    "west": {
+     "texture": "#base_side",
+     "cullface": "west"
+    },
+    "up": {
+     "texture": "#base_top",
+     "cullface": "up"
+    },
+    "down": {
+     "texture": "#base_bottom",
+     "cullface": "down"
+    }
+   }
+  }
+ ]
+}

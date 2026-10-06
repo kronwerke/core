@@ -31,7 +31,7 @@ public final class ObeliskBlocks {
                 .mapColor(MapColor.COLOR_BLACK)
                 .sound(SoundType.DEEPSLATE)
                 .strength(-1.0f, 3600000.0f)
-                .lightLevel(s -> light)
+                .lightLevel(s -> s.hasProperty(ObeliskPartBlock.LIT) && !s.getValue(ObeliskPartBlock.LIT) ? 0 : light)
                 .noOcclusion()
                 .noLootTable()
                 .isValidSpawn((s, l, p, t) -> false)
