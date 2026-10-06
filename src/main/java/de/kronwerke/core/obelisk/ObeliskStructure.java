@@ -79,7 +79,8 @@ public final class ObeliskStructure {
         return state.is(ObeliskBlocks.OBELISK_PLINTH.get()) || state.is(ObeliskBlocks.OBELISK_SHAFT.get()) || state.is(ObeliskBlocks.OBELISK_TOP.get())
                 || state.is(ObeliskBlocks.OBELISK_TRUNK.get()) || state.is(ObeliskBlocks.OBELISK_RUNES.get()) || state.is(ObeliskBlocks.OBELISK_PEDESTAL.get())
                 || state.is(ObeliskBlocks.OBELISK_BRASS.get()) || state.is(ObeliskBlocks.OBELISK_PYLON.get()) || state.is(ObeliskBlocks.OBELISK_LANTERN.get())
-                || state.is(ObeliskBlocks.OBELISK_EMBER.get()) || state.is(ObeliskBlocks.OBELISK_ARCH.get()) || state.is(ObeliskBlocks.OBELISK_CROWN.get());
+                || state.is(ObeliskBlocks.OBELISK_EMBER.get()) || state.is(ObeliskBlocks.OBELISK_ARCH.get()) || state.is(ObeliskBlocks.OBELISK_CROWN.get())
+                || state.is(ObeliskBlocks.OBELISK_PAVING.get()) || state.is(ObeliskBlocks.OBELISK_FLAGSTONE.get()) || state.is(ObeliskBlocks.OBELISK_SHARD.get());
     }
 
     private static void set(ServerLevel level, BlockPos pos, BlockState state) {

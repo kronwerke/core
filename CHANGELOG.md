@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.0
+
+- Three blocks for the grounds, in place of the vanilla ones the tiers used: the paving, engraved slabs with a rune that glows faintly, for the inner ring of the pavement; the flagstone, two courses of fitted stone, for the outer ring and the third stage's ring; the shard, violet glass with cyan facets and a sliding light, on top of the arches. The shards shed a few motes.
+- The masonry of the obelisk drawn again (`tools/textures/core.py`): the plinth's sides carry sunk panels under their brass crown and its top is laid in slabs, the trunk reads as fitted stone with corner pins and a cold seam, the tip, cap, band, intake mouth, pedestals and the board follow the same hand.
+
 ## 0.14.1
 
 - The thin sky: from the second stage the veil above the obelisk is worn, and a faint patch of the galaxy shows through it day and night, growing with the stage and placed above the obelisk from wherever the player stands (the galaxy shader takes a `Center`).

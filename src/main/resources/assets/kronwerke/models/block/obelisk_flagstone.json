@@ -1,0 +1,8 @@
+{
+ "parent": "minecraft:block/cube_bottom_top",
+ "textures": {
+  "top": "kronwerke:block/obelisk_flagstone",
+  "side": "kronwerke:block/obelisk_flagstone",
+  "bottom": "kronwerke:block/obelisk_flagstone"
+ }
+}

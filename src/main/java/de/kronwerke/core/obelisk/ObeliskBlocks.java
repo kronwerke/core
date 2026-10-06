@@ -65,6 +65,13 @@ public final class ObeliskBlocks {
             () -> new ObeliskPartBlock(stone(5).sound(SoundType.AMETHYST), Shapes.block()));
     public static final DeferredBlock<ObeliskPartBlock> OBELISK_CROWN = BLOCKS.register("obelisk_crown",
             () -> new ObeliskPartBlock(stone(12).sound(SoundType.COPPER), Shapes.block()));
+    // the grounds: the engraved slabs of the inner pavement, the flagstones of the rings, the crystal on the arches
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_PAVING = BLOCKS.register("obelisk_paving",
+            () -> new ObeliskPartBlock(stone(2).sound(SoundType.DEEPSLATE_TILES), Shapes.block()));
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_FLAGSTONE = BLOCKS.register("obelisk_flagstone",
+            () -> new ObeliskPartBlock(stone(0).sound(SoundType.DEEPSLATE_BRICKS), Shapes.block()));
+    public static final DeferredBlock<ObeliskPartBlock> OBELISK_SHARD = BLOCKS.register("obelisk_shard",
+            () -> new ObeliskPartBlock(stone(11).sound(SoundType.AMETHYST_CLUSTER), Shapes.block()));
 
     public static final DeferredBlock<ObeliskPedestalBlock> OBELISK_PEDESTAL = BLOCKS.register("obelisk_pedestal",
             () -> new ObeliskPedestalBlock(stone(7).sound(SoundType.DEEPSLATE_BRICKS)));
@@ -87,7 +94,10 @@ public final class ObeliskBlocks {
             ITEMS.register("obelisk_lantern", () -> new BlockItem(OBELISK_LANTERN.get(), new Item.Properties())),
             ITEMS.register("obelisk_ember", () -> new BlockItem(OBELISK_EMBER.get(), new Item.Properties())),
             ITEMS.register("obelisk_arch", () -> new BlockItem(OBELISK_ARCH.get(), new Item.Properties())),
-            ITEMS.register("obelisk_crown", () -> new BlockItem(OBELISK_CROWN.get(), new Item.Properties())));
+            ITEMS.register("obelisk_crown", () -> new BlockItem(OBELISK_CROWN.get(), new Item.Properties())),
+            ITEMS.register("obelisk_paving", () -> new BlockItem(OBELISK_PAVING.get(), new Item.Properties())),
+            ITEMS.register("obelisk_flagstone", () -> new BlockItem(OBELISK_FLAGSTONE.get(), new Item.Properties())),
+            ITEMS.register("obelisk_shard", () -> new BlockItem(OBELISK_SHARD.get(), new Item.Properties())));
     public static final DeferredItem<Item> OBELISK_PLINTH_ITEM = ITEMS.register("obelisk_plinth",
             () -> new BlockItem(OBELISK_PLINTH.get(), new Item.Properties().fireResistant()));
     public static final DeferredItem<Item> OBELISK_INTAKE_ITEM = ITEMS.register("obelisk_intake",

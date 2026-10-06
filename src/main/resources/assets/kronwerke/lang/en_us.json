@@ -38,5 +38,8 @@
   "block.kronwerke.obelisk_lantern": "Obelisk lantern",
   "block.kronwerke.obelisk_ember": "Obelisk ember stone",
   "block.kronwerke.obelisk_arch": "Obelisk arch stone",
-  "block.kronwerke.obelisk_crown": "Obelisk crown"
+  "block.kronwerke.obelisk_crown": "Obelisk crown",
+  "block.kronwerke.obelisk_paving": "Obelisk paving",
+  "block.kronwerke.obelisk_flagstone": "Obelisk flagstone",
+  "block.kronwerke.obelisk_shard": "Obelisk shard"
 }

@@ -51,7 +51,7 @@ public final class ObeliskTiers {
                         boolean line = dx == 0 || dz == 0;
                         boolean corner = Math.abs(dx) == Math.abs(dz);
                         BlockState s = line ? ObeliskBlocks.OBELISK_BRASS.get().defaultBlockState()
-                                : corner || outer ? Blocks.POLISHED_DEEPSLATE.defaultBlockState() : Blocks.DEEPSLATE_TILES.defaultBlockState();
+                                : corner || outer ? ObeliskBlocks.OBELISK_FLAGSTONE.get().defaultBlockState() : ObeliskBlocks.OBELISK_PAVING.get().defaultBlockState();
                         out.add(new Placement(core.offset(dx, -1, dz), s, true));
                     });
                 }
@@ -67,7 +67,7 @@ public final class ObeliskTiers {
             case 3 -> {
                 ring(core, 7, (dx, dz) -> {
                     boolean ember = Math.abs(dx) == Math.abs(dz) || dx == 0 || dz == 0;
-                    BlockState s = ember ? ObeliskBlocks.OBELISK_EMBER.get().defaultBlockState() : Blocks.POLISHED_BLACKSTONE_BRICKS.defaultBlockState();
+                    BlockState s = ember ? ObeliskBlocks.OBELISK_EMBER.get().defaultBlockState() : ObeliskBlocks.OBELISK_FLAGSTONE.get().defaultBlockState();
                     out.add(new Placement(core.offset(dx, -1, dz), s, true));
                 });
                 // embers climb the pylons
@@ -82,7 +82,7 @@ public final class ObeliskTiers {
                 for (int[] c : ObeliskStructure.CORNERS) {
                     int sx = Integer.signum(c[0]), sz = Integer.signum(c[1]);
                     for (int i = 0; i < arc.length; i++) {
-                        BlockState s = i >= arc.length - 2 ? Blocks.AMETHYST_BLOCK.defaultBlockState() : ObeliskBlocks.OBELISK_ARCH.get().defaultBlockState();
+                        BlockState s = i >= arc.length - 2 ? ObeliskBlocks.OBELISK_SHARD.get().defaultBlockState() : ObeliskBlocks.OBELISK_ARCH.get().defaultBlockState();
                         out.add(new Placement(core.offset(sx * arc[i][0], arc[i][1], sz * arc[i][0]), s, false));
                     }
                     out.add(new Placement(core.offset(sx * 7, 1, sz * 7), Blocks.END_ROD.defaultBlockState().setValue(EndRodBlock.FACING, Direction.UP), false));

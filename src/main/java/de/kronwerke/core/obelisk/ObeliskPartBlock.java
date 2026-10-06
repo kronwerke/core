@@ -61,6 +61,8 @@ public class ObeliskPartBlock extends Block {
             if (random.nextInt(6) == 0) level.addParticle(net.minecraft.core.particles.ParticleTypes.END_ROD, x, pos.getY() + 1.1, z, 0, 0.01, 0);
         } else if (this == ObeliskBlocks.OBELISK_ARCH.get()) {
             if (random.nextInt(10) == 0) level.addParticle(net.minecraft.core.particles.ParticleTypes.PORTAL, x, pos.getY() + random.nextDouble(), z, (random.nextDouble() - 0.5) * 0.3, -0.2, (random.nextDouble() - 0.5) * 0.3);
+        } else if (this == ObeliskBlocks.OBELISK_SHARD.get()) {
+            if (random.nextInt(8) == 0) level.addParticle(net.minecraft.core.particles.ParticleTypes.END_ROD, x + (random.nextDouble() - 0.5) * 1.1, pos.getY() + 0.5 + (random.nextDouble() - 0.5) * 1.1, z + (random.nextDouble() - 0.5) * 1.1, 0, 0.015, 0);
         } else if (this == ObeliskBlocks.OBELISK_BRASS.get()) {
             if (random.nextInt(40) == 0 && level.getBlockState(pos.above()).isAir()) level.addParticle(net.minecraft.core.particles.ParticleTypes.WAX_OFF, x, pos.getY() + 1.05, z, 0, 0, 0);
         }

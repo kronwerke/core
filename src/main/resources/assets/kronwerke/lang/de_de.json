@@ -32,5 +32,8 @@
   "block.kronwerke.obelisk_lantern": "Obelisk-Laterne",
   "block.kronwerke.obelisk_ember": "Obelisk-Glutstein",
   "block.kronwerke.obelisk_arch": "Obelisk-Bogenstein",
-  "block.kronwerke.obelisk_crown": "Obelisk-Krone"
+  "block.kronwerke.obelisk_crown": "Obelisk-Krone",
+  "block.kronwerke.obelisk_paving": "Obelisk-Pflasterplatte",
+  "block.kronwerke.obelisk_flagstone": "Obelisk-Fliese",
+  "block.kronwerke.obelisk_shard": "Obelisk-Splitter"
 }
