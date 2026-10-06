@@ -24,6 +24,8 @@ import net.minecraft.server.level.ServerPlayer;
  *   feeder <pos> <player>      make the container at pos a feeder for player
  *   unfeeder <pos>             stop a feeder
  *   drain                      empty the feeders now instead of waiting
+ *   rite                       rehearse the completion rite for the running goal, nothing completes
+ *   tier <0..5|auto>           show the build at a tier, for previews; auto follows the goals again
  */
 final class ObeliskCommand {
 
@@ -55,7 +57,25 @@ final class ObeliskCommand {
                     long n = Obelisk.get().drain();
                     ok(c, "OK drained " + n);
                     return 1;
-                }));
+                }))
+                .then(Commands.literal("rite").executes(c -> {
+                    String r = Obelisk.get().rehearse();
+                    if (r.startsWith("OK")) ok(c, r);
+                    else fail(c, r);
+                    return 1;
+                }))
+                .then(Commands.literal("tier")
+                        .then(Commands.literal("auto").executes(c -> {
+                            Obelisk.get().previewTier(-1);
+                            ok(c, "OK tier follows the goals again, tier " + Obelisk.get().tier());
+                            return 1;
+                        }))
+                        .then(Commands.argument("tier", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 5)).executes(c -> {
+                            int t = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "tier");
+                            Obelisk.get().previewTier(t);
+                            ok(c, "OK showing tier " + t + " until the next restart or tier auto");
+                            return 1;
+                        })));
     }
 
     /** Places the core at pos and builds the whole obelisk around it; the old build, if any, is removed first. */
@@ -70,7 +90,8 @@ final class ObeliskCommand {
         de.kronwerke.core.obelisk.ObeliskStructure.build(level, pos);
         String dim = level.dimension().location().toString();
         d.set(dim, pos);
-        ok(c, "OK obelisk built at " + dim + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ());
+        Obelisk.get().settleTier();
+        ok(c, "OK obelisk built at " + dim + " " + pos.getX() + " " + pos.getY() + " " + pos.getZ() + ", tier " + d.builtTier());
         return 1;
     }
 

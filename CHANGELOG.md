@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.12.0
+
+- The obelisk grows with every completed stage: paving with brass lines, pylons with lanterns, an outer ring of blackstone with crying obsidian, buttresses of deepslate and amethyst climbing to the trunk, a crown of end rods under the cap. What stood there before is remembered and comes back on a rebuild. `/kw admin obelisk tier <n>` previews a tier, `tier auto` follows the goals again.
+- When a goal completes the obelisk holds a rite, about forty seconds: everything freezes, the trunk lights segment by segment with a rising scale, the crystal bursts white with thunder and lightning on the tip and a title for everyone, a dome of light runs over the ground, the crystal reforms in gold while the new tier is built block by block, the wall is carved anew, the pedestals name the top three hands of each pillar, fireworks in the pillar colours, and a line about what the next stage brings. `/kw admin obelisk rite` rehearses it without completing anything.
+- Deposits are answered by their size. Every item has its own note (the same item always sounds the same, more of it plays an arpeggio); a real delivery sends a pulse of light up the trunk; a large one gives the giver a title and tells everyone nearby; a huge one tells the server, with a ring of light over the ground. The crystal flares by the size of the gift.
+- While the goal waits for the event the shards freeze, the crystal trembles and a heartbeat sounds every four seconds. The stone hums with a pitch and volume that rise with the goal. Every five to ten minutes a rune misfires. After a day without a gift the obelisk slumbers: the crystal sinks and slows, the boss bar says so, and the first gift wakes it with a flare.
+- Daily offering: the first deposit of a player each day counts for a streak; seven days in a row light an ember that follows the player around spawn.
+- Who gave what is kept per item, so pillar rankings and a personal ledger are possible.
+
 ## 0.11.0
 
 - The crystal on the obelisk floats and turns above the tip with three shards circling it, and the beam rises from its point. Crystal, shards and beam take their colour from the goal: cyan while it runs and warming to gold as it fills, purple while it waits for the event, gold when it is done, a quiet blue-grey when nothing is active. A deposit makes the crystal flare. The server tells the top block the progress along with the pedestals.

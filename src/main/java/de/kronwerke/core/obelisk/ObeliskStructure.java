@@ -58,6 +58,7 @@ public final class ObeliskStructure {
     }
 
     public static void clear(ServerLevel level, BlockPos core) {
+        ObeliskTiers.clear(level, Obelisk.get().data());
         for (int dx = -PEDESTAL; dx <= PEDESTAL; dx++) {
             for (int dz = -PEDESTAL; dz <= PEDESTAL; dz++) {
                 for (int dy = 0; dy <= HEIGHT; dy++) {

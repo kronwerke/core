@@ -62,6 +62,7 @@ public class ObeliskBlock extends Block {
         if (!(level instanceof net.minecraft.server.level.ServerLevel sl) || !(placer instanceof Player player) || !player.hasPermissions(2)) return;
         ObeliskStructure.build(sl, pos);
         Obelisk.get().data().set(level.dimension().location().toString(), pos);
+        Obelisk.get().settleTier();
     }
 
     @Override

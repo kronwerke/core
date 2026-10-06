@@ -352,6 +352,7 @@ public final class GoalManager {
         }
         KronwerkeCore.LOGGER.info("Goal {} completed", g.id());
         activatePending();
+        de.kronwerke.core.obelisk.Obelisk.get().celebrate(g);
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             giveStages(p);
             giveKits(p);
@@ -387,12 +388,15 @@ public final class GoalManager {
         }
         activatePending();
         refreshBossBar();
+        de.kronwerke.core.obelisk.Obelisk.get().data().clearStreaks();
+        de.kronwerke.core.obelisk.Obelisk.get().settleTier();
     }
 
     public void reset(Goal g) {
         data().reset(g.id());
         activatePending();
         refreshBossBar();
+        de.kronwerke.core.obelisk.Obelisk.get().settleTier();
     }
 
     // ---- starter kits ----
@@ -427,7 +431,7 @@ public final class GoalManager {
 
     // ---- boss bar and players ----
 
-    private void refreshBossBar() {
+    public void refreshBossBar() {
         if (bossBar == null || server == null) return;
         List<Goal> active = activeGoals();
         if (active.isEmpty()) {
@@ -436,9 +440,10 @@ public final class GoalManager {
         }
         Goal g = active.get(0);
         double f = fraction(g);
-        String state = isHeld(g) ? "  wartet auf das Event" : String.format("  %d%%", Math.round(f * 100));
+        boolean asleep = de.kronwerke.core.obelisk.Obelisk.get().slumbering();
+        String state = isHeld(g) ? "  wartet auf das Event" : asleep ? "  der Obelisk schläft" : String.format("  %d%%", Math.round(f * 100));
         bossBar.setName(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)
-                .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.WHITE)));
+                .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : asleep ? ChatFormatting.GRAY : ChatFormatting.WHITE)));
         bossBar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
         bossBar.setProgress((float) Math.min(1.0, f));
         bossBar.setVisible(true);
@@ -468,5 +473,32 @@ public final class GoalManager {
         List<Map.Entry<UUID, Long>> l = new ArrayList<>(data().contributions(g.id()).entrySet());
         l.sort(Collections.reverseOrder(Map.Entry.comparingByValue()));
         return l.size() > limit ? l.subList(0, limit) : l;
+    }
+
+    /** The most diligent hands of one pillar, by points. */
+    public List<Map.Entry<UUID, Long>> leaderboard(Goal g, Goal.Pillar pillar, int limit) {
+        Map<UUID, Long> sum = new HashMap<>();
+        for (Goal.PillarItem it : pillar.items()) {
+            data().itemContributions(g.id(), it.item()).forEach((u, a) -> sum.merge(u, a * it.points(), Long::sum));
+        }
+        List<Map.Entry<UUID, Long>> l = new ArrayList<>(sum.entrySet());
+        l.sort(Collections.reverseOrder(Map.Entry.comparingByValue()));
+        return l.size() > limit ? l.subList(0, limit) : l;
+    }
+
+    /** What a player gave to a pillar, by points. */
+    public long contributed(Goal g, Goal.Pillar pillar, UUID player) {
+        long sum = 0;
+        for (Goal.PillarItem it : pillar.items()) sum += data().contributed(g.id(), it.item(), player) * it.points();
+        return sum;
+    }
+
+    /** The player's rank among everyone who gave to the goal, 1 based, or 0 when nothing yet. */
+    public int rank(Goal g, UUID player) {
+        long mine = data().contributions(g.id()).getOrDefault(player, 0L);
+        if (mine <= 0) return 0;
+        int rank = 1;
+        for (long v : data().contributions(g.id()).values()) if (v > mine) rank++;
+        return rank;
     }
 }

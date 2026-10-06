@@ -7,7 +7,10 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,6 +29,13 @@ public class ObeliskData extends SavedData {
     private BlockPos board;
     private String boardFacing = "north";
     private int boardWidth, boardHeight;
+    /** blocks the tiers added around the build with what stood there before, so a rebuild can put it back */
+    private final Map<BlockPos, net.minecraft.world.level.block.state.BlockState> extras = new LinkedHashMap<>();
+    private int builtTier;
+    /** wall clock of the last deposit, for the slumber */
+    private long lastDepositAt;
+    /** player -> day of the last daily offering and the streak length */
+    private final Map<UUID, int[]> streaks = new HashMap<>();
 
     public boolean isSet() {
         return pos != null && dimension != null;
@@ -43,6 +53,8 @@ public class ObeliskData extends SavedData {
         this.dimension = dimension;
         this.pos = pos.immutable();
         feeders.clear();
+        extras.clear();
+        builtTier = 0;
         setDirty();
     }
 
@@ -81,6 +93,61 @@ public class ObeliskData extends SavedData {
         return feeders;
     }
 
+    public Map<BlockPos, net.minecraft.world.level.block.state.BlockState> extras() {
+        return extras;
+    }
+
+    public int builtTier() {
+        return builtTier;
+    }
+
+    public void addExtra(BlockPos p, net.minecraft.world.level.block.state.BlockState before) {
+        extras.putIfAbsent(p.immutable(), before);
+        setDirty();
+    }
+
+    public void setBuiltTier(int tier) {
+        builtTier = tier;
+        setDirty();
+    }
+
+    public void clearExtras() {
+        extras.clear();
+        builtTier = 0;
+        setDirty();
+    }
+
+    public long lastDepositAt() {
+        return lastDepositAt;
+    }
+
+    public void touch(long now) {
+        lastDepositAt = now;
+        setDirty();
+    }
+
+    /** The day number (local days since the epoch) of the player's last daily offering, or -1. */
+    public int streakDay(UUID player) {
+        int[] s = streaks.get(player);
+        return s == null ? -1 : s[0];
+    }
+
+    public int streak(UUID player) {
+        int[] s = streaks.get(player);
+        return s == null ? 0 : s[1];
+    }
+
+    public void setStreak(UUID player, int day, int length) {
+        streaks.put(player, new int[]{day, length});
+        setDirty();
+    }
+
+    public void clearStreaks() {
+        streaks.clear();
+        lastDepositAt = 0;
+        setDirty();
+    }
+
     public UUID feeder(BlockPos p) {
         return feeders.get(p);
     }
@@ -114,6 +181,19 @@ public class ObeliskData extends SavedData {
             d.boardWidth = b.getInt("width");
             d.boardHeight = b.getInt("height");
         }
+        ListTag ex = tag.getList("extras", Tag.TAG_COMPOUND);
+        for (int i = 0; i < ex.size(); i++) {
+            CompoundTag c = ex.getCompound(i);
+            d.extras.put(BlockPos.of(c.getLong("pos")), net.minecraft.nbt.NbtUtils.readBlockState(
+                    provider.lookupOrThrow(net.minecraft.core.registries.Registries.BLOCK), c.getCompound("before")));
+        }
+        d.builtTier = tag.getInt("builtTier");
+        d.lastDepositAt = tag.getLong("lastDepositAt");
+        ListTag st = tag.getList("streaks", Tag.TAG_COMPOUND);
+        for (int i = 0; i < st.size(); i++) {
+            CompoundTag c = st.getCompound(i);
+            d.streaks.put(c.getUUID("player"), new int[]{c.getInt("day"), c.getInt("length")});
+        }
         return d;
     }
 
@@ -139,6 +219,25 @@ public class ObeliskData extends SavedData {
             b.putInt("height", boardHeight);
             tag.put("board", b);
         }
+        ListTag ex = new ListTag();
+        extras.forEach((p, before) -> {
+            CompoundTag c = new CompoundTag();
+            c.putLong("pos", p.asLong());
+            c.put("before", net.minecraft.nbt.NbtUtils.writeBlockState(before));
+            ex.add(c);
+        });
+        tag.put("extras", ex);
+        tag.putInt("builtTier", builtTier);
+        tag.putLong("lastDepositAt", lastDepositAt);
+        ListTag st = new ListTag();
+        streaks.forEach((u, v) -> {
+            CompoundTag c = new CompoundTag();
+            c.putUUID("player", u);
+            c.putInt("day", v[0]);
+            c.putInt("length", v[1]);
+            st.add(c);
+        });
+        tag.put("streaks", st);
         return tag;
     }
 }

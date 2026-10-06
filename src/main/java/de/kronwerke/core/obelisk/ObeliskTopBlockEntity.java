@@ -12,14 +12,20 @@ import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * The top of the obelisk. The client draws the floating crystal and the beam from it; the
- * server tells it how far the running goal is (0 to 100) and whether the goal is held or
- * done, so the crystal and the beam change colour with the progress.
+ * server tells it how far the running goal is (0 to 100), the mood of the goal, how many
+ * stages are done (the tier, which decides the size of the crystal and its retinue), when
+ * the last deposit happened and how big it was, and when a completion rite began, so the
+ * renderer can play the whole sequence from that one timestamp.
  */
 public class ObeliskTopBlockEntity extends BlockEntity {
+    public static final int MOOD_RUNNING = 0, MOOD_HELD = 1, MOOD_DONE = 2, MOOD_IDLE = 3, MOOD_ASLEEP = 4;
+
     private int percent;
-    /** 0 running, 1 held before the event, 2 done, 3 nothing active */
-    private int mood = 3;
+    private int mood = MOOD_IDLE;
+    private int tier;
     private long lastDeposit;
+    private float flashStrength;
+    private long rite;
 
     public ObeliskTopBlockEntity(BlockPos pos, BlockState state) {
         super(ObeliskBlocks.OBELISK_TOP_ENTITY.get(), pos, state);
@@ -33,25 +39,51 @@ public class ObeliskTopBlockEntity extends BlockEntity {
         return mood;
     }
 
-    /** Game time of the last deposit, for the flash. */
+    public int tier() {
+        return tier;
+    }
+
+    /** Game time of the last deposit, for the flare. */
     public long lastDeposit() {
         return lastDeposit;
     }
 
-    /** Server side: sets the state the client should draw; only sends when something changed. */
-    public void show(int percent, int mood) {
-        if (this.percent == percent && this.mood == mood) return;
-        this.percent = percent;
-        this.mood = mood;
-        setChanged();
-        if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+    /** How big the last deposit was, 0 to 1. */
+    public float flashStrength() {
+        return flashStrength;
     }
 
-    /** Server side: a deposit just happened, the crystal flashes. */
-    public void flash() {
+    /** Game time the completion rite started, 0 when none runs. */
+    public long rite() {
+        return rite;
+    }
+
+    /** Server side: sets the state the client should draw; only sends when something changed. */
+    public void show(int percent, int mood, int tier) {
+        if (this.percent == percent && this.mood == mood && this.tier == tier) return;
+        this.percent = percent;
+        this.mood = mood;
+        this.tier = tier;
+        sync();
+    }
+
+    /** Server side: a deposit just happened, the crystal flares by strength (0 to 1). */
+    public void flash(float strength) {
         if (level == null) return;
         lastDeposit = level.getGameTime();
-        level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
+        flashStrength = strength;
+        sync();
+    }
+
+    /** Server side: the completion rite begins now (or ends, with 0). */
+    public void rite(long start) {
+        rite = start;
+        sync();
+    }
+
+    private void sync() {
+        setChanged();
+        if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     @Override
@@ -59,15 +91,21 @@ public class ObeliskTopBlockEntity extends BlockEntity {
         super.saveAdditional(tag, provider);
         tag.putInt("percent", percent);
         tag.putInt("mood", mood);
+        tag.putInt("tier", tier);
         tag.putLong("lastDeposit", lastDeposit);
+        tag.putFloat("flash", flashStrength);
+        tag.putLong("rite", rite);
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider provider) {
         super.loadAdditional(tag, provider);
         percent = tag.getInt("percent");
-        mood = tag.contains("mood") ? tag.getInt("mood") : 3;
+        mood = tag.contains("mood") ? tag.getInt("mood") : MOOD_IDLE;
+        tier = tag.getInt("tier");
         lastDeposit = tag.getLong("lastDeposit");
+        flashStrength = tag.contains("flash") ? tag.getFloat("flash") : 0.6f;
+        rite = tag.getLong("rite");
     }
 
     @Override

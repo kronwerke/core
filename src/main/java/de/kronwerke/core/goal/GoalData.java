@@ -29,6 +29,8 @@ public class GoalData extends SavedData {
     private final Set<String> completed = new HashSet<>();
     /** goal -> (player -> contributed) */
     private final Map<String, Map<UUID, Long>> contributions = new HashMap<>();
+    /** "goal/item" -> (player -> contributed), for the ledger and the pillar rankings */
+    private final Map<String, Map<UUID, Long>> itemContributions = new HashMap<>();
     /** goal -> players who received the starter kit */
     private final Map<String, Set<UUID>> kits = new HashMap<>();
     /** goal -> players who received the goal's stages */
@@ -66,6 +68,17 @@ public class GoalData extends SavedData {
 
     public Map<UUID, Long> contributions(String goal) {
         return contributions.computeIfAbsent(goal, k -> new HashMap<>());
+    }
+
+    /** Who gave how much of one item of a goal. */
+    public Map<UUID, Long> itemContributions(String goal, String item) {
+        return itemContributions.computeIfAbsent(key(goal, item), k -> new HashMap<>());
+    }
+
+    /** What one player gave of one item of a goal. */
+    public long contributed(String goal, String item, UUID player) {
+        Map<UUID, Long> m = itemContributions.get(key(goal, item));
+        return m == null ? 0 : m.getOrDefault(player, 0L);
     }
 
     public boolean hasKit(String goal, UUID player) {
@@ -109,6 +122,7 @@ public class GoalData extends SavedData {
         long now = progress(goal, item) + amount;
         progress.put(key(goal, item), now);
         contributions(goal).merge(player, amount, Long::sum);
+        itemContributions(goal, item).merge(player, amount, Long::sum);
         setDirty();
         return now;
     }
@@ -141,6 +155,7 @@ public class GoalData extends SavedData {
         released.remove(goal);
         completed.remove(goal);
         contributions.remove(goal);
+        itemContributions.keySet().removeIf(k -> k.startsWith(goal + "/"));
         kits.remove(goal);
         staged.remove(goal);
         setDirty();
@@ -155,6 +170,7 @@ public class GoalData extends SavedData {
         released.clear();
         completed.clear();
         contributions.clear();
+        itemContributions.clear();
         kits.clear();
         staged.clear();
         setDirty();
@@ -198,6 +214,12 @@ public class GoalData extends SavedData {
             Map<UUID, Long> m = d.contributions(goal);
             for (String u : per.getAllKeys()) m.put(UUID.fromString(u), per.getLong(u));
         }
+        CompoundTag itemContrib = tag.getCompound("itemContributions");
+        for (String k : itemContrib.getAllKeys()) {
+            CompoundTag per = itemContrib.getCompound(k);
+            Map<UUID, Long> m = d.itemContributions.computeIfAbsent(k, x -> new HashMap<>());
+            for (String u : per.getAllKeys()) m.put(UUID.fromString(u), per.getLong(u));
+        }
         CompoundTag kits = tag.getCompound("kits");
         for (String goal : kits.getAllKeys()) {
             Set<UUID> s = d.kits.computeIfAbsent(goal, k -> new HashSet<>());
@@ -229,6 +251,13 @@ public class GoalData extends SavedData {
             contrib.put(goal, t);
         });
         tag.put("contributions", contrib);
+        CompoundTag itemContrib = new CompoundTag();
+        itemContributions.forEach((k, per) -> {
+            CompoundTag t = new CompoundTag();
+            per.forEach((u, a) -> t.putLong(u.toString(), a));
+            itemContrib.put(k, t);
+        });
+        tag.put("itemContributions", itemContrib);
         CompoundTag kitsTag = new CompoundTag();
         kits.forEach((goal, s) -> {
             CompoundTag t = new CompoundTag();
