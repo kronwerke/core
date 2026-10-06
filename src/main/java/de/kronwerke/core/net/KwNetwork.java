@@ -47,6 +47,31 @@ public final class KwNetwork {
         }
     }
 
+    /**
+     * Where the obelisk stands and what state it is in, for the effects that are seen from far
+     * away, beyond the range in which its blocks are rendered: the signal into the sky, the
+     * aurora, the ground rings. x, y, z is the point of the crystal, baseY the floor of the
+     * plinth; tier below zero means there is no obelisk.
+     */
+    public record StatePayload(String dimension, double x, double y, double z, int baseY, int tier, int mood, int percent) implements CustomPacketPayload {
+        public static final Type<StatePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "state"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, StatePayload> CODEC = StreamCodec.of((buf, p) -> {
+            buf.writeUtf(p.dimension());
+            buf.writeDouble(p.x());
+            buf.writeDouble(p.y());
+            buf.writeDouble(p.z());
+            buf.writeVarInt(p.baseY());
+            buf.writeVarInt(p.tier());
+            buf.writeVarInt(p.mood());
+            buf.writeVarInt(p.percent());
+        }, buf -> new StatePayload(buf.readUtf(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public record SlotsPayload(int used, int total, List<Entry> entries, boolean open, String message, boolean error) implements CustomPacketPayload {
         public static final Type<SlotsPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "slots"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SlotsPayload> CODEC = StreamCodec.composite(
@@ -211,6 +236,9 @@ public final class KwNetwork {
         });
         r.playToClient(SkyPayload.TYPE, SkyPayload.CODEC, (payload, ctx) -> {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.sky(payload));
+        });
+        r.playToClient(StatePayload.TYPE, StatePayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.state(payload));
         });
         r.playToServer(ActionPayload.TYPE, ActionPayload.CODEC, KwNetwork::onAction);
     }

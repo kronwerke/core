@@ -544,6 +544,20 @@ public final class Obelisk {
             }
         }
         refreshBoard(level, g);
+        broadcastState(level, top);
+    }
+
+    private de.kronwerke.core.net.KwNetwork.StatePayload state;
+
+    /** The far effects need to know where the obelisk is and how it feels, even out of render range. */
+    private void broadcastState(ServerLevel level, ObeliskTopBlockEntity top) {
+        de.kronwerke.core.net.KwNetwork.StatePayload now = top == null
+                ? new de.kronwerke.core.net.KwNetwork.StatePayload("", 0, 0, 0, 0, -1, 0, 0)
+                : new de.kronwerke.core.net.KwNetwork.StatePayload(level.dimension().location().toString(), top.getBlockPos().getX() + 0.5, top.getBlockPos().getY() + 22 / 16.0 + 0.8, top.getBlockPos().getZ() + 0.5,
+                data().pos().getY(), top.tier(), top.mood(), top.percent());
+        if (now.equals(state)) return;
+        state = now;
+        for (ServerPlayer p : level.players()) net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, state);
     }
 
     private de.kronwerke.core.net.KwNetwork.SkyPayload sky;
@@ -556,9 +570,11 @@ public final class Obelisk {
 
     /** Called when a player joins: a sky that is still open is shown to them too. */
     public void onJoin(ServerPlayer p) {
-        if (sky == null || server == null) return;
+        if (server == null) return;
         ServerLevel level = obeliskLevel();
-        if (level == null || p.level() != level || level.getGameTime() > sky.start() + sky.duration()) return;
+        if (level == null || p.level() != level) return;
+        if (state != null) net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, state);
+        if (sky == null || level.getGameTime() > sky.start() + sky.duration()) return;
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, sky);
     }
 

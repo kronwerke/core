@@ -40,12 +40,20 @@ import java.util.List;
  * <li>the torn sky: when a stage completes the server tells every player, and for a time
  * that grows with the stage the sky is a galaxy (shaders/core/galaxy), opening from the
  * zenith and closing again,</li>
- * <li>the camera shake of the burst and of a huge gift.</li>
+ * <li>the camera shake of the burst and of a huge gift,</li>
+ * <li>the signal: from the first stage, ribbons of light wind up from the crystal into the
+ * sky, higher and wider with every stage, visible from far beyond the render distance,</li>
+ * <li>the ground rings: two circles of runes shine on the pavement around the plinth and
+ * turn against each other, bright at night, flaring with every gift.</li>
  * </ul>
+ * The server sends where the obelisk stands and how it feels (StatePayload), so the far
+ * effects do not depend on its blocks being rendered.
  */
 public final class ObeliskEffects {
     private static final ResourceLocation SHOCKWAVE = ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "shaders/post/shockwave.json");
     private static final ResourceLocation VEIL = ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "shaders/post/veil.json");
+    private static final ResourceLocation RING_OUTER = ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "textures/effect/rune_ring_outer.png");
+    private static final ResourceLocation RING_INNER = ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "textures/effect/rune_ring_inner.png");
 
     /** where the obelisk's crystal is, as last drawn */
     static Vec3 crystal;
@@ -75,6 +83,10 @@ public final class ObeliskEffects {
         if (be.lastDeposit() != lastDepositSeen) {
             lastDepositSeen = be.lastDeposit();
             // only a gift the server marked as large or huge shakes the air, and only when it just happened
+            if (now - be.lastDeposit() < 20) {
+                giftAt = System.currentTimeMillis();
+                giftStrength = be.flashStrength();
+            }
             if (be.flashStrength() >= 0.85f && now - be.lastDeposit() < 20) {
                 shockwave(crystal, be.flashStrength() >= 1f ? 1f : 0.5f, 30);
                 if (be.flashStrength() >= 1f) shake(0.4f, 15);
@@ -103,6 +115,41 @@ public final class ObeliskEffects {
     }
 
     private static long waveStartMillis;
+    private static long giftAt;
+    private static float giftStrength;
+
+    /** what the server last said about the obelisk, for the effects seen from far away */
+    private static KwNetwork.StatePayload far;
+
+    public static void state(KwNetwork.StatePayload payload) {
+        far = payload.tier() < 0 ? null : payload;
+    }
+
+    /** True when the server's word about the obelisk applies to the level the player is in. */
+    private static boolean farHere(Minecraft mc) {
+        return far != null && mc.level != null && mc.level.dimension().location().toString().equals(far.dimension());
+    }
+
+    /** Where the crystal is: as last drawn when its blocks are in range, else as the server said. */
+    private static Vec3 where(Minecraft mc) {
+        if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return crystal;
+        return farHere(mc) ? new Vec3(far.x(), far.y(), far.z()) : null;
+    }
+
+    private static int tierNow(Minecraft mc) {
+        if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return tier;
+        return farHere(mc) ? far.tier() : 0;
+    }
+
+    private static int moodNow(Minecraft mc) {
+        if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return mood;
+        return farHere(mc) ? far.mood() : ObeliskTopBlockEntity.MOOD_IDLE;
+    }
+
+    private static int percentNow(Minecraft mc) {
+        if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return percent;
+        return farHere(mc) ? far.percent() : 0;
+    }
 
     private static ShaderInstance galaxy;
     private static KwNetwork.SkyPayload sky;
@@ -221,6 +268,9 @@ public final class ObeliskEffects {
 
     private static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+            drawRings(event);
+            drawSignal(event);
+            drawFarBeam(event);
             drawAurora(event);
             drawVeil(event);
             drawShockwave(event);
@@ -358,10 +408,11 @@ public final class ObeliskEffects {
             event.setGreen(Mth.lerp(open, event.getGreen(), 0.01f));
             event.setBlue(Mth.lerp(open, event.getBlue(), 0.03f));
         }
-        if (crystal == null || tier < 3) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.level.getGameTime() - lastSeen > 100) return;
-        double dist = event.getCamera().getPosition().distanceTo(crystal);
+        Vec3 at = where(mc);
+        int tier = tierNow(mc), mood = moodNow(mc);
+        if (at == null || tier < 3) return;
+        double dist = event.getCamera().getPosition().distanceTo(at);
         if (dist > 56) return;
         float near = (float) Mth.clamp(1 - (dist - 12) / 44, 0, 1);
         float[] c = mood == ObeliskTopBlockEntity.MOOD_DONE ? new float[]{0.85f, 0.65f, 0.3f}
@@ -375,11 +426,12 @@ public final class ObeliskEffects {
     // ---- aurora ----
 
     private static void drawAurora(RenderLevelStageEvent event) {
-        if (crystal == null || tier < 4) return;
         Minecraft mc = Minecraft.getInstance();
-        if (mc.level == null || mc.level.getGameTime() - lastSeen > 100) return;
+        Vec3 crystal = where(mc);
+        int tier = tierNow(mc), mood = moodNow(mc);
+        if (crystal == null || tier < 4) return;
         Vec3 cam = event.getCamera().getPosition();
-        if (cam.distanceToSqr(crystal) > 200 * 200) return;
+        if (cam.distanceToSqr(crystal) > 400 * 400) return;
         float time = mc.level.getGameTime() + event.getPartialTick().getGameTimeDeltaPartialTick(false);
         // only at night and dusk, like the real thing
         float visibility = Mth.clamp(1f - skyBrightness(mc, event), 0f, 1f);
@@ -435,6 +487,236 @@ public final class ObeliskEffects {
         RenderSystem.depthMask(true);
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableBlend();
+    }
+
+    // ---- the signal ----
+
+    /**
+     * Ribbons of light that wind up from the crystal into the sky. Their height and width grow
+     * with the stage, their colour is the obelisk's, they thin out towards the top and a slow
+     * pulse travels up them. By day they are faint, at night they are the thing one steers by.
+     */
+    private static void drawSignal(RenderLevelStageEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 crystal = where(mc);
+        int tier = tierNow(mc), mood = moodNow(mc);
+        if (crystal == null || tier < 1 || mc.level == null) return;
+        Vec3 cam = event.getCamera().getPosition();
+        double dist = cam.distanceTo(crystal);
+        if (dist > 600) return;
+        float time = mc.level.getGameTime() + event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float day = skyBrightness(mc, event);
+        float strength = mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.3f : 1f;
+        // the open sky has its own light, the signal steps back while the galaxy shows
+        strength *= 1f - 0.7f * skyOpen();
+        // up close the crystal and the beam already carry the picture; the signal fades in with distance
+        strength *= (float) Mth.clamp((dist - 10) / 30, 0.15, 1);
+        if (strength <= 0.01f) return;
+        float[] colour = ObeliskTopRenderer.colour(percentNow(mc), mood, tier);
+
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(crystal.x - cam.x, crystal.y - cam.y, crystal.z - cam.z);
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        float fogStart = RenderSystem.getShaderFogStart(), fogEnd = RenderSystem.getShaderFogEnd();
+        RenderSystem.setShaderFogStart(Float.MAX_VALUE);
+        RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
+        RenderSystem.enableBlend();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        Matrix4f m = pose.last().pose();
+        // by day the light has to stand against a bright sky, so it is painted over it; by night it adds to the dark
+        if (day > 0.03f) {
+            RenderSystem.defaultBlendFunc();
+            signal(m, time, tier, colour, strength * day * 1.6f);
+        }
+        if (day < 0.97f) {
+            RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+            signal(m, time, tier, colour, strength * (1 - day));
+        }
+        RenderSystem.setShaderFogStart(fogStart);
+        RenderSystem.setShaderFogEnd(fogEnd);
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
+    }
+
+    /** The ribbons and the haze of the signal, around the origin, with the given overall strength. */
+    private static void signal(Matrix4f m, float time, int tier, float[] colour, float strength) {
+        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        float height = 50 + 26 * tier;
+        float radius = 0.7f + 0.3f * tier;
+        int ribbons = 2 + Math.min(3, tier);
+        int steps = 48;
+        float width = 0.45f + 0.1f * tier;
+        for (int k = 0; k < ribbons; k++) {
+            float phase = k * Mth.TWO_PI / ribbons;
+            for (int i = 0; i < steps; i++) {
+                float t0 = i / (float) steps, t1 = (i + 1) / (float) steps;
+                float y0 = t0 * height, y1 = t1 * height;
+                // the ribbons widen as they rise and turn slowly, each at its own pace
+                float r0 = radius * (1 + 1.4f * t0), r1 = radius * (1 + 1.4f * t1);
+                float a0 = phase + t0 * 5.5f + time * 0.012f * (1 + k * 0.15f), a1 = phase + t1 * 5.5f + time * 0.012f * (1 + k * 0.15f);
+                float pulse0 = 0.55f + 0.45f * Mth.sin(t0 * 14f - time * 0.09f + phase);
+                float pulse1 = 0.55f + 0.45f * Mth.sin(t1 * 14f - time * 0.09f + phase);
+                float fade0 = (1 - t0) * (1 - t0) * Math.min(1f, t0 * 8), fade1 = (1 - t1) * (1 - t1) * Math.min(1f, t1 * 8);
+                float alpha0 = 0.55f * strength * fade0 * pulse0, alpha1 = 0.55f * strength * fade1 * pulse1;
+                float cx0 = Mth.cos(a0) * r0, cz0 = Mth.sin(a0) * r0, cx1 = Mth.cos(a1) * r1, cz1 = Mth.sin(a1) * r1;
+                // the ribbon has a width across the radius, bright in the middle and soft at the edges
+                float nx0 = Mth.cos(a0) * width, nz0 = Mth.sin(a0) * width, nx1 = Mth.cos(a1) * width, nz1 = Mth.sin(a1) * width;
+                vertex(b, m, cx0 - nx0, y0, cz0 - nz0, colour, 0);
+                vertex(b, m, cx1 - nx1, y1, cz1 - nz1, colour, 0);
+                vertex(b, m, cx1, y1, cz1, colour, alpha1);
+                vertex(b, m, cx0, y0, cz0, colour, alpha0);
+                vertex(b, m, cx0, y0, cz0, colour, alpha0);
+                vertex(b, m, cx1, y1, cz1, colour, alpha1);
+                vertex(b, m, cx1 + nx1, y1, cz1 + nz1, colour, 0);
+                vertex(b, m, cx0 + nx0, y0, cz0 + nz0, colour, 0);
+            }
+        }
+        // a soft column of haze inside the ribbons
+        int sides = 16;
+        float haze = 0.06f * strength;
+        for (int i = 0; i < sides; i++) {
+            float a0 = i / (float) sides * Mth.TWO_PI, a1 = (i + 1) / (float) sides * Mth.TWO_PI;
+            float r = radius * 0.9f;
+            vertex(b, m, Mth.cos(a0) * r, 0, Mth.sin(a0) * r, colour, haze);
+            vertex(b, m, Mth.cos(a1) * r, 0, Mth.sin(a1) * r, colour, haze);
+            vertex(b, m, Mth.cos(a1) * r * 2.4f, height * 0.8f, Mth.sin(a1) * r * 2.4f, colour, 0);
+            vertex(b, m, Mth.cos(a0) * r * 2.4f, height * 0.8f, Mth.sin(a0) * r * 2.4f, colour, 0);
+        }
+        BufferUploader.drawWithShader(b.buildOrThrow());
+    }
+
+    // ---- the rite's beam, seen from far ----
+
+    /**
+     * The great beam of the rite for players too far away for the obelisk's blocks to be
+     * drawn: the column that comes down from the tear and the gold pillar that follows the
+     * burst, timed from the sky payload like the renderer times them from the block entity.
+     */
+    private static void drawFarBeam(RenderLevelStageEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (sky == null || mc.level == null) return;
+        // in range the renderer of the top block draws the real thing
+        if (crystal != null && mc.level.getGameTime() - lastSeen <= 100) return;
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        // the sky opened 20 ticks before the intake began
+        float riteT = mc.level.getGameTime() + partial - sky.start() + (de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE - 20);
+        if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE || riteT >= de.kronwerke.core.obelisk.ObeliskRite.T_ROLL) return;
+        Vec3 cam = event.getCamera().getPosition();
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(sky.x() - cam.x, sky.y() - cam.y, sky.z() - cam.z);
+        Matrix4f m = pose.last().pose();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        float fogStart = RenderSystem.getShaderFogStart(), fogEnd = RenderSystem.getShaderFogEnd();
+        RenderSystem.setShaderFogStart(Float.MAX_VALUE);
+        RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        float[] white = {1f, 1f, 1f};
+        float[] gold = {1f, 0.84f, 0.5f};
+        // the beam faces the camera as a sheet with soft edges, so it reads as light and not as a pipe
+        Vec3 toCam = new Vec3(cam.x - sky.x(), 0, cam.z - sky.z());
+        float side = (float) Math.atan2(toCam.z, toCam.x) + Mth.HALF_PI;
+        if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_BURST) {
+            float p = (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE) / de.kronwerke.core.obelisk.ObeliskRite.INTAKE;
+            p = p * p;
+            float bottom = 1 + 420 * (1 - p);
+            float radius = 0.4f + 2.6f * p;
+            sheet(m, side, bottom, 1024, radius * 2.5f, white, 0.35f);
+            sheet(m, side, bottom, 1024, radius, white, 0.9f);
+        } else {
+            float p = riteT < de.kronwerke.core.obelisk.ObeliskRite.T_REFORM ? 0f : (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_REFORM) / de.kronwerke.core.obelisk.ObeliskRite.REFORM;
+            float radius = Mth.lerp(p * p, 3.2f, 0.25f);
+            sheet(m, side, -17, 1024, radius * 3f, gold, 0.3f);
+            sheet(m, side, -17, 1024, radius * 1.2f, gold, 0.7f);
+            sheet(m, side, -17, 1024, radius * 0.5f, white, 0.9f);
+        }
+        RenderSystem.setShaderFogStart(fogStart);
+        RenderSystem.setShaderFogEnd(fogEnd);
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
+    }
+
+    /** A vertical sheet of light turned to face the camera, bright along its middle and clear at the edges. */
+    private static void sheet(Matrix4f m, float side, float y0, float y1, float halfWidth, float[] c, float alpha) {
+        float dx = Mth.cos(side) * halfWidth, dz = Mth.sin(side) * halfWidth;
+        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        vertex(b, m, -dx, y0, -dz, c, 0);
+        vertex(b, m, -dx, y1, -dz, c, 0);
+        vertex(b, m, 0, y1, 0, c, alpha);
+        vertex(b, m, 0, y0, 0, c, alpha);
+        vertex(b, m, 0, y0, 0, c, alpha);
+        vertex(b, m, 0, y1, 0, c, alpha);
+        vertex(b, m, dx, y1, dz, c, 0);
+        vertex(b, m, dx, y0, dz, c, 0);
+        BufferUploader.drawWithShader(b.buildOrThrow());
+    }
+
+    // ---- the ground rings ----
+
+    /**
+     * Two circles of runes on the pavement around the plinth, turning against each other in
+     * the obelisk's colour. They are bright at night and faint by day, and every gift makes
+     * them flare for a moment by its size.
+     */
+    private static void drawRings(RenderLevelStageEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!farHere(mc) || far.tier() < 1 || mc.level == null) return;
+        Vec3 cam = event.getCamera().getPosition();
+        double cx = far.x(), cz = far.z(), cy = far.baseY() + 0.03;
+        double dist = cam.distanceTo(new Vec3(cx, cy, cz));
+        if (dist > 64) return;
+        float time = mc.level.getGameTime() + event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float night = Mth.clamp(1f - skyBrightness(mc, event), 0f, 1f);
+        int mood = moodNow(mc);
+        float strength = (0.35f + 0.65f * night) * (mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.35f : 1f) * (float) Mth.clamp(1 - (dist - 40) / 24, 0, 1);
+        float sinceGift = (System.currentTimeMillis() - giftAt) / 1200f;
+        float gift = giftAt > 0 && sinceGift < 1f ? (1 - sinceGift) * (1 - sinceGift) * giftStrength : 0f;
+        strength = Math.min(1f, strength + gift);
+        if (strength <= 0.01f) return;
+        float[] colour = ObeliskTopRenderer.colour(percentNow(mc), mood, tierNow(mc));
+        // the rings breathe with the stone
+        float breathe = 0.85f + 0.15f * Mth.sin(time / 14f);
+
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(cx - cam.x, cy - cam.y, cz - cam.z);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableCull();
+        // kept below full strength on purpose: added light saturates to white and the colour is the point
+        ring(pose, RING_OUTER, time * 0.0025f, colour, strength * breathe * 0.75f);
+        ring(pose, RING_INNER, -time * 0.004f, colour, strength * breathe * 0.65f);
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
+    }
+
+    private static void ring(PoseStack pose, ResourceLocation texture, float angle, float[] c, float alpha) {
+        RenderSystem.setShaderTexture(0, texture);
+        pose.pushPose();
+        pose.mulPose(com.mojang.math.Axis.YP.rotation(angle));
+        Matrix4f m = pose.last().pose();
+        float r = 8f;
+        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+        b.addVertex(m, -r, 0, -r).setUv(0, 0).setColor(c[0], c[1], c[2], alpha);
+        b.addVertex(m, -r, 0, r).setUv(0, 1).setColor(c[0], c[1], c[2], alpha);
+        b.addVertex(m, r, 0, r).setUv(1, 1).setColor(c[0], c[1], c[2], alpha);
+        b.addVertex(m, r, 0, -r).setUv(1, 0).setColor(c[0], c[1], c[2], alpha);
+        BufferUploader.drawWithShader(b.buildOrThrow());
+        pose.popPose();
     }
 
     /** 1 in full daylight, 0 at night; the sun stands high at 0.0 and 1.0 of the day, midnight is 0.5. */

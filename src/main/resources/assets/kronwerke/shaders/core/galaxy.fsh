@@ -113,27 +113,87 @@ void main() {
     float lanes = smoothstep(0.5, 0.75, fbm(g * 3.0 - Time * 0.008)) * disc;
     nebula *= 1.0 - 0.55 * lanes;
 
-    vec3 col = vec3(0.012, 0.01, 0.03);
+    vec3 col = vec3(0.02, 0.015, 0.05);
+    // faint clouds everywhere, so no part of the sky is plain black
+    float haze = fbm(d * 2.2 + vec3(0.0, Time * 0.004, 0.0));
+    col += mix(vec3(0.08, 0.04, 0.16), vec3(0.03, 0.08, 0.14), noise(d * 1.3)) * haze * 0.9;
     col += nebula;
     col += stars(d, 40.0, 0.1, 0.1) * 0.9;
     col += stars(d, 90.0, 0.06, 0.1) * 0.5;
     col += stars(vec3(uv, dot(d, c)), 30.0, 0.14, 0.14) * disc * 2.5;
 
-    // the sun of this sky sits in the core, planets hang around the viewer
+    // the milky way of this sky: a tilted band of dust and light that runs right around, so
+    // there is something to see whichever way one looks
+    vec3 bandN = normalize(vec3(0.6, 0.35, 0.7));
+    float offBand = dot(d, bandN);
+    float bandW = exp(-offBand * offBand * 28.0);
+    float bandDust = fbm(d * 5.0 + vec3(Time * 0.006, 0.0, -Time * 0.004));
+    float bandFine = fbm(d * 14.0 - Time * 0.003);
+    vec3 bandCol = mix(vec3(0.35, 0.2, 0.55), vec3(0.9, 0.7, 0.55), bandDust) * bandW * (0.35 + 0.9 * bandDust);
+    bandCol *= 1.0 - 0.6 * smoothstep(0.45, 0.7, bandFine) * bandW;
+    bandCol += vec3(0.5, 0.75, 1.0) * bandW * smoothstep(0.6, 0.85, bandDust) * 0.5;
+    col += bandCol * 1.3 * (1.0 - 0.5 * facing * disc);
+    col += stars(d * 1.0 + vec3(3.3), 70.0, 0.12, 0.12) * bandW * 1.5;
+    // a second, fainter and cooler band crossing the first, so every horizon has one
+    vec3 band2N = normalize(vec3(0.7, 0.2, -0.65));
+    float off2 = dot(d, band2N);
+    float band2W = exp(-off2 * off2 * 40.0);
+    float band2Dust = fbm(d * 4.0 + vec3(-Time * 0.005, 0.0, Time * 0.003) + 7.0);
+    vec3 band2Col = mix(vec3(0.12, 0.25, 0.45), vec3(0.5, 0.75, 0.85), band2Dust) * band2W * (0.3 + 0.8 * band2Dust);
+    band2Col *= 1.0 - 0.5 * smoothstep(0.5, 0.75, fbm(d * 11.0 + 3.0)) * band2W;
+    col += band2Col * 0.9;
+    col += stars(d + vec3(5.1), 60.0, 0.1, 0.12) * band2W * 1.2;
+
+    // the sun of this sky sits in the core, planets hang all around the viewer
     vec3 sun = normalize(vec3(0.3, 0.75, -0.5));
-    vec4 p1 = planet(d, normalize(vec3(0.55, 0.35, 0.6)), 0.09, vec3(0.85, 0.55, 0.3), vec3(0.95, 0.8, 0.6), sun, 14.0);
-    vec4 p2 = planet(d, normalize(vec3(-0.7, 0.5, 0.2)), 0.05, vec3(0.2, 0.35, 0.7), vec3(0.6, 0.8, 0.95), sun, 6.0);
-    vec4 p3 = planet(d, normalize(vec3(0.1, 0.6, -0.75)), 0.16, vec3(0.55, 0.35, 0.55), vec3(0.8, 0.6, 0.9), sun, 9.0);
-    col = mix(col, p3.rgb, p3.a);
-    col = mix(col, p1.rgb, p1.a);
-    col = mix(col, p2.rgb, p2.a);
-    // a ring around the biggest planet
-    vec3 pc = normalize(vec3(0.1, 0.6, -0.75));
-    vec3 ringN = normalize(vec3(0.3, 1.0, 0.2));
-    float toPlane = dot(d - pc * dot(d, pc), ringN);
-    float ringR = length(d - pc * dot(d, pc));
-    float ring = smoothstep(0.012, 0.0, abs(toPlane)) * smoothstep(0.19, 0.2, ringR) * smoothstep(0.3, 0.26, ringR) * step(0.0, dot(d, pc) - cos(0.32));
-    col = mix(col, vec3(0.9, 0.8, 0.65), ring * 0.8 * (1.0 - p3.a));
+    vec3 pcs[6];
+    pcs[0] = normalize(vec3(0.55, 0.35, 0.6));
+    pcs[1] = normalize(vec3(-0.7, 0.5, 0.2));
+    pcs[2] = normalize(vec3(0.1, 0.6, -0.75));
+    pcs[3] = normalize(vec3(-0.6, 0.3, -0.7));
+    pcs[4] = normalize(vec3(0.85, 0.25, -0.2));
+    pcs[5] = normalize(vec3(-0.25, 0.2, 0.9));
+    float radii[6];
+    radii[0] = 0.09; radii[1] = 0.05; radii[2] = 0.16; radii[3] = 0.12; radii[4] = 0.06; radii[5] = 0.075;
+    vec3 colA[6];
+    vec3 colB[6];
+    colA[0] = vec3(0.85, 0.55, 0.3);  colB[0] = vec3(0.95, 0.8, 0.6);
+    colA[1] = vec3(0.2, 0.35, 0.7);   colB[1] = vec3(0.6, 0.8, 0.95);
+    colA[2] = vec3(0.55, 0.35, 0.55); colB[2] = vec3(0.8, 0.6, 0.9);
+    colA[3] = vec3(0.25, 0.45, 0.4);  colB[3] = vec3(0.7, 0.9, 0.75);
+    colA[4] = vec3(0.7, 0.3, 0.25);   colB[4] = vec3(0.95, 0.6, 0.45);
+    colA[5] = vec3(0.6, 0.6, 0.65);   colB[5] = vec3(0.9, 0.9, 0.95);
+    float bands[6];
+    bands[0] = 14.0; bands[1] = 6.0; bands[2] = 9.0; bands[3] = 11.0; bands[4] = 7.0; bands[5] = 16.0;
+    // far to near, so the near ones paint over the far ones
+    for (int i = 5; i >= 0; i--) {
+        vec4 p = planet(d, pcs[i], radii[i], colA[i], colB[i], sun, bands[i]);
+        col = mix(col, p.rgb, p.a);
+    }
+    // rings around the biggest and the green one: the ray meets the ring's plane, the near
+    // half passes in front of the planet, the far half hides behind it
+    for (int i = 0; i < 2; i++) {
+        vec3 pc = i == 0 ? pcs[2] : pcs[3];
+        float pr = i == 0 ? 0.16 : 0.12;
+        vec3 ringN = normalize(i == 0 ? vec3(0.3, 1.0, 0.2) : vec3(-0.4, 1.0, 0.3));
+        float denom = dot(d, ringN);
+        if (abs(denom) < 0.0005) continue;
+        float t = dot(pc, ringN) / denom;
+        if (t <= 0.0) continue;
+        vec3 off = d * t - pc;
+        float r = length(off) / tan(pr);
+        float ring = smoothstep(1.35, 1.45, r) * smoothstep(2.3, 2.1, r);
+        // gaps and bands in the ring
+        ring *= 0.45 + 0.55 * (0.5 + 0.5 * sin(r * 40.0 + hash(vec3(r * 7.0)) * 0.5));
+        ring *= smoothstep(0.0, 0.02, abs(denom));
+        bool front = dot(off, pc) < 0.0;
+        bool onPlanet = dot(d, pc) > cos(pr);
+        if (!front && onPlanet) ring = 0.0;
+        // the far side lies in the planet's shadow, with a soft passage between the two
+        float shade = mix(0.55, 1.0, smoothstep(0.35, -0.35, dot(off, pc) / max(length(off), 0.0001)));
+        vec3 ringCol = (i == 0 ? vec3(0.9, 0.8, 0.65) : vec3(0.7, 0.85, 0.8)) * shade;
+        col = mix(col, ringCol, clamp(ring * 0.85, 0.0, 1.0));
+    }
 
     // the edge of the tear glows brass
     float edgeGlow = smoothstep(opening - 0.12, opening - 0.02, down + ragged) * mask;

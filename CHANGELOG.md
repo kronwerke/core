@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.0
+
+- The obelisk is seen from far away. The server tells every client where it stands and what state it is in (`StatePayload`), and the client draws the far effects from that: the signal, ribbons of the obelisk's colour that wind up from the crystal into the sky, higher and wider with every stage, faint by day and bright by night; the aurora; and during the rite the great beam, so a player on the other side of the map sees the column come down and the gold pillar rise.
+- Rune rings on the pavement: two circles of glyphs and ticks turn against each other in the obelisk's colour, bright at night, and every gift makes them flare by its size.
+- The torn sky has more to show whichever way one looks: two bands of dust and stars cross the whole sky, six planets hang around the viewer, two of them with rings that pass in front of the planet and hide behind it, and faint clouds fill the dark between.
+- The fog of a high tier no longer turns the night sky to mud; the tint stays light after dark.
+
 ## 0.13.3
 
 - Life on the plinth: ember stones breathe smoke and sparks, lanterns shed glowing motes, the crown sparkles, arch stones leak a little void, the brass glints now and then. Every three minutes a shard leaves its orbit, flies down to one of the pedestals, has a look and returns.
