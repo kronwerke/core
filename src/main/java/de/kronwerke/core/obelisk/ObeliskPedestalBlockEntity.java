@@ -24,6 +24,9 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
     /** the gauge: which pillar this pedestal stands for (-1 for the pedestal of the last gift), how full it is, whether it is the one furthest behind */
     private int pillar = -1, percent;
     private boolean lowest;
+    /** the champion of the pillar: the player who gave the most to it, shown as their head */
+    private java.util.UUID championId;
+    private String champion = "";
 
     public ObeliskPedestalBlockEntity(BlockPos pos, BlockState state) {
         super(ObeliskBlocks.OBELISK_PEDESTAL_ENTITY.get(), pos, state);
@@ -55,6 +58,22 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
 
     public boolean lowest() {
         return lowest;
+    }
+
+    public java.util.UUID championId() {
+        return championId;
+    }
+
+    public String champion() {
+        return champion;
+    }
+
+    public void champion(java.util.UUID id, String name) {
+        if (java.util.Objects.equals(id, championId) && champion.equals(name == null ? "" : name)) return;
+        championId = id;
+        champion = name == null ? "" : name;
+        setChanged();
+        if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     /** The gauge above the plate: the pillar's fill as a column of light, the weakest pillar flickering. */
@@ -90,6 +109,8 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
         tag.putInt("pillar", pillar);
         tag.putInt("percent", percent);
         tag.putBoolean("lowest", lowest);
+        if (championId != null) tag.putUUID("championId", championId);
+        tag.putString("champion", champion);
     }
 
     @Override
@@ -102,6 +123,8 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
         pillar = tag.contains("pillar") ? tag.getInt("pillar") : -1;
         percent = tag.getInt("percent");
         lowest = tag.getBoolean("lowest");
+        championId = tag.hasUUID("championId") ? tag.getUUID("championId") : null;
+        champion = tag.getString("champion");
     }
 
     @Override

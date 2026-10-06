@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.5
+
+- The champion of each pillar, the player who gave it the most, wears the crown on its pedestal: their head turns above the lines with their name under it, the skin fetched in the background.
+- The gauge is a hollow column now, eight sheets on a ring around the item and the lines, so the pedestal's text stays readable through it.
+
 ## 0.15.4
 
 - The gauges: above each pillar's pedestal stands a column of light in the pillar's colour, as tall as the pillar is full, so the balance of stone, tech and magic can be read at the obelisk itself. The pillar furthest behind flickers. The pedestal lines are a little larger.

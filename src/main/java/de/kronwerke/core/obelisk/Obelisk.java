@@ -673,12 +673,17 @@ public final class Obelisk {
             if (g == null || i >= g.pillars().size()) {
                 pe.show(null, "", pe.line());
                 pe.gauge(i, 0, false);
+                pe.champion(null, "");
                 continue;
             }
             Goal.Pillar pillar = g.pillars().get(i);
             int pct = pillarPercent(gm, g, pillar);
             pe.show(null, pillar.title() + "  " + pct + "%", pe.line());
             pe.gauge(i, pct, i == lowestIndex && lowestPercent < 100 && g.pillars().size() > 1);
+            // the champion of the pillar wears the crown on its pedestal
+            List<java.util.Map.Entry<UUID, Long>> top = gm.leaderboard(g, pillar, 1);
+            if (top.isEmpty()) pe.champion(null, "");
+            else pe.champion(top.get(0).getKey(), nameOf(top.get(0).getKey()));
         }
         ObeliskTopBlockEntity top = top(level);
         if (top != null && top.rite() == 0) {

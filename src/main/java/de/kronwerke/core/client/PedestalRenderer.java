@@ -36,6 +36,7 @@ public class PedestalRenderer implements BlockEntityRenderer<ObeliskPedestalBloc
         if (be.getLevel() == null) return;
         float time = be.getLevel().getGameTime() + partial;
         if (be.pillar() >= 0 && be.pillar() < 3) gauge(be, time, pose, buffer);
+        if (be.championId() != null) champion(be, time, pose, buffer, light);
         if (!be.item().isEmpty()) {
             float since = time - be.changedAt();
             float swell = since < 20 ? 1.0f + 0.5f * (1.0f - since / 20.0f) : 1.0f;
@@ -63,6 +64,39 @@ public class PedestalRenderer implements BlockEntityRenderer<ObeliskPedestalBloc
         pose.popPose();
     }
 
+    private final java.util.Map<java.util.UUID, net.minecraft.world.item.component.ResolvableProfile> profiles = new java.util.HashMap<>();
+    private final net.minecraft.client.model.SkullModelBase skull = new net.minecraft.client.model.SkullModel(Minecraft.getInstance().getEntityModels().bakeLayer(net.minecraft.client.model.geom.ModelLayers.PLAYER_HEAD));
+
+    /** The head of the pillar's champion, turning slowly above the lines, with their name under it. */
+    private void champion(ObeliskPedestalBlockEntity be, float time, PoseStack pose, MultiBufferSource buffer, int light) {
+        java.util.UUID id = be.championId();
+        net.minecraft.world.item.component.ResolvableProfile profile = profiles.get(id);
+        if (profile == null) {
+            profile = new net.minecraft.world.item.component.ResolvableProfile(new com.mojang.authlib.GameProfile(id, be.champion().isEmpty() ? "" : be.champion()));
+            profiles.put(id, profile);
+            // the skin arrives in the background; until then the head wears the default
+            profile.resolve().thenAccept(r -> Minecraft.getInstance().execute(() -> profiles.put(id, r)));
+            profile = profiles.get(id);
+        }
+        pose.pushPose();
+        pose.translate(0.5, 3.3 + Math.sin(time / 15.0 + 1) * 0.04, 0.5);
+        pose.scale(0.6f, 0.6f, 0.6f);
+        pose.translate(-0.5, 0, -0.5);
+        net.minecraft.client.renderer.RenderType type = net.minecraft.client.renderer.blockentity.SkullBlockRenderer.getRenderType(net.minecraft.world.level.block.SkullBlock.Types.PLAYER, profile);
+        net.minecraft.client.renderer.blockentity.SkullBlockRenderer.renderSkull(null, (time * 1.5f) % 360, 0f, pose, buffer, LightTexture.FULL_BRIGHT, skull, type);
+        pose.popPose();
+        if (!be.champion().isEmpty()) {
+            pose.pushPose();
+            pose.translate(0.5, 3.17, 0.5);
+            pose.mulPose(Minecraft.getInstance().getEntityRenderDispatcher().cameraOrientation());
+            pose.scale(0.028f, -0.028f, 0.028f);
+            Matrix4f m = pose.last().pose();
+            String s = be.champion();
+            font.drawInBatch(s, -font.width(s) / 2f, 0, 0xFFF6D68C, false, m, buffer, Font.DisplayMode.NORMAL, 0x60000000, LightTexture.FULL_BRIGHT);
+            pose.popPose();
+        }
+    }
+
     /** Four thin sheets of light around the item, crossing in the middle, that rise with the pillar's fill. */
     private void gauge(ObeliskPedestalBlockEntity be, float time, PoseStack pose, MultiBufferSource buffer) {
         float fill = Math.min(1f, be.percent() / 100f);
@@ -76,33 +110,38 @@ public class PedestalRenderer implements BlockEntityRenderer<ObeliskPedestalBloc
         pose.pushPose();
         pose.translate(0.5, 1.02, 0.5);
         Matrix4f m = pose.last().pose();
-        float w = 0.5f;
-        // four crossing sheets, each bright along its middle and clear at its edges, fading towards the top
-        for (int k = 0; k < 4; k++) {
-            float a = k * Mth.PI / 4;
-            float dx = Mth.cos(a) * w, dz = Mth.sin(a) * w;
-            sheet(vc, m, -dx, -dz, dx, dz, height, c, alpha * (k % 2 == 0 ? 1f : 0.7f));
+        // a hollow column: eight sheets standing on a ring around the item and the lines, each bright
+        // along its middle, so the text in the centre stays readable through them
+        float r = 0.46f, w = 0.26f;
+        for (int k = 0; k < 8; k++) {
+            float a = k * Mth.TWO_PI / 8 + time / 120f;
+            float cx = Mth.cos(a) * r, cz = Mth.sin(a) * r;
+            float tx = -Mth.sin(a) * w, tz = Mth.cos(a) * w;
+            sheet(vc, m, cx - tx, cz - tz, cx + tx, cz + tz, cx, cz, height, c, alpha * 0.6f);
         }
-        // the cap: a brighter sliver where the column ends
-        float capA = alpha * 1.6f;
-        vc.addVertex(m, -w, height, -w).setColor(c[0], c[1], c[2], 0f);
-        vc.addVertex(m, w, height, -w).setColor(c[0], c[1], c[2], 0f);
-        vc.addVertex(m, w, height, w).setColor(c[0], c[1], c[2], capA);
-        vc.addVertex(m, -w, height, w).setColor(c[0], c[1], c[2], capA);
+        // the cap: a brighter ring where the column ends
+        float capA = alpha * 0.9f;
+        for (int k = 0; k < 16; k++) {
+            float a0 = k * Mth.TWO_PI / 16, a1 = (k + 1) * Mth.TWO_PI / 16;
+            vc.addVertex(m, Mth.cos(a0) * (r - 0.1f), height, Mth.sin(a0) * (r - 0.1f)).setColor(c[0], c[1], c[2], 0f);
+            vc.addVertex(m, Mth.cos(a1) * (r - 0.1f), height, Mth.sin(a1) * (r - 0.1f)).setColor(c[0], c[1], c[2], 0f);
+            vc.addVertex(m, Mth.cos(a1) * r, height, Mth.sin(a1) * r).setColor(c[0], c[1], c[2], capA);
+            vc.addVertex(m, Mth.cos(a0) * r, height, Mth.sin(a0) * r).setColor(c[0], c[1], c[2], capA);
+        }
         pose.popPose();
     }
 
-    private static void sheet(VertexConsumer vc, Matrix4f m, float x0, float z0, float x1, float z1, float h, float[] c, float a) {
+    private static void sheet(VertexConsumer vc, Matrix4f m, float x0, float z0, float x1, float z1, float mx, float mz, float h, float[] c, float a) {
         // left half: edge clear, middle bright
         vc.addVertex(m, x0, 0, z0).setColor(c[0], c[1], c[2], 0f);
-        vc.addVertex(m, 0, 0, 0).setColor(c[0], c[1], c[2], a);
-        vc.addVertex(m, 0, h, 0).setColor(c[0], c[1], c[2], a * 0.15f);
+        vc.addVertex(m, mx, 0, mz).setColor(c[0], c[1], c[2], a);
+        vc.addVertex(m, mx, h, mz).setColor(c[0], c[1], c[2], a * 0.15f);
         vc.addVertex(m, x0, h, z0).setColor(c[0], c[1], c[2], 0f);
         // right half
-        vc.addVertex(m, 0, 0, 0).setColor(c[0], c[1], c[2], a);
+        vc.addVertex(m, mx, 0, mz).setColor(c[0], c[1], c[2], a);
         vc.addVertex(m, x1, 0, z1).setColor(c[0], c[1], c[2], 0f);
         vc.addVertex(m, x1, h, z1).setColor(c[0], c[1], c[2], 0f);
-        vc.addVertex(m, 0, h, 0).setColor(c[0], c[1], c[2], a * 0.15f);
+        vc.addVertex(m, mx, h, mz).setColor(c[0], c[1], c[2], a * 0.15f);
     }
 
     @Override
