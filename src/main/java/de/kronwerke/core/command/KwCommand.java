@@ -213,7 +213,9 @@ public final class KwCommand {
     /** For the bot: the season in one line of JSON. */
     private static int seasonJson(CommandContext<CommandSourceStack> c) {
         var s = de.kronwerke.core.season.Season.get();
-        c.getSource().sendSuccess(() -> Component.literal("OK {\"running\":" + s.running() + ",\"number\":" + s.number() + ",\"startedAt\":" + s.startedAt() + "}"), false);
+        var ob = de.kronwerke.core.obelisk.Obelisk.get();
+        c.getSource().sendSuccess(() -> Component.literal("OK {\"running\":" + s.running() + ",\"number\":" + s.number() + ",\"startedAt\":" + s.startedAt()
+                + ",\"tier\":" + ob.tier() + ",\"slumbering\":" + ob.slumbering() + "}"), false);
         return 1;
     }
 

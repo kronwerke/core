@@ -158,12 +158,33 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         // the shards: three, one more from tier two, two more from tier four; frozen in place during the hold
         int shards = 3 + (tier >= 2 ? 1 : 0) + (tier >= 4 ? 2 : 0);
         float orbit = held ? be.rite() : time;
+        // every three minutes the first shard leaves its orbit, flies down to one of the pedestals,
+        // has a look at what lies there and comes back
+        long cycle = 3600;
+        long inCycle = gameTime % cycle;
+        float visit = 0f;
+        int visitCorner = (int) ((gameTime / cycle) % 4);
+        if (!held && !asleep && riteT < 0 && inCycle < 240) {
+            float p = (inCycle + partialTick) / 240f;
+            visit = p < 0.25f ? p / 0.25f : p > 0.75f ? (1 - p) / 0.25f : 1f;
+            visit = visit * visit * (3 - 2 * visit);
+        }
         for (int i = 0; i < shards; i++) {
             float a = orbit * (0.9f + 0.25f * (i % 3)) / 20f * riteSpin + i * (float) (Math.PI * 2 / shards);
             float r = (0.95f + 0.08f * Mth.sin(time / 17f + i)) * (0.7f + 0.3f * riteScale) * (held ? 0.75f : 1f);
             float y = BASE_Y + bob + 0.3f * Mth.sin((held ? be.rite() : time) / 13f + i * 2.1f) + (i >= 4 ? 0.6f : 0f);
+            float px = 0.5f + Mth.cos(a) * r, pz = 0.5f + Mth.sin(a) * r;
+            if (i == 0 && visit > 0) {
+                // the pedestals stand six out at the corners, sixteen blocks below the tip
+                int[][] corners = {{-6, -6}, {6, -6}, {-6, 6}, {6, 6}};
+                float tx = 0.5f + corners[visitCorner][0], tz = 0.5f + corners[visitCorner][1];
+                float ty = -14.6f + 0.15f * Mth.sin(time / 6f);
+                px = Mth.lerp(visit, px, tx);
+                pz = Mth.lerp(visit, pz, tz);
+                y = Mth.lerp(visit, y, ty) + Mth.sin(visit * Mth.PI) * 2.5f;
+            }
             pose.pushPose();
-            pose.translate(0.5 + Mth.cos(a) * r, y, 0.5 + Mth.sin(a) * r);
+            pose.translate(px, y, pz);
             pose.mulPose(Axis.YP.rotationDegrees(-time * 3 + i * 120));
             pose.mulPose(Axis.ZP.rotationDegrees(held ? 60 : 20));
             octahedron(pose, vc, 0.2f, 0.08f, tint, glow, (frame + i * 2) % FRAMES, 0.9f);
@@ -238,7 +259,7 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
     @Override
     public net.minecraft.world.phys.AABB getRenderBoundingBox(ObeliskTopBlockEntity be) {
         BlockPos p = be.getBlockPos();
-        return new net.minecraft.world.phys.AABB(p.getX() - 2, p.getY(), p.getZ() - 2, p.getX() + 3, 1024, p.getZ() + 3);
+        return new net.minecraft.world.phys.AABB(p.getX() - 7, p.getY() - 17, p.getZ() - 7, p.getX() + 8, 1024, p.getZ() + 8);
     }
 
     @Override

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.3
+
+- Life on the plinth: ember stones breathe smoke and sparks, lanterns shed glowing motes, the crown sparkles, arch stones leak a little void, the brass glints now and then. Every three minutes a shard leaves its orbit, flies down to one of the pedestals, has a look and returns.
+- `kw admin season json` carries `tier` and `slumbering` for the bot and the website.
+
 ## 0.13.2
 
 - The rite in its final order: the sky tears open first, during the riser, the beam comes down out of the tear, and the burst runs in slow motion (the server drops to a quarter speed for ten of its ticks) with a white gold flash over the whole picture.
