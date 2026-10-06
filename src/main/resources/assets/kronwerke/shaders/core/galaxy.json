@@ -8,6 +8,7 @@
         { "name": "Time", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "Fade", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "Tear", "type": "float", "count": 1, "values": [ 0.0 ] },
-        { "name": "Tier", "type": "float", "count": 1, "values": [ 1.0 ] }
+        { "name": "Tier", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "Center", "type": "float", "count": 3, "values": [ 0.0, 1.0, 0.0 ] }
     ]
 }

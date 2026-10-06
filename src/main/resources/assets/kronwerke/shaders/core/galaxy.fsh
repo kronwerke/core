@@ -9,6 +9,7 @@ uniform float Time;
 uniform float Fade;
 uniform float Tear;
 uniform float Tier;
+uniform vec3 Center;
 
 in vec3 dir;
 out vec4 fragColor;
@@ -80,8 +81,9 @@ vec4 planet(vec3 d, vec3 centre, float r, vec3 colA, vec3 colB, vec3 sun, float 
 void main() {
     vec3 d = normalize(dir);
 
-    // the tear: it opens at the zenith and spreads down, with a ragged edge that shimmers
-    float down = acos(clamp(d.y, -1.0, 1.0)) / 3.14159;
+    // the tear: it opens around Center (the zenith for the rite, the point above the obelisk
+    // for the thin sky between rites) and spreads out, with a ragged edge that shimmers
+    float down = acos(clamp(dot(d, normalize(Center)), -1.0, 1.0)) / 3.14159;
     float ragged = 0.06 * noise(d * 6.0 + Time * 0.3);
     float opening = Tear * 1.15;
     float mask = smoothstep(opening, opening - 0.12, down + ragged);

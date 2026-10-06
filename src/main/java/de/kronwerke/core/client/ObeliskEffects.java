@@ -44,7 +44,11 @@ import java.util.List;
  * <li>the signal: from the first stage, ribbons of light wind up from the crystal into the
  * sky, higher and wider with every stage, visible from far beyond the render distance,</li>
  * <li>the ground rings: two circles of runes shine on the pavement around the plinth and
- * turn against each other, bright at night, flaring with every gift.</li>
+ * turn against each other, bright at night, flaring with every gift,</li>
+ * <li>the thin sky: from the second stage the veil above the obelisk is worn, and a faint
+ * patch of the galaxy shows through it day and night, growing with the stage,</li>
+ * <li>the rite's own extras: during the intake the pylons fire their light into the crystal,
+ * and at the burst cracks of light run out from the plinth across the ground.</li>
  * </ul>
  * The server sends where the obelisk stands and how it feels (StatePayload), so the far
  * effects do not depend on its blocks being rendered.
@@ -271,6 +275,8 @@ public final class ObeliskEffects {
             drawRings(event);
             drawSignal(event);
             drawFarBeam(event);
+            drawPylonBeams(event);
+            drawCracks(event);
             drawAurora(event);
             drawVeil(event);
             drawShockwave(event);
@@ -279,29 +285,70 @@ public final class ObeliskEffects {
         }
     }
 
+    /**
+     * Where the rite stands right now in ticks from its start, or -1 when none runs: from the
+     * top block entity when it is in view, else from the sky payload (sent 20 ticks before the
+     * intake).
+     */
+    private static float riteTime(Minecraft mc, float partial) {
+        if (mc.level == null) return -1;
+        long now = mc.level.getGameTime();
+        if (crystal != null && now - lastSeen <= 100) {
+            if (lastRiteSeen <= 0) return -1;
+            float t = now - lastRiteSeen + partial;
+            return t < de.kronwerke.core.obelisk.ObeliskRite.T_END ? t : -1;
+        }
+        if (sky == null) return -1;
+        float t = now + partial - sky.start() + (de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE - 20);
+        return t >= 0 && t < de.kronwerke.core.obelisk.ObeliskRite.T_END ? t : -1;
+    }
+
     // ---- the torn sky ----
 
     private static void drawSky(RenderLevelStageEvent event) {
-        if (sky == null || galaxy == null) return;
+        if (galaxy == null) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
         float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
-        float t = mc.level.getGameTime() + partial - sky.start();
-        if (t < 0) return;
-        if (t > sky.duration()) {
-            sky = null;
-            return;
+        float fade, tear, tier;
+        float cxd = 0, cyd = 1, czd = 0;
+        if (sky != null && mc.level.getGameTime() + partial - sky.start() > sky.duration()) sky = null;
+        if (sky != null) {
+            float t = mc.level.getGameTime() + partial - sky.start();
+            if (t < 0) return;
+            float in = Math.min(1f, t / 70f);
+            float out = Math.min(1f, (sky.duration() - t) / 80f);
+            tear = in * in * (3 - 2 * in);
+            fade = Math.min(1f, t / 25f) * out;
+            tier = sky.tier();
+        } else {
+            // between rites: the thin sky above the obelisk, from the second stage
+            Vec3 at = where(mc);
+            int tierNow = tierNow(mc);
+            if (at == null || tierNow < 2) return;
+            Vec3 cam = event.getCamera().getPosition();
+            double dist = cam.distanceTo(at);
+            if (dist > 160) return;
+            float near = (float) Mth.clamp(1 - (dist - 100) / 60, 0, 1);
+            float breathe = 0.8f + 0.2f * Mth.sin((mc.level.getGameTime() + partial) / 90f);
+            fade = (0.14f + 0.07f * (tierNow - 2)) * near * breathe;
+            if (moodNow(mc) == ObeliskTopBlockEntity.MOOD_ASLEEP) fade *= 0.4f;
+            tear = 0.16f + 0.03f * (tierNow - 2);
+            tier = tierNow;
+            // the patch hangs high above the obelisk, seen from where the player stands
+            Vec3 c = new Vec3(at.x - cam.x, at.y + 120 - cam.y, at.z - cam.z).normalize();
+            cxd = (float) c.x;
+            cyd = (float) c.y;
+            czd = (float) c.z;
         }
-        float in = Math.min(1f, t / 70f);
-        float out = Math.min(1f, (sky.duration() - t) / 80f);
-        float tear = in * in * (3 - 2 * in);
-        float fade = Math.min(1f, t / 25f) * out;
         if (fade <= 0.002f) return;
+        float time = (mc.level.getGameTime() + partial) / 20f;
 
-        galaxy.safeGetUniform("Time").set(t / 20f);
+        galaxy.safeGetUniform("Time").set(time);
         galaxy.safeGetUniform("Fade").set(fade);
         galaxy.safeGetUniform("Tear").set(tear);
-        galaxy.safeGetUniform("Tier").set((float) sky.tier());
+        galaxy.safeGetUniform("Tier").set(tier);
+        galaxy.safeGetUniform("Center").set(cxd, cyd, czd);
         RenderSystem.setShader(() -> galaxy);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
@@ -658,6 +705,175 @@ public final class ObeliskEffects {
         vertex(b, m, dx, y1, dz, c, 0);
         vertex(b, m, dx, y0, dz, c, 0);
         BufferUploader.drawWithShader(b.buildOrThrow());
+    }
+
+    // ---- the pylons' light and the cracks of the burst ----
+
+    /**
+     * During the intake the four pylons fire their light into the crystal: thin sheets from each
+     * lantern to the point of the crystal, brighter as the intake nears the burst. From the
+     * second stage, when the pylons exist.
+     */
+    private static void drawPylonBeams(RenderLevelStageEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!farHere(mc) || far.tier() < 2 || mc.level == null) return;
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float riteT = riteTime(mc, partial);
+        if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE || riteT >= de.kronwerke.core.obelisk.ObeliskRite.T_BURST + 6) return;
+        float p = Mth.clamp((riteT - de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE) / de.kronwerke.core.obelisk.ObeliskRite.INTAKE, 0f, 1f);
+        float after = riteT >= de.kronwerke.core.obelisk.ObeliskRite.T_BURST ? 1 - (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_BURST) / 6f : 1f;
+        Vec3 cam = event.getCamera().getPosition();
+        Vec3 crystal = new Vec3(far.x(), far.y(), far.z());
+        if (cam.distanceToSqr(crystal) > 300 * 300) return;
+        float time = mc.level.getGameTime() + partial;
+        float[] colour = ObeliskTopRenderer.colour(far.percent(), far.mood(), far.tier());
+        float[] white = {1f, 1f, 1f};
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(-cam.x, -cam.y, -cam.z);
+        Matrix4f m = pose.last().pose();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        float fogStart = RenderSystem.getShaderFogStart(), fogEnd = RenderSystem.getShaderFogEnd();
+        RenderSystem.setShaderFogStart(Float.MAX_VALUE);
+        RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        // the crystal is drawn in during the intake, the beams aim at where it is
+        Vec3 target = crystal.add(0, 0.2, 0);
+        int[][] dirs = {{6, 0}, {-6, 0}, {0, 6}, {0, -6}};
+        for (int i = 0; i < 4; i++) {
+            Vec3 from = new Vec3(far.x() + dirs[i][0], far.baseY() + 2.5, far.z() + dirs[i][1]);
+            float flicker = 0.75f + 0.25f * Mth.sin(time * 1.7f + i * 2.1f);
+            float strength = (0.15f + 0.85f * p * p) * after * flicker;
+            beam(m, from, target, cam, 0.7f + 0.6f * p, colour, 0.5f * strength);
+            beam(m, from, target, cam, 0.15f + 0.12f * p, white, 1.0f * strength);
+        }
+        BufferUploader.drawWithShader(beamBuffer.buildOrThrow());
+        beamBuffer = null;
+        RenderSystem.setShaderFogStart(fogStart);
+        RenderSystem.setShaderFogEnd(fogEnd);
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
+    }
+
+    private static BufferBuilder beamBuffer;
+
+    /** A soft sheet of light from one point to another, turned to face the camera. */
+    private static void beam(Matrix4f m, Vec3 from, Vec3 to, Vec3 cam, float halfWidth, float[] c, float alpha) {
+        if (beamBuffer == null) beamBuffer = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        Vec3 axis = to.subtract(from);
+        Vec3 mid = from.add(axis.scale(0.5));
+        Vec3 side = axis.cross(mid.subtract(cam)).normalize().scale(halfWidth);
+        if (side.lengthSqr() < 1e-6) return;
+        BufferBuilder b = beamBuffer;
+        vertex(b, m, (float) (from.x - side.x), (float) (from.y - side.y), (float) (from.z - side.z), c, 0);
+        vertex(b, m, (float) (to.x - side.x), (float) (to.y - side.y), (float) (to.z - side.z), c, 0);
+        vertex(b, m, (float) to.x, (float) to.y, (float) to.z, c, alpha);
+        vertex(b, m, (float) from.x, (float) from.y, (float) from.z, c, alpha);
+        vertex(b, m, (float) from.x, (float) from.y, (float) from.z, c, alpha);
+        vertex(b, m, (float) to.x, (float) to.y, (float) to.z, c, alpha);
+        vertex(b, m, (float) (to.x + side.x), (float) (to.y + side.y), (float) (to.z + side.z), c, 0);
+        vertex(b, m, (float) (from.x + side.x), (float) (from.y + side.y), (float) (from.z + side.z), c, 0);
+    }
+
+    /**
+     * At the burst, cracks of light run out from the plinth across the ground, jagged lines that
+     * follow the terrain, reach thirty blocks in the slow seconds of the burst and fade while
+     * the obelisk reforms.
+     */
+    private static void drawCracks(RenderLevelStageEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        if (!farHere(mc) || mc.level == null) return;
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float riteT = riteTime(mc, partial);
+        int start = de.kronwerke.core.obelisk.ObeliskRite.T_BURST, end = de.kronwerke.core.obelisk.ObeliskRite.T_REFORM + 60;
+        if (riteT < start || riteT >= end) return;
+        Vec3 cam = event.getCamera().getPosition();
+        Vec3 base = new Vec3(far.x(), far.baseY(), far.z());
+        if (cam.distanceToSqr(base) > 120 * 120) return;
+        float grow = Mth.clamp((riteT - start) / 30f, 0f, 1f);
+        grow = 1 - (1 - grow) * (1 - grow);
+        float fade = riteT < de.kronwerke.core.obelisk.ObeliskRite.T_REFORM ? 1f : 1 - (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_REFORM) / 60f;
+        float time = mc.level.getGameTime() + partial;
+        float[] gold = {1f, 0.85f, 0.5f};
+        float[] white = {1f, 0.97f, 0.9f};
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(-cam.x, -cam.y, -cam.z);
+        Matrix4f m = pose.last().pose();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        int cracks = 12, segments = 14;
+        java.util.Random rnd = new java.util.Random(far.baseY() * 31L + 7);
+        for (int k = 0; k < cracks; k++) {
+            float angle = k / (float) cracks * Mth.TWO_PI + (rnd.nextFloat() - 0.5f) * 0.4f;
+            float reach = (22 + rnd.nextFloat() * 10) * grow;
+            float px = (float) far.x(), pz = (float) far.z();
+            float py = far.baseY() + 0.06f;
+            float width = 0.35f;
+            // the crack wanders a little from its line and is pulled back to it, so it stays radial
+            float drift = 0;
+            for (int i = 0; i < segments; i++) {
+                float t0 = i / (float) segments, t1 = (i + 1) / (float) segments;
+                float r1 = 4 + reach * t1;
+                drift = drift * 0.6f + (rnd.nextFloat() - 0.5f) * 0.5f;
+                float a1 = angle + drift * 0.35f;
+                float nx = (float) far.x() + Mth.cos(a1) * r1, nz = (float) far.z() + Mth.sin(a1) * r1;
+                float ny = groundAt(mc, nx, nz, far.baseY()) + 0.06f;
+                if (i == 0) {
+                    px = (float) far.x() + Mth.cos(angle) * 4;
+                    pz = (float) far.z() + Mth.sin(angle) * 4;
+                    py = groundAt(mc, px, pz, far.baseY()) + 0.06f;
+                }
+                // the light runs along the crack as a pulse and dies out towards the tip
+                float pulse = 0.6f + 0.4f * Mth.sin(t0 * 9f - time * 0.5f + k);
+                float tip = 1 - t1 * t1;
+                float alpha = fade * tip * pulse;
+                float w0 = width * (1 - t0 * 0.7f), w1 = width * (1 - t1 * 0.7f);
+                // across the crack, perpendicular on the ground
+                float dx = nx - px, dz = nz - pz;
+                float len = Math.max(0.001f, Mth.sqrt(dx * dx + dz * dz));
+                float ox = -dz / len, oz = dx / len;
+                vertex(b, m, px + ox * w0, py, pz + oz * w0, gold, 0);
+                vertex(b, m, nx + ox * w1, ny, nz + oz * w1, gold, 0);
+                vertex(b, m, nx, ny, nz, white, alpha);
+                vertex(b, m, px, py, pz, white, alpha);
+                vertex(b, m, px, py, pz, white, alpha);
+                vertex(b, m, nx, ny, nz, white, alpha);
+                vertex(b, m, nx - ox * w1, ny, nz - oz * w1, gold, 0);
+                vertex(b, m, px - ox * w0, py, pz - oz * w0, gold, 0);
+                // a wider, fainter glow under the crack
+                vertex(b, m, px + ox * w0 * 3, py - 0.01f, pz + oz * w0 * 3, gold, 0);
+                vertex(b, m, nx + ox * w1 * 3, ny - 0.01f, nz + oz * w1 * 3, gold, 0);
+                vertex(b, m, nx - ox * w1 * 3, ny - 0.01f, nz - oz * w1 * 3, gold, 0);
+                vertex(b, m, px - ox * w0 * 3, py - 0.01f, pz - oz * w0 * 3, gold, 0);
+                px = nx;
+                pz = nz;
+                py = ny;
+            }
+        }
+        BufferUploader.drawWithShader(b.buildOrThrow());
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
+    }
+
+    /** The ground height at a point, the top of the highest solid block, or the plinth's floor when the chunk is not there. */
+    private static float groundAt(Minecraft mc, float x, float z, int fallback) {
+        BlockPos p = BlockPos.containing(x, 0, z);
+        if (!mc.level.hasChunkAt(p)) return fallback;
+        int y = mc.level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, p.getX(), p.getZ());
+        // the pavement sits one below the plinth; inside it the floor is the pavement's top
+        return Math.min(y, fallback + 3);
     }
 
     // ---- the ground rings ----

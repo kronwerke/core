@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.14.1
+
+- The thin sky: from the second stage the veil above the obelisk is worn, and a faint patch of the galaxy shows through it day and night, growing with the stage and placed above the obelisk from wherever the player stands (the galaxy shader takes a `Center`).
+- During the intake the four pylons fire their light into the crystal, brighter as the burst nears.
+- At the burst, twelve cracks of light run out from the plinth across the ground, following the terrain, and fade while the obelisk reforms.
+- The signal stands out more by day.
+
 ## 0.14.0
 
 - The obelisk is seen from far away. The server tells every client where it stands and what state it is in (`StatePayload`), and the client draws the far effects from that: the signal, ribbons of the obelisk's colour that wind up from the crystal into the sky, higher and wider with every stage, faint by day and bright by night; the aurora; and during the rite the great beam, so a player on the other side of the map sees the column come down and the gold pillar rise.
