@@ -66,6 +66,8 @@ public final class ObeliskRite {
         s.at(0, () -> level.playSound(null, core.above(10), SoundEvents.BEACON_DEACTIVATE, SoundSource.BLOCKS, 2.0f, 0.6f));
         s.at(T_INTAKE - 20, () -> {
             for (ServerPlayer p : server.getPlayerList().getPlayers()) p.playNotifySound(KwSounds.RISER.get(), SoundSource.MASTER, 0.9f, 1.0f);
+            // the sky tears open first, the beam comes down out of the tear; it stays open longer with every stage
+            ob.tearSky(level, level.getGameTime(), INTAKE + 20 + 400 * Math.max(1, newTier), newTier, cx, tipY, cz);
         });
 
         // 2. intake: twelve segments of the trunk light up with a rising pentatonic scale
@@ -99,9 +101,10 @@ public final class ObeliskRite {
             int n = newTier;
             title(server, Component.literal("STUFE " + roman(n) + " GESCHAFFT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                     Component.literal(done.title()).withStyle(ChatFormatting.YELLOW));
-            // the sky tears open for everyone, and stays open longer with every stage
-            ob.tearSky(level, level.getGameTime(), 400 * Math.max(1, n), n, cx, tipY, cz);
+            // the burst in slow motion: the server runs at a quarter speed for ten of its ticks
+            server.tickRateManager().setTickRate(5f);
         });
+        s.at(T_BURST + 10, () -> server.tickRateManager().setTickRate(20f));
         // the dome: rings of light that run outward along the ground
         for (int t = 0; t < 12; t++) {
             int step = t;
@@ -175,6 +178,7 @@ public final class ObeliskRite {
             }
         });
         s.at(T_END, () -> {
+            server.tickRateManager().setTickRate(20f);
             ObeliskTopBlockEntity t = ob.top(level);
             if (t != null) t.rite(0);
             ob.refreshDisplays();

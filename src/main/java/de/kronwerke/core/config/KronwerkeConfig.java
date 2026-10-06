@@ -12,6 +12,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue BROADCAST_DEPOSITS;
     public static final ModConfigSpec.IntValue BROADCAST_DEPOSIT_MIN;
     public static final ModConfigSpec.IntValue FEEDER_RADIUS;
+    public static final ModConfigSpec.IntValue BOSS_BAR_RADIUS;
     public static final ModConfigSpec.BooleanValue CONTAINER_FEEDERS;
     public static final ModConfigSpec.IntValue FEEDERS_PER_PLAYER;
     public static final ModConfigSpec.IntValue FEEDER_INTERVAL;
@@ -112,6 +113,8 @@ public final class KronwerkeConfig {
                 .define("containerFeeders", false);
         FEEDER_RADIUS = b.comment("The zone around the obelisk's core, in blocks: intakes work there, and inside the spawn protection anyone may place and take back their own hoppers, pipes and belts there.")
                 .defineInRange("feederRadius", 10, 1, 32);
+        BOSS_BAR_RADIUS = b.comment("Show the goal's boss bar only to players within this many blocks of the obelisk (in its dimension). 0 shows it to everyone everywhere.")
+                .defineInRange("bossBarRadius", 0, 0, 100000);
         FEEDERS_PER_PLAYER = b.comment("How many feeders one player can have.")
                 .defineInRange("feedersPerPlayer", 2, 0, 64);
         FEEDER_INTERVAL = b.comment("Empty the feeders into the active goal every this many seconds.")

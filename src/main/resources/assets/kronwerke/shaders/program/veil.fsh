@@ -7,6 +7,7 @@
 uniform sampler2D DiffuseSampler;
 uniform float Strength;
 uniform float Time;
+uniform float Flash;
 
 in vec2 texCoord;
 out vec4 fragColor;
@@ -24,5 +25,7 @@ void main() {
     vec3 graded = mix(c.rgb, cool, Strength);
     graded *= mix(1.0, 0.45 + 0.55 * vignette, Strength);
     float grain = (hash(texCoord * 900.0 + Time) - 0.5) * 0.035 * Strength;
-    fragColor = vec4(graded + grain, 1.0);
+    // the flash of the burst: the whole picture goes white gold and comes back
+    graded = mix(graded + grain, vec3(1.0, 0.96, 0.85), Flash);
+    fragColor = vec4(graded, 1.0);
 }

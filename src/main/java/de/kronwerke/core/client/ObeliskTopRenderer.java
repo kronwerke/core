@@ -111,10 +111,18 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         // the texture is already coloured, so the tint stays light and only leans the hue
         float[] tint = {Mth.lerp(riteWhite, 0.45f + 0.55f * c[0], 1f), Mth.lerp(riteWhite, 0.45f + 0.55f * c[1], 1f), Mth.lerp(riteWhite, 0.45f + 0.55f * c[2], 1f)};
 
+        // the stone notices who comes close: the shards hurry and the crystal leans towards the viewer
+        Vec3 cam = net.minecraft.client.Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        double toCamX = cam.x - (be.getBlockPos().getX() + 0.5), toCamZ = cam.z - (be.getBlockPos().getZ() + 0.5);
+        double camDist = Math.sqrt(toCamX * toCamX + toCamZ * toCamZ);
+        float near = riteT >= 0 ? 0f : (float) Mth.clamp(1 - (camDist - 3) / 10, 0, 1);
+        float leanYaw = (float) Math.toDegrees(Math.atan2(toCamX, toCamZ));
+        glow = Math.min(1f, glow + 0.1f * near);
+
         float size = (0.75f + 0.08f * tier) * (1f + flare * 0.25f) * riteScale;
         float bob = asleep ? -0.35f : 0.08f * Mth.sin(time / 22f);
         if (held) bob += 0.03f * Mth.sin(time * 2.2f);
-        float spin = (asleep ? 0.3f : mood == ObeliskTopBlockEntity.MOOD_DONE ? 2.5f : 1.2f) * riteSpin;
+        float spin = (asleep ? 0.3f : mood == ObeliskTopBlockEntity.MOOD_DONE ? 2.5f : 1.2f) * riteSpin * (1f + 1.5f * near);
         VertexConsumer vc = buffer.getBuffer(RenderType.entityTranslucentEmissive(CRYSTAL));
         int frame = (int) ((gameTime / 3) % FRAMES);
 
@@ -133,6 +141,12 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
 
         pose.pushPose();
         pose.translate(0.5, BASE_Y + bob, 0.5);
+        if (near > 0) {
+            // lean towards the viewer: turn to face them, tip over, turn back
+            pose.mulPose(Axis.YP.rotationDegrees(leanYaw));
+            pose.mulPose(Axis.XP.rotationDegrees(14f * near));
+            pose.mulPose(Axis.YP.rotationDegrees(-leanYaw));
+        }
         pose.mulPose(Axis.YP.rotationDegrees(time * spin));
         pose.scale(size, size, size);
         octahedron(pose, vc, 0.72f, 0.32f, tint, glow, frame, 0.95f);

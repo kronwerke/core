@@ -88,6 +88,8 @@ public final class ObeliskEffects {
             if (t >= de.kronwerke.core.obelisk.ObeliskRite.T_BURST && t < de.kronwerke.core.obelisk.ObeliskRite.T_BURST + 2 && waveStart != be.rite()) {
                 waveStart = be.rite();
                 shockwave(crystal, 1.4f, 45);
+                flashAt = System.currentTimeMillis();
+                shake(1.2f, 40);
             }
         }
     }
@@ -106,6 +108,7 @@ public final class ObeliskEffects {
     private static KwNetwork.SkyPayload sky;
     private static long shakeUntil;
     private static float shakeStrength;
+    private static long flashAt;
 
     public static void register(net.neoforged.bus.api.IEventBus modBus) {
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onRenderStage);
@@ -130,7 +133,7 @@ public final class ObeliskEffects {
     /** The server says the sky is open. */
     public static void sky(KwNetwork.SkyPayload payload) {
         sky = payload;
-        shake(1.2f, 40);
+        shake(0.3f, 60);
     }
 
     public static void shake(float strength, int ticks) {
@@ -332,10 +335,14 @@ public final class ObeliskEffects {
         if (c == null) return;
         Minecraft mc = Minecraft.getInstance();
         float strength = 0.75f * open;
+        // the flash lasts a second and a half of real time, the burst itself runs in slow motion
+        float sinceFlash = (System.currentTimeMillis() - flashAt) / 1500f;
+        float flash = flashAt > 0 && sinceFlash < 1f ? (1 - sinceFlash) * (1 - sinceFlash) : 0f;
         for (PostPass pass : passes(c)) {
             var eff = pass.getEffect();
             eff.safeGetUniform("Strength").set(strength);
             eff.safeGetUniform("Time").set((System.currentTimeMillis() % 100000) / 1000f);
+            eff.safeGetUniform("Flash").set(flash);
         }
         c.process(event.getPartialTick().getGameTimeDeltaPartialTick(false));
         mc.getMainRenderTarget().bindWrite(false);

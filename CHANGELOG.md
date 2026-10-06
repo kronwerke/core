@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.2
+
+- The rite in its final order: the sky tears open first, during the riser, the beam comes down out of the tear, and the burst runs in slow motion (the server drops to a quarter speed for ten of its ticks) with a white gold flash over the whole picture.
+- The crystal notices who comes close: the shards hurry and the crystal leans towards the viewer.
+- `bossBarRadius` in the config shows the goal's boss bar only near the obelisk; 0 (default) shows it everywhere.
+
 ## 0.13.1
 
 - The obelisk has its own voice: a hum that loops and rises with the goal, a riser that carries the intake of the rite to the burst, the tear of the sky, and a fanfare for the roll call, all synthesized by `tools/sounds/synth.py`.

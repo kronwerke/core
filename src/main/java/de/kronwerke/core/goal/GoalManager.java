@@ -448,6 +448,22 @@ public final class GoalManager {
         bossBar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
         bossBar.setProgress((float) Math.min(1.0, f));
         bossBar.setVisible(true);
+        scopeBossBar();
+    }
+
+    /** With a boss bar radius set, only players near the obelisk carry the bar. */
+    private void scopeBossBar() {
+        int radius = KronwerkeConfig.BOSS_BAR_RADIUS.get();
+        if (radius <= 0 || bossBar == null) return;
+        var ob = de.kronwerke.core.obelisk.Obelisk.get();
+        var d = ob.data();
+        for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
+            boolean near = d.isSet() && sp.level().dimension().location().toString().equals(d.dimension())
+                    && sp.blockPosition().distSqr(d.pos()) <= (long) radius * radius;
+            boolean has = bossBar.getPlayers().contains(sp);
+            if (near && !has) bossBar.addPlayer(sp);
+            else if (!near && has) bossBar.removePlayer(sp);
+        }
     }
 
     public void onPlayerJoin(Player player) {

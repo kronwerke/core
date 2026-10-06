@@ -7,7 +7,8 @@
             "outtarget": "swap",
             "uniforms": [
                 { "name": "Strength", "values": [ 0.0 ] },
-                { "name": "Time", "values": [ 0.0 ] }
+                { "name": "Time", "values": [ 0.0 ] },
+                { "name": "Flash", "values": [ 0.0 ] }
             ]
         },
         {
