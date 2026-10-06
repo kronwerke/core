@@ -5,6 +5,7 @@
   riser     the four seconds of the intake, noise and a rising tone that end on the burst
   tear      the moment the sky opens, a low boom with a long shimmer
   fanfare   the roll call, three brass like chords over a bell
+  whisper   the stone noticing a gaze, two seconds of breath and a bending tone
 
 Everything is additive synthesis with numpy, no samples, so the same script makes the
 same files. ffmpeg turns the wav into ogg.
@@ -129,6 +130,18 @@ def fanfare():
     return normalize(out, 0.9)
 
 
+def whisper():
+    tt = t(2.2)
+    rng = np.random.default_rng(11)
+    breath = lowpass(rng.normal(0, 1, len(tt)), 900) * (0.5 + 0.5 * np.sin(2 * np.pi * 1.3 * tt - np.pi / 2)) * 0.5
+    # a tone that bends up a fifth and back, soft and hollow
+    freq = 330 * 2 ** (0.58 * np.sin(np.pi * tt / 2.2) ** 2)
+    phase = np.cumsum(freq) / RATE
+    tone = (np.sin(2 * np.pi * phase) + 0.3 * np.sin(2 * np.pi * phase * 2.01)) * 0.35
+    out = (breath + tone) * env(len(tt), 0.4, 0.9)
+    return normalize(out, 0.55)
+
+
 def write(name, data):
     os.makedirs(OUT, exist_ok=True)
     wav = os.path.join(OUT, name + ".wav")
@@ -149,4 +162,5 @@ if __name__ == "__main__":
     write("riser", riser())
     write("tear", tear())
     write("fanfare", fanfare())
+    write("whisper", whisper())
     print("ok", os.path.abspath(OUT))

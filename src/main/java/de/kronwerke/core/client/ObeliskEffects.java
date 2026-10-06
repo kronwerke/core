@@ -48,7 +48,11 @@ import java.util.List;
  * <li>the thin sky: from the second stage the veil above the obelisk is worn, and a faint
  * patch of the galaxy shows through it day and night, growing with the stage,</li>
  * <li>the rite's own extras: during the intake the pylons fire their light into the crystal,
- * and at the burst cracks of light run out from the plinth across the ground.</li>
+ * and at the burst cracks of light run out from the plinth across the ground,</li>
+ * <li>the gaze: a player who looks straight at the crystal for two seconds is noticed, the
+ * crystal flares towards them and the stone whispers once,</li>
+ * <li>the crowd: the more players stand around the plinth, the livelier the shards, the rings
+ * and the signal.</li>
  * </ul>
  * The server sends where the obelisk stands and how it feels (StatePayload), so the far
  * effects do not depend on its blocks being rendered.
@@ -148,6 +152,11 @@ public final class ObeliskEffects {
     private static int moodNow(Minecraft mc) {
         if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return mood;
         return farHere(mc) ? far.mood() : ObeliskTopBlockEntity.MOOD_IDLE;
+    }
+
+    /** How many players the server counts around the plinth. */
+    static int crowd() {
+        return far == null ? 0 : far.crowd();
     }
 
     private static int percentNow(Minecraft mc) {
@@ -272,6 +281,7 @@ public final class ObeliskEffects {
 
     private static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+            gaze(event);
             drawRings(event);
             drawSignal(event);
             drawFarBeam(event);
@@ -554,6 +564,7 @@ public final class ObeliskEffects {
         float time = mc.level.getGameTime() + event.getPartialTick().getGameTimeDeltaPartialTick(false);
         float day = skyBrightness(mc, event);
         float strength = mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.3f : 1f;
+        strength *= 1f + 0.08f * Math.min(crowd(), 6);
         // the open sky has its own light, the signal steps back while the galaxy shows
         strength *= 1f - 0.7f * skyOpen();
         // up close the crystal and the beam already carry the picture; the signal fades in with distance
@@ -705,6 +716,94 @@ public final class ObeliskEffects {
         vertex(b, m, dx, y1, dz, c, 0);
         vertex(b, m, dx, y0, dz, c, 0);
         BufferUploader.drawWithShader(b.buildOrThrow());
+    }
+
+    // ---- the gaze ----
+
+    private static int gazeTicks;
+    private static long gazeLastTick;
+    private static float gazeGlow;
+    private static boolean gazeNoticed;
+
+    /**
+     * Whoever looks straight at the crystal from within thirty blocks for two seconds is
+     * noticed: the crystal flares towards them with a soft billboard of light and the stone
+     * whispers once. Looking away lets it fade.
+     */
+    private static void gaze(RenderLevelStageEvent event) {
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 at = where(mc);
+        if (at == null || mc.level == null || mc.player == null) return;
+        long tick = mc.level.getGameTime();
+        boolean newTick = tick != gazeLastTick;
+        // counted in game ticks, not frames, so a slow client is noticed as soon as a fast one
+        int passed = (int) Mth.clamp(tick - gazeLastTick, 1, 10);
+        gazeLastTick = tick;
+        Vec3 cam = event.getCamera().getPosition();
+        Vec3 to = at.subtract(cam);
+        double dist = to.length();
+        Vec3 look = mc.player.getViewVector(event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        boolean looking = dist < 30 && dist > 2 && look.dot(to.normalize()) > 0.9985;
+        if (newTick) {
+            if (looking) gazeTicks = Math.min(gazeTicks + passed, 80);
+            else gazeTicks = Math.max(gazeTicks - 3 * passed, 0);
+            if (gazeTicks >= 40 && !gazeNoticed) {
+                gazeNoticed = true;
+                mc.level.playLocalSound(at.x, at.y, at.z, de.kronwerke.core.obelisk.KwSounds.WHISPER.get(), net.minecraft.sounds.SoundSource.BLOCKS, 0.8f, 1f, false);
+                for (int i = 0; i < 6; i++) {
+                    mc.level.addParticle(de.kronwerke.core.obelisk.KwParticles.RUNE.get(), at.x + (mc.level.random.nextDouble() - 0.5), at.y + (mc.level.random.nextDouble() - 0.5), at.z + (mc.level.random.nextDouble() - 0.5),
+                            -to.x * 0.01, -to.y * 0.01, -to.z * 0.01);
+                }
+            }
+            if (gazeTicks == 0) gazeNoticed = false;
+        }
+        float target = gazeTicks >= 40 ? Mth.clamp((gazeTicks - 40) / 20f, 0f, 1f) : 0f;
+        gazeGlow += (target - gazeGlow) * 0.08f;
+        if (gazeGlow <= 0.01f) return;
+        float[] colour = ObeliskTopRenderer.colour(percentNow(mc), moodNow(mc), tierNow(mc));
+        float time = tick + event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float size = (0.8f + 1.6f * gazeGlow) * (1f + 0.08f * Mth.sin(time / 3f));
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(at.x - cam.x, at.y - cam.y, at.z - cam.z);
+        // the billboard faces the camera
+        pose.mulPose(event.getCamera().rotation());
+        Matrix4f m = pose.last().pose();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        RenderSystem.disableDepthTest();
+        RenderSystem.disableCull();
+        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        int rays = 24;
+        float alpha = 0.55f * gazeGlow;
+        for (int i = 0; i < rays; i++) {
+            float a0 = i / (float) rays * Mth.TWO_PI, a1 = (i + 1) / (float) rays * Mth.TWO_PI;
+            // a soft disc, bright at the centre, with a slow ripple along its edge
+            float r0 = size * (0.8f + 0.2f * Mth.sin(a0 * 5 + time / 4f)), r1 = size * (0.8f + 0.2f * Mth.sin(a1 * 5 + time / 4f));
+            b.addVertex(m, 0, 0, 0).setColor(1f, 1f, 1f, alpha);
+            b.addVertex(m, Mth.cos(a0) * r0, Mth.sin(a0) * r0, 0).setColor(colour[0], colour[1], colour[2], 0f);
+            b.addVertex(m, Mth.cos(a1) * r1, Mth.sin(a1) * r1, 0).setColor(colour[0], colour[1], colour[2], 0f);
+        }
+        // four long rays, like a lens catching the light
+        for (int i = 0; i < 4; i++) {
+            float a = i * Mth.HALF_PI + Mth.PI / 4 + time / 60f;
+            float len = size * 3.5f, w = size * 0.12f;
+            float dx = Mth.cos(a), dy = Mth.sin(a);
+            b.addVertex(m, -dy * w, dx * w, 0).setColor(1f, 1f, 1f, alpha * 0.6f);
+            b.addVertex(m, dy * w, -dx * w, 0).setColor(1f, 1f, 1f, alpha * 0.6f);
+            b.addVertex(m, dx * len, dy * len, 0).setColor(colour[0], colour[1], colour[2], 0f);
+            b.addVertex(m, dy * w, -dx * w, 0).setColor(1f, 1f, 1f, alpha * 0.6f);
+            b.addVertex(m, -dy * w, dx * w, 0).setColor(1f, 1f, 1f, alpha * 0.6f);
+            b.addVertex(m, -dx * len, -dy * len, 0).setColor(colour[0], colour[1], colour[2], 0f);
+        }
+        BufferUploader.drawWithShader(b.buildOrThrow());
+        RenderSystem.enableCull();
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
     }
 
     // ---- the pylons' light and the cracks of the burst ----
@@ -894,6 +993,8 @@ public final class ObeliskEffects {
         float night = Mth.clamp(1f - skyBrightness(mc, event), 0f, 1f);
         int mood = moodNow(mc);
         float strength = (0.35f + 0.65f * night) * (mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.35f : 1f) * (float) Mth.clamp(1 - (dist - 40) / 24, 0, 1);
+        // a gathering wakes the rings
+        strength *= 1f + 0.12f * Math.min(far.crowd(), 6);
         float sinceGift = (System.currentTimeMillis() - giftAt) / 1200f;
         float gift = giftAt > 0 && sinceGift < 1f ? (1 - sinceGift) * (1 - sinceGift) * giftStrength : 0f;
         strength = Math.min(1f, strength + gift);

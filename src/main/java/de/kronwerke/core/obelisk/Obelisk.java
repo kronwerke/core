@@ -285,6 +285,18 @@ public final class Obelisk {
         }
     }
 
+    /** How many players stand close around the plinth. */
+    int crowd(ServerLevel level) {
+        BlockPos core = data().pos();
+        int n = 0;
+        for (ServerPlayer p : level.players()) {
+            if (p.distanceToSqr(core.getX() + 0.5, core.getY() + 1, core.getZ() + 0.5) <= 12 * 12) n++;
+        }
+        return n;
+    }
+
+    private int lastCrowd = -1;
+
     private void ambient() {
         ObeliskData d = data();
         if (!d.isSet() || ++ambientTicks % 20 != 0) return;
@@ -293,6 +305,16 @@ public final class Obelisk {
         BlockPos core = d.pos();
         if (!level.isLoaded(core)) return;
         lift(level, core);
+        // a gathering changes the stone's mood at once, not at the next display refresh
+        int crowd = crowd(level);
+        if (crowd != lastCrowd) {
+            lastCrowd = crowd;
+            ObeliskTopBlockEntity t = top(level);
+            if (t != null) broadcastState(level, t);
+            if (crowd >= 3 && crowd > (lastCrowdNoted)) gathering(level, core, crowd);
+            lastCrowdNoted = crowd;
+        }
+        whisper(level, core, crowd);
         if (!level.hasNearbyAlivePlayer(core.getX() + 0.5, core.getY() + 10, core.getZ() + 0.5, 48)) return;
         ObeliskTopBlockEntity top = top(level);
         if (top != null && top.rite() > 0) return;
@@ -323,6 +345,59 @@ public final class Obelisk {
             level.sendParticles(net.minecraft.core.particles.ParticleTypes.ELECTRIC_SPARK, x, rune.getY() + 0.5, z, 24, 0.3, 0.3, 0.3, 0.05);
             level.playSound(null, rune, net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_RESONATE, net.minecraft.sounds.SoundSource.BLOCKS, 1.2f, 0.6f);
             scheduler.at(6, () -> level.playSound(null, rune, net.minecraft.sounds.SoundEvents.AMETHYST_CLUSTER_BREAK, net.minecraft.sounds.SoundSource.BLOCKS, 0.8f, 1.4f));
+        }
+    }
+
+    private int lastCrowdNoted;
+    private int whisperIn = 1200;
+
+    /** Three or more around the plinth: the runes answer with a chord, one note per player, and a ring of motes. */
+    private void gathering(ServerLevel level, BlockPos core, int crowd) {
+        BlockPos at = core.above(6);
+        float[] scale = {0.5f, 0.5946f, 0.6674f, 0.7491f, 0.8909f, 1.0f, 1.1892f, 1.3348f};
+        for (int i = 0; i < Math.min(crowd, 6); i++) {
+            float pitch = scale[i % scale.length];
+            scheduler.at(i * 3, () -> level.playSound(null, at, net.minecraft.sounds.SoundEvents.NOTE_BLOCK_CHIME.value(), net.minecraft.sounds.SoundSource.BLOCKS, 1.2f, pitch));
+        }
+        for (int i = 0; i < 24; i++) {
+            double a = i / 24.0 * Math.PI * 2;
+            level.sendParticles(KwParticles.RUNE.get(), core.getX() + 0.5 + Math.cos(a) * 5.5, core.getY() + 1.2, core.getZ() + 0.5 + Math.sin(a) * 5.5, 1, 0, 0.02, 0, 0);
+        }
+    }
+
+    /**
+     * Between gifts the stone whispers: every two to four minutes, when someone is close and
+     * nothing has come in for ten minutes, runes drift down the trunk and the players nearby
+     * read which pillar is furthest behind. A nudge, not a lecture.
+     */
+    private void whisper(ServerLevel level, BlockPos core, int crowd) {
+        whisperIn -= 20;
+        if (whisperIn > 0 || crowd == 0 || slumbering()) return;
+        whisperIn = 2400 + level.random.nextInt(2400);
+        long since = level.getGameTime() - data().lastDepositAt();
+        if (data().lastDepositAt() > 0 && since < 12000) return;
+        GoalManager gm = GoalManager.get();
+        List<Goal> active = gm.activeGoals();
+        Goal g = active.isEmpty() ? null : active.get(0);
+        if (g == null || gm.isHeld(g) || g.pillars().isEmpty()) return;
+        Goal.Pillar lowest = null;
+        int lowestPercent = 101;
+        for (Goal.Pillar pillar : g.pillars()) {
+            int pct = pillarPercent(gm, g, pillar);
+            if (pct < lowestPercent) {
+                lowestPercent = pct;
+                lowest = pillar;
+            }
+        }
+        if (lowest == null) return;
+        for (int i = 0; i < 16; i++) {
+            double a = i / 16.0 * Math.PI * 2 + level.random.nextDouble();
+            level.sendParticles(KwParticles.RUNE.get(), core.getX() + 0.5 + Math.cos(a) * 1.8, core.getY() + 13 - i * 0.6, core.getZ() + 0.5 + Math.sin(a) * 1.8, 1, 0, -0.03, 0, 0);
+        }
+        level.playSound(null, core.above(8), net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_RESONATE, net.minecraft.sounds.SoundSource.BLOCKS, 0.6f, 0.5f);
+        Component line = Text.t("obelisk.whisper", "Der Stein flüstert: %s fehlt am meisten.", Component.literal(lowest.title())).withStyle(ChatFormatting.DARK_AQUA, ChatFormatting.ITALIC);
+        for (ServerPlayer p : level.players()) {
+            if (p.distanceToSqr(core.getX() + 0.5, core.getY() + 1, core.getZ() + 0.5) <= 24 * 24) p.displayClientMessage(line, true);
         }
     }
 
@@ -552,9 +627,9 @@ public final class Obelisk {
     /** The far effects need to know where the obelisk is and how it feels, even out of render range. */
     private void broadcastState(ServerLevel level, ObeliskTopBlockEntity top) {
         de.kronwerke.core.net.KwNetwork.StatePayload now = top == null
-                ? new de.kronwerke.core.net.KwNetwork.StatePayload("", 0, 0, 0, 0, -1, 0, 0)
+                ? new de.kronwerke.core.net.KwNetwork.StatePayload("", 0, 0, 0, 0, -1, 0, 0, 0)
                 : new de.kronwerke.core.net.KwNetwork.StatePayload(level.dimension().location().toString(), top.getBlockPos().getX() + 0.5, top.getBlockPos().getY() + 22 / 16.0 + 0.8, top.getBlockPos().getZ() + 0.5,
-                data().pos().getY(), top.tier(), top.mood(), top.percent());
+                data().pos().getY(), top.tier(), top.mood(), top.percent(), crowd(level));
         if (now.equals(state)) return;
         state = now;
         for (ServerPlayer p : level.players()) net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, state);

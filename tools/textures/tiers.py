@@ -194,17 +194,32 @@ def ember(frames=10):
 # ---- arch ----
 
 def arch():
-    im = stone(51, SLATE, 4)
+    """A voussoir: dark fitted stone with a sunk panel, and in the panel a violet inclusion
+    that glows, a small diamond of crystal with two specks beside it."""
+    im = stone(51, SLATE, 3)
     glow = empty()
-    vs = veins(52, 4, 7)
-    for (x, y), t in vs.items():
-        put(im, x, y, VIOLET_DEEP)
-        put(glow, x, y, mix(VIOLET_DEEP, VIOLET, 0.5), 160)
-    rnd = random.Random(53)
-    for _ in range(5):
-        x, y = rnd.randint(1, 14), rnd.randint(1, 14)
+    # the sunk panel
+    for y in range(3, 13):
+        for x in range(3, 13):
+            c = im.getpixel((x, y))[:3]
+            if x == 3 or y == 3:
+                c = mix(c, (0, 0, 0), 0.3)
+            elif x == 12 or y == 12:
+                c = mix(c, (255, 255, 255), 0.1)
+            else:
+                c = mix(c, SLATE_DARK, 0.5)
+            put(im, x, y, c)
+    # the inclusion: a diamond, bright at the centre
+    for y in range(5, 11):
+        for x in range(5, 11):
+            d = abs(x - 7.5) + abs(y - 7.5)
+            if d <= 3.0:
+                t = 1 - d / 3.0
+                put(im, x, y, mix(VIOLET_DEEP, VIOLET, t * 0.7))
+                put(glow, x, y, mix(VIOLET_DEEP, VIOLET, t), int(120 + 120 * t))
+    for x, y in ((2, 10), (13, 5)):
         put(im, x, y, VIOLET)
-        put(glow, x, y, VIOLET)
+        put(glow, x, y, VIOLET, 200)
     return im, glow
 
 

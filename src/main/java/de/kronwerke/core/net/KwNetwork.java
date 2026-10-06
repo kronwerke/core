@@ -51,9 +51,10 @@ public final class KwNetwork {
      * Where the obelisk stands and what state it is in, for the effects that are seen from far
      * away, beyond the range in which its blocks are rendered: the signal into the sky, the
      * aurora, the ground rings. x, y, z is the point of the crystal, baseY the floor of the
-     * plinth; tier below zero means there is no obelisk.
+     * plinth, crowd how many players stand within twelve blocks; tier below zero means there is
+     * no obelisk.
      */
-    public record StatePayload(String dimension, double x, double y, double z, int baseY, int tier, int mood, int percent) implements CustomPacketPayload {
+    public record StatePayload(String dimension, double x, double y, double z, int baseY, int tier, int mood, int percent, int crowd) implements CustomPacketPayload {
         public static final Type<StatePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "state"));
         public static final StreamCodec<RegistryFriendlyByteBuf, StatePayload> CODEC = StreamCodec.of((buf, p) -> {
             buf.writeUtf(p.dimension());
@@ -64,7 +65,8 @@ public final class KwNetwork {
             buf.writeVarInt(p.tier());
             buf.writeVarInt(p.mood());
             buf.writeVarInt(p.percent());
-        }, buf -> new StatePayload(buf.readUtf(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
+            buf.writeVarInt(p.crowd());
+        }, buf -> new StatePayload(buf.readUtf(), buf.readDouble(), buf.readDouble(), buf.readDouble(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt(), buf.readVarInt()));
 
         @Override
         public Type<? extends CustomPacketPayload> type() {

@@ -122,7 +122,8 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         float size = (0.75f + 0.08f * tier) * (1f + flare * 0.25f) * riteScale;
         float bob = asleep ? -0.35f : 0.08f * Mth.sin(time / 22f);
         if (held) bob += 0.03f * Mth.sin(time * 2.2f);
-        float spin = (asleep ? 0.3f : mood == ObeliskTopBlockEntity.MOOD_DONE ? 2.5f : 1.2f) * riteSpin * (1f + 1.5f * near);
+        // the shards quicken with whoever comes close and with the crowd around the plinth
+        float spin = (asleep ? 0.3f : mood == ObeliskTopBlockEntity.MOOD_DONE ? 2.5f : 1.2f) * riteSpin * (1f + 1.5f * near) * (1f + 0.15f * Math.min(ObeliskEffects.crowd(), 6));
         VertexConsumer vc = buffer.getBuffer(RenderType.entityTranslucentEmissive(CRYSTAL));
         int frame = (int) ((gameTime / 3) % FRAMES);
 

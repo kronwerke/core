@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.15.1
+
+- The obelisk notices the players. Whoever looks straight at the crystal for two seconds from within thirty blocks is answered: the crystal flares towards them like a lens catching the light, runes drift their way and the stone whispers once (`obelisk.whisper`, synthesized like the other sounds).
+- The crowd: the server tells the clients how many stand around the plinth. Three or more are greeted with a chord of chimes, one note per player, and a ring of runes; the shards, the ground rings and the signal grow livelier with the number.
+- The whispers: when nothing has come in for ten minutes and someone is near, every two to four minutes runes drift down the trunk and the players nearby read which pillar is furthest behind.
+- The arch stone drawn again: fitted stone with a sunk panel and a violet inclusion, instead of scribbled veins.
+
 ## 0.15.0
 
 - Three blocks for the grounds, in place of the vanilla ones the tiers used: the paving, engraved slabs with a rune that glows faintly, for the inner ring of the pavement; the flagstone, two courses of fitted stone, for the outer ring and the third stage's ring; the shard, violet glass with cyan facets and a sliding light, on top of the arches. The shards shed a few motes.
