@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.2
+
+- The gift is a moment now. The item given flies from the giver's hand to the crystal (`GiftPayload` to everyone within eighty blocks), spinning, with a trail of light in its pillar's colour, and is taken in; the amount rises from the crystal in that colour, with the item's name for anything beyond a handful; a ring of light runs out over the pavement, wider for a bigger gift. Gifts from the intake or a feeder rise out of the plinth instead of a hand.
+
 ## 0.15.1
 
 - The obelisk notices the players. Whoever looks straight at the crystal for two seconds from within thirty blocks is answered: the crystal flares towards them like a lens catching the light, runes drift their way and the stone whispers once (`obelisk.whisper`, synthesized like the other sounds).

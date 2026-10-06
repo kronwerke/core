@@ -52,7 +52,10 @@ import java.util.List;
  * <li>the gaze: a player who looks straight at the crystal for two seconds is noticed, the
  * crystal flares towards them and the stone whispers once,</li>
  * <li>the crowd: the more players stand around the plinth, the livelier the shards, the rings
- * and the signal.</li>
+ * and the signal,</li>
+ * <li>the gift: the item given flies from the giver's hand to the crystal and is taken in, a
+ * ripple runs out over the pavement and the amount rises from the crystal in the pillar's
+ * colour.</li>
  * </ul>
  * The server sends where the obelisk stands and how it feels (StatePayload), so the far
  * effects do not depend on its blocks being rendered.
@@ -283,6 +286,7 @@ public final class ObeliskEffects {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
             gaze(event);
             drawRings(event);
+            drawGifts(event);
             drawSignal(event);
             drawFarBeam(event);
             drawPylonBeams(event);
@@ -716,6 +720,195 @@ public final class ObeliskEffects {
         vertex(b, m, dx, y1, dz, c, 0);
         vertex(b, m, dx, y0, dz, c, 0);
         BufferUploader.drawWithShader(b.buildOrThrow());
+    }
+
+    // ---- the gift ----
+
+    private static final int[] PILLAR_COLOURS = {0x9aa0a8, 0xd4a24a, 0x9a6fd6};
+    private static final int GIFT_FLIGHT = 24, GIFT_AFTER = 50;
+
+    /** One gift in flight or just arrived: where from, what, when it left (real time), how big. */
+    private record Gift(Vec3 from, net.minecraft.world.item.ItemStack stack, long startMillis, int size, int pillar, long amount) {
+    }
+
+    private static final List<Gift> gifts = new java.util.ArrayList<>();
+
+    public static void gift(KwNetwork.GiftPayload payload) {
+        gifts.add(new Gift(new Vec3(payload.x(), payload.y(), payload.z()), payload.stack(), System.currentTimeMillis(), payload.size(), payload.pillar(), payload.amount()));
+        if (gifts.size() > 24) gifts.remove(0);
+    }
+
+    /** The flight of the gift and what follows it, drawn every frame from real time so it is smooth whatever the tick rate. */
+    private static void drawGifts(RenderLevelStageEvent event) {
+        if (gifts.isEmpty()) return;
+        Minecraft mc = Minecraft.getInstance();
+        Vec3 crystal = where(mc);
+        if (crystal == null || mc.level == null) {
+            gifts.clear();
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Vec3 cam = event.getCamera().getPosition();
+        net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
+        java.util.Iterator<Gift> it = gifts.iterator();
+        while (it.hasNext()) {
+            Gift g = it.next();
+            float t = (now - g.startMillis()) / 50f;
+            if (t > GIFT_FLIGHT + GIFT_AFTER) {
+                it.remove();
+                continue;
+            }
+            float[] colour = pillarColour(g.pillar());
+            if (t < GIFT_FLIGHT) {
+                // the flight: an arc that leans up and in, quick at the end, the item spinning
+                float p = t / GIFT_FLIGHT;
+                float ease = p * p * (3 - 2 * p);
+                Vec3 target = crystal;
+                Vec3 at = flightPoint(g, p, target);
+                // the giver's own gift leaves from right in front of the camera: it grows out of the hand
+                boolean own = g.from().distanceToSqr(cam) < 4;
+                float grow = own ? Mth.clamp(p / 0.25f, 0.05f, 1f) : 1f;
+                PoseStack pose = new PoseStack();
+                pose.mulPose(event.getModelViewMatrix());
+                pose.translate(at.x - cam.x, at.y - cam.y, at.z - cam.z);
+                // a trail of light behind the item
+                if (!own || p > 0.2f) drawTrail(pose, g, p, colour, cam, target);
+                pose.mulPose(com.mojang.math.Axis.YP.rotationDegrees(t * 18f));
+                pose.mulPose(com.mojang.math.Axis.XP.rotationDegrees(t * 7f));
+                float scale = (0.6f + 0.15f * g.size()) * (1f - 0.6f * p * p) * grow;
+                pose.scale(scale, scale, scale);
+                mc.getItemRenderer().renderStatic(g.stack(), net.minecraft.world.item.ItemDisplayContext.GROUND, net.minecraft.client.renderer.LightTexture.FULL_BRIGHT,
+                        net.minecraft.client.renderer.texture.OverlayTexture.NO_OVERLAY, pose, buffers, mc.level, 0);
+            } else {
+                float a = (t - GIFT_FLIGHT) / GIFT_AFTER;
+                drawRipple(event, mc, cam, a, g.size(), colour);
+                drawRisingNumber(event, mc, cam, crystal, a, g, colour, buffers);
+            }
+        }
+        buffers.endBatch();
+    }
+
+    /** Where the gift is at p of its flight: an arc from the giver to the crystal that leans up and in. */
+    private static Vec3 flightPoint(Gift g, float p, Vec3 target) {
+        float ease = p * p * (3 - 2 * p);
+        double lift = Math.sin(p * Math.PI) * Math.min(4.0, 1.0 + 0.1 * g.from().distanceTo(target));
+        return g.from().lerp(target, ease).add(0, lift, 0);
+    }
+
+    private static float[] pillarColour(int pillar) {
+        int c = pillar >= 0 && pillar < 3 ? PILLAR_COLOURS[pillar] : 0xf6d68c;
+        return new float[]{((c >> 16) & 255) / 255f, ((c >> 8) & 255) / 255f, (c & 255) / 255f};
+    }
+
+    /** A few fading quads along the path the item has flown. */
+    private static void drawTrail(PoseStack pose, Gift g, float p, float[] colour, Vec3 cam, Vec3 target) {
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        Matrix4f m = pose.last().pose();
+        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        Vec3 here = null;
+        int steps = 10;
+        for (int i = 0; i <= steps; i++) {
+            float q = Math.max(0f, p - i * 0.025f);
+            Vec3 at = flightPoint(g, q, target);
+            if (here == null) {
+                here = at;
+                continue;
+            }
+            // nothing right in front of the camera, it would fill the screen
+            if (at.distanceToSqr(cam) < 2.5) break;
+            // positions relative to the item, which sits at the pose's origin
+            Vec3 a0 = at.subtract(here), a1 = i == 1 ? Vec3.ZERO : prevRel;
+            float w = 0.12f * (1 - i / (float) steps) * (0.7f + 0.2f * g.size());
+            float alpha = 0.5f * (1 - i / (float) steps);
+            vertex(b, m, (float) a1.x - w, (float) a1.y, (float) a1.z, colour, alpha);
+            vertex(b, m, (float) a1.x + w, (float) a1.y, (float) a1.z, colour, alpha);
+            vertex(b, m, (float) a0.x + w, (float) a0.y, (float) a0.z, colour, 0);
+            vertex(b, m, (float) a0.x - w, (float) a0.y, (float) a0.z, colour, 0);
+            vertex(b, m, (float) a1.x, (float) a1.y - w, (float) a1.z, colour, alpha);
+            vertex(b, m, (float) a1.x, (float) a1.y + w, (float) a1.z, colour, alpha);
+            vertex(b, m, (float) a0.x, (float) a0.y + w, (float) a0.z, colour, 0);
+            vertex(b, m, (float) a0.x, (float) a0.y - w, (float) a0.z, colour, 0);
+            prevRel = a0;
+        }
+        BufferUploader.drawWithShader(b.buildOrThrow());
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
+    }
+
+    private static Vec3 prevRel = Vec3.ZERO;
+
+    /** A ring of light that runs out over the pavement from the plinth, wider for a bigger gift. */
+    private static void drawRipple(RenderLevelStageEvent event, Minecraft mc, Vec3 cam, float a, int size, float[] colour) {
+        if (!farHere(mc) || a > 0.6f) return;
+        float q = a / 0.6f;
+        float r = 3.5f + (4f + 3f * size) * q;
+        float alpha = (1 - q) * (0.6f + 0.25f * size);
+        float width = 1.0f + 0.4f * size;
+        float y = far.baseY() + 0.05f;
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(far.x() - cam.x, y - cam.y, far.z() - cam.z);
+        Matrix4f m = pose.last().pose();
+        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
+        RenderSystem.depthMask(false);
+        RenderSystem.disableCull();
+        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        int sides = 48;
+        for (int i = 0; i < sides; i++) {
+            float a0 = i / (float) sides * Mth.TWO_PI, a1 = (i + 1) / (float) sides * Mth.TWO_PI;
+            vertex(b, m, Mth.cos(a0) * (r - width), 0, Mth.sin(a0) * (r - width), colour, 0);
+            vertex(b, m, Mth.cos(a1) * (r - width), 0, Mth.sin(a1) * (r - width), colour, 0);
+            vertex(b, m, Mth.cos(a1) * r, 0, Mth.sin(a1) * r, colour, alpha);
+            vertex(b, m, Mth.cos(a0) * r, 0, Mth.sin(a0) * r, colour, alpha);
+            vertex(b, m, Mth.cos(a0) * r, 0, Mth.sin(a0) * r, colour, alpha);
+            vertex(b, m, Mth.cos(a1) * r, 0, Mth.sin(a1) * r, colour, alpha);
+            vertex(b, m, Mth.cos(a1) * (r + width * 0.5f), 0, Mth.sin(a1) * (r + width * 0.5f), colour, 0);
+            vertex(b, m, Mth.cos(a0) * (r + width * 0.5f), 0, Mth.sin(a0) * (r + width * 0.5f), colour, 0);
+        }
+        BufferUploader.drawWithShader(b.buildOrThrow());
+        RenderSystem.enableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableBlend();
+    }
+
+    /** The amount, and for a bigger gift the item's name, rising from the crystal and fading. */
+    private static void drawRisingNumber(RenderLevelStageEvent event, Minecraft mc, Vec3 cam, Vec3 crystal, float a, Gift g, float[] colour,
+                                         net.minecraft.client.renderer.MultiBufferSource.BufferSource buffers) {
+        float rise = 1.2f + 3.0f * (1 - (1 - a) * (1 - a));
+        float alpha = a < 0.15f ? a / 0.15f : a > 0.7f ? (1 - a) / 0.3f : 1f;
+        if (alpha <= 0.02f) return;
+        Vec3 at = crystal.add(0, rise, 0);
+        double dist = cam.distanceTo(at);
+        if (dist > 48) return;
+        PoseStack pose = new PoseStack();
+        pose.mulPose(event.getModelViewMatrix());
+        pose.translate(at.x - cam.x, at.y - cam.y, at.z - cam.z);
+        pose.mulPose(event.getCamera().rotation());
+        // bigger with distance so it stays readable, bigger for a bigger gift
+        float scale = (0.07f + 0.025f * g.size()) * (float) Math.max(1, dist / 10);
+        pose.scale(scale, -scale, scale);
+        net.minecraft.client.gui.Font font = mc.font;
+        String line = "+" + de.kronwerke.core.Text.number(g.amount());
+        int rgb = ((int) (colour[0] * 255) << 16) | ((int) (colour[1] * 255) << 8) | (int) (colour[2] * 255);
+        int argb = ((int) (alpha * 255) << 24) | rgb;
+        float x = -font.width(line) / 2f;
+        Matrix4f m = pose.last().pose();
+        font.drawInBatch(line, x, -font.lineHeight, argb, true, m, buffers, net.minecraft.client.gui.Font.DisplayMode.SEE_THROUGH, 0, net.minecraft.client.renderer.LightTexture.FULL_BRIGHT);
+        if (g.size() >= 1) {
+            String name = g.stack().getHoverName().getString();
+            float sx = 0.7f;
+            pose.scale(sx, sx, sx);
+            font.drawInBatch(name, -font.width(name) / 2f, 4, ((int) (alpha * 220) << 24) | 0xffffff, true, pose.last().pose(), buffers, net.minecraft.client.gui.Font.DisplayMode.SEE_THROUGH, 0, net.minecraft.client.renderer.LightTexture.FULL_BRIGHT);
+        }
     }
 
     // ---- the gaze ----

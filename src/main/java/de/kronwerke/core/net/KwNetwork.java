@@ -74,6 +74,29 @@ public final class KwNetwork {
         }
     }
 
+    /**
+     * A gift on its way: the item flies from where it was given to the crystal, and the
+     * clients nearby draw it, the ripple on the pavement and the number that rises. size is
+     * 0 to 3 as the server judged the gift, pillar the index of its pillar or -1.
+     */
+    public record GiftPayload(double x, double y, double z, net.minecraft.world.item.ItemStack stack, int size, int pillar, long amount) implements CustomPacketPayload {
+        public static final Type<GiftPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "gift"));
+        public static final StreamCodec<RegistryFriendlyByteBuf, GiftPayload> CODEC = StreamCodec.of((buf, p) -> {
+            buf.writeDouble(p.x());
+            buf.writeDouble(p.y());
+            buf.writeDouble(p.z());
+            net.minecraft.world.item.ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, p.stack());
+            buf.writeVarInt(p.size());
+            buf.writeVarInt(p.pillar());
+            buf.writeVarLong(p.amount());
+        }, buf -> new GiftPayload(buf.readDouble(), buf.readDouble(), buf.readDouble(), net.minecraft.world.item.ItemStack.OPTIONAL_STREAM_CODEC.decode(buf), buf.readVarInt(), buf.readVarInt(), buf.readVarLong()));
+
+        @Override
+        public Type<? extends CustomPacketPayload> type() {
+            return TYPE;
+        }
+    }
+
     public record SlotsPayload(int used, int total, List<Entry> entries, boolean open, String message, boolean error) implements CustomPacketPayload {
         public static final Type<SlotsPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "slots"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SlotsPayload> CODEC = StreamCodec.composite(
@@ -241,6 +264,9 @@ public final class KwNetwork {
         });
         r.playToClient(StatePayload.TYPE, StatePayload.CODEC, (payload, ctx) -> {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.state(payload));
+        });
+        r.playToClient(GiftPayload.TYPE, GiftPayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.gift(payload));
         });
         r.playToServer(ActionPayload.TYPE, ActionPayload.CODEC, KwNetwork::onAction);
     }

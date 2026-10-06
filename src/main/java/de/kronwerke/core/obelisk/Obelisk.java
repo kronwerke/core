@@ -473,7 +473,14 @@ public final class Obelisk {
         }
         BlockPos core = data().pos();
         ServerPlayer player = server.getPlayerList().getPlayer(who);
-        if (player != null && player.level() == level && player.blockPosition().distSqr(core) < 40 * 40) itemTrail(level, player, shown, core);
+        // the gift flies to the crystal on every client nearby: from the giver's hand, or out of the intake
+        boolean fromHand = player != null && player.level() == level && player.blockPosition().distSqr(core) < 40 * 40;
+        net.minecraft.world.phys.Vec3 hand = fromHand ? player.getEyePosition().add(player.getLookAngle().scale(0.9)).add(0, -0.35, 0) : null;
+        double gx = fromHand ? hand.x : core.getX() + 0.5, gy = fromHand ? hand.y : core.getY() + 1.2, gz = fromHand ? hand.z : core.getZ() + 0.5;
+        var gift = new de.kronwerke.core.net.KwNetwork.GiftPayload(gx, gy, gz, shown.copyWithCount(1), size, index, amount);
+        for (ServerPlayer p : level.players()) {
+            if (p.blockPosition().distSqr(core) < 80 * 80) net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, gift);
+        }
         // the note of the item: the same item always sounds the same, more of it plays more notes
         float[] scale = {0.5f, 0.56f, 0.63f, 0.75f, 0.84f, 1.0f, 1.12f, 1.26f, 1.5f, 1.68f, 1.89f, 2.0f};
         int base = Math.floorMod(item.item().hashCode(), scale.length);
@@ -518,17 +525,6 @@ public final class Obelisk {
     }
 
     /** The given item flies from the giver's hand into the trunk, as a short arc of item particles. */
-    private void itemTrail(ServerLevel level, ServerPlayer player, ItemStack shown, BlockPos core) {
-        var option = new net.minecraft.core.particles.ItemParticleOption(net.minecraft.core.particles.ParticleTypes.ITEM, shown);
-        double sx = player.getX(), sy = player.getEyeY() - 0.3, sz = player.getZ();
-        double tx = core.getX() + 0.5, ty = core.getY() + 6, tz = core.getZ() + 0.5;
-        for (int i = 0; i <= 10; i++) {
-            double t = i / 10.0;
-            double x = sx + (tx - sx) * t, y = sy + (ty - sy) * t + Math.sin(t * Math.PI) * 2.0, z = sz + (tz - sz) * t;
-            scheduler.at(i, () -> level.sendParticles(option, x, y, z, 2, 0.05, 0.05, 0.05, 0.02));
-        }
-    }
-
     /** A light that runs up the trunk from the plinth to the crystal. */
     private void pulse(ServerLevel level, BlockPos core) {
         double cx = core.getX() + 0.5, cz = core.getZ() + 0.5;
