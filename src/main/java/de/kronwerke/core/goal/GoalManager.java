@@ -339,6 +339,7 @@ public final class GoalManager {
         data().release(g.id());
         server.getPlayerList().broadcastSystemMessage(Text.t("goal.release", "Der Obelisk nimmt wieder an. Macht %s voll!",
                 Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
+        de.kronwerke.core.obelisk.Obelisk.get().onRelease(g);
         refreshBossBar();
     }
 

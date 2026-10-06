@@ -55,6 +55,8 @@ public final class Obelisk {
         this.ticks = 0;
         this.scheduler.clear();
         this.misfireIn = 6000;
+        this.settled = false;
+        this.tierOverride = -1;
     }
 
     public ObeliskScheduler scheduler() {
@@ -92,6 +94,10 @@ public final class Obelisk {
             return;
         }
         long taken;
+        if (player.isShiftKeyDown() && player.getMainHandItem().isEmpty()) {
+            ledger(player, active.get(0));
+            return;
+        }
         if (player.isShiftKeyDown()) {
             taken = gm.depositAll(player);
         } else {
@@ -117,7 +123,40 @@ public final class Obelisk {
             wanted.append(Text.item(it.item())).append(Component.literal(" " + Text.number(have) + "/" + Text.number(need)).withStyle(ChatFormatting.GRAY));
         }
         player.sendSystemMessage(Text.t("obelisk.wants", "Der Obelisk braucht: %s", wanted).withStyle(ChatFormatting.GOLD));
-        player.sendSystemMessage(Text.t("obelisk.hint", "Rechtsklick gibt den Stapel in der Hand ab, Schleichen und Rechtsklick alles, was passt.").withStyle(ChatFormatting.GRAY));
+        player.sendSystemMessage(Text.t("obelisk.hint", "Rechtsklick gibt den Stapel in der Hand ab, Schleichen und Rechtsklick alles, was passt. Schleichen mit leerer Hand zeigt deine Gaben.").withStyle(ChatFormatting.GRAY));
+    }
+
+    /** Sneaking with an empty hand: what the player has given to the running goal, pillar by pillar, and their rank. */
+    private void ledger(ServerPlayer player, Goal g) {
+        GoalManager gm = GoalManager.get();
+        long total = gm.progressData().contributions(g.id()).getOrDefault(player.getUUID(), 0L);
+        int rank = gm.rank(g, player.getUUID());
+        int hands = gm.progressData().contributions(g.id()).size();
+        player.sendSystemMessage(Text.t("obelisk.ledger.title", "Deine Gaben an %s", Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        if (total <= 0) {
+            player.sendSystemMessage(Text.t("obelisk.ledger.none", "Noch nichts. Der Obelisk wartet auf deine erste Gabe.").withStyle(ChatFormatting.GRAY));
+        } else {
+            for (Goal.Pillar pillar : g.pillars()) {
+                long mine = gm.contributed(g, pillar, player.getUUID());
+                String best = "";
+                long bestN = 0;
+                for (Goal.PillarItem it : pillar.items()) {
+                    long n = gm.progressData().contributed(g.id(), it.item(), player.getUUID());
+                    if (n > bestN) {
+                        bestN = n;
+                        best = Text.item(it.item()).getString();
+                    }
+                }
+                MutableComponent line = Component.literal("  " + pillar.title() + ": ").withStyle(ChatFormatting.LIGHT_PURPLE)
+                        .append(Component.literal(Text.number(mine) + " Punkte").withStyle(ChatFormatting.WHITE));
+                if (bestN > 0) line.append(Component.literal(", am meisten " + best + " (" + Text.number(bestN) + ")").withStyle(ChatFormatting.GRAY));
+                player.sendSystemMessage(line);
+            }
+            player.sendSystemMessage(Text.t("obelisk.ledger.rank", "Platz %s von %s Händen, %s Punkte insgesamt.", rank, hands, Text.number(total)).withStyle(ChatFormatting.GOLD));
+        }
+        int streak = data().streak(player.getUUID());
+        if (streak > 0) player.sendSystemMessage(Text.t("obelisk.ledger.streak", "Tagesgabe: %s in Folge.", streak).withStyle(ChatFormatting.GRAY));
+        player.playNotifySound(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.0f);
     }
 
     // ---- feeders ----
@@ -150,8 +189,19 @@ public final class Obelisk {
 
     private int displayTicks;
 
+    private boolean settled;
+
     public void onServerTick(ServerTickEvent.Post event) {
         if (server == null) return;
+        if (!settled) {
+            // a preview tier from before a restart is taken back, the build follows the goals again
+            settled = true;
+            try {
+                settleTier();
+            } catch (Exception e) {
+                de.kronwerke.core.KronwerkeCore.LOGGER.warn("Could not settle the obelisk's tier", e);
+            }
+        }
         scheduler.tick();
         if (++displayTicks >= 100) {
             displayTicks = 0;
@@ -256,11 +306,11 @@ public final class Obelisk {
                 level.playSound(null, at, net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value(), net.minecraft.sounds.SoundSource.BLOCKS, 2.0f, 0.5f);
                 scheduler.at(7, () -> level.playSound(null, at, net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value(), net.minecraft.sounds.SoundSource.BLOCKS, 1.6f, 0.5f));
             }
-        } else if (ambientTicks % 80 == 0) {
-            // the hum rises with the goal
+        } else if (ambientTicks % 160 == 0) {
+            // the hum, eight seconds long, rises with the goal
             float f = g == null ? 0.2f : (float) gm.fraction(g);
-            float volume = slumbering() ? 0.15f : 0.3f + 0.5f * f;
-            level.playSound(null, at, net.minecraft.sounds.SoundEvents.BEACON_AMBIENT, net.minecraft.sounds.SoundSource.BLOCKS, volume, 0.8f + 0.3f * f);
+            float volume = slumbering() ? 0.2f : 0.5f + 0.7f * f;
+            level.playSound(null, at, KwSounds.HUM.get(), net.minecraft.sounds.SoundSource.BLOCKS, volume, 0.9f + 0.2f * f);
         }
         // every five to ten minutes a rune misfires; nobody will believe it is random
         misfireIn -= 20;
@@ -348,6 +398,7 @@ public final class Obelisk {
         }
         BlockPos core = data().pos();
         ServerPlayer player = server.getPlayerList().getPlayer(who);
+        if (player != null && player.level() == level && player.blockPosition().distSqr(core) < 40 * 40) itemTrail(level, player, shown, core);
         // the note of the item: the same item always sounds the same, more of it plays more notes
         float[] scale = {0.5f, 0.56f, 0.63f, 0.75f, 0.84f, 1.0f, 1.12f, 1.26f, 1.5f, 1.68f, 1.89f, 2.0f};
         int base = Math.floorMod(item.item().hashCode(), scale.length);
@@ -389,6 +440,18 @@ public final class Obelisk {
             }
         }
         if (player != null) streak(player);
+    }
+
+    /** The given item flies from the giver's hand into the trunk, as a short arc of item particles. */
+    private void itemTrail(ServerLevel level, ServerPlayer player, ItemStack shown, BlockPos core) {
+        var option = new net.minecraft.core.particles.ItemParticleOption(net.minecraft.core.particles.ParticleTypes.ITEM, shown);
+        double sx = player.getX(), sy = player.getEyeY() - 0.3, sz = player.getZ();
+        double tx = core.getX() + 0.5, ty = core.getY() + 6, tz = core.getZ() + 0.5;
+        for (int i = 0; i <= 10; i++) {
+            double t = i / 10.0;
+            double x = sx + (tx - sx) * t, y = sy + (ty - sy) * t + Math.sin(t * Math.PI) * 2.0, z = sz + (tz - sz) * t;
+            scheduler.at(i, () -> level.sendParticles(option, x, y, z, 2, 0.05, 0.05, 0.05, 0.02));
+        }
     }
 
     /** A light that runs up the trunk from the plinth to the crystal. */
@@ -497,6 +560,23 @@ public final class Obelisk {
         ServerLevel level = obeliskLevel();
         if (level == null || p.level() != level || level.getGameTime() > sky.start() + sky.duration()) return;
         net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, sky);
+    }
+
+    /** The hold is lifted: the obelisk wakes for everyone to see, so the streams can turn to it. */
+    public void onRelease(Goal g) {
+        if (server == null) return;
+        ServerLevel level = obeliskLevel();
+        ObeliskRite.title(server, Text.t("obelisk.awakens", "Der Obelisk erwacht").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD),
+                Text.t("obelisk.awakens_sub", "%s nimmt die letzten Gaben an", Component.literal(g.title())).withStyle(ChatFormatting.GRAY));
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+            p.playNotifySound(net.minecraft.sounds.SoundEvents.BEACON_ACTIVATE, net.minecraft.sounds.SoundSource.MASTER, 0.8f, 0.7f);
+        }
+        if (level == null || !level.isLoaded(data().pos())) return;
+        ObeliskTopBlockEntity top = top(level);
+        if (top != null) {
+            top.show(top.percent(), ObeliskTopBlockEntity.MOOD_RUNNING, tier());
+            top.flash(1.0f);
+        }
     }
 
     /** A goal just completed: the rite, and the build grows. */

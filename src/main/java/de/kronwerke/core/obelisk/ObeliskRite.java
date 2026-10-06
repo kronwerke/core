@@ -62,8 +62,11 @@ public final class ObeliskRite {
         double cx = core.getX() + 0.5, cz = core.getZ() + 0.5;
         double tipY = core.getY() + 19.3;
 
-        // 1. silence: the hum stops, a single low note
+        // 1. silence: the hum stops, a single low note; then the riser carries the intake to the burst
         s.at(0, () -> level.playSound(null, core.above(10), SoundEvents.BEACON_DEACTIVATE, SoundSource.BLOCKS, 2.0f, 0.6f));
+        s.at(T_INTAKE - 20, () -> {
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) p.playNotifySound(KwSounds.RISER.get(), SoundSource.MASTER, 0.9f, 1.0f);
+        });
 
         // 2. intake: twelve segments of the trunk light up with a rising pentatonic scale
         float[] scale = {0.5f, 0.56f, 0.63f, 0.75f, 0.84f, 1.0f, 1.12f, 1.26f, 1.5f, 1.68f, 1.89f, 2.0f};
@@ -86,7 +89,7 @@ public final class ObeliskRite {
             level.sendParticles(ParticleTypes.END_ROD, cx, tipY, cz, 240, 0, 0, 0, 0.7);
             level.sendParticles(ParticleTypes.GLOW, cx, tipY, cz, 80, 0, 0, 0, 0.4);
             level.playSound(null, BlockPos.containing(cx, tipY, cz), SoundEvents.LIGHTNING_BOLT_THUNDER, SoundSource.WEATHER, 3.0f, 0.9f);
-            level.playSound(null, BlockPos.containing(cx, tipY, cz), SoundEvents.BEACON_ACTIVATE, SoundSource.BLOCKS, 3.0f, 1.0f);
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) p.playNotifySound(KwSounds.TEAR.get(), SoundSource.MASTER, 1.0f, 1.0f);
             LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
             if (bolt != null) {
                 bolt.moveTo(cx, tipY, cz);
@@ -142,7 +145,7 @@ public final class ObeliskRite {
                 pe.show(null, pillar.title() + "  geschafft", names.length() == 0 ? "" : names.toString());
             }
             ob.refreshBoard(level, done);
-            level.playSound(null, core.above(2), SoundEvents.UI_TOAST_CHALLENGE_COMPLETE, SoundSource.PLAYERS, 2.0f, 1.0f);
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) p.playNotifySound(KwSounds.FANFARE.get(), SoundSource.MASTER, 0.9f, 1.0f);
         });
         for (int volley = 0; volley < 3; volley++) {
             int v = volley;

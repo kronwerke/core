@@ -21,7 +21,7 @@ import java.util.List;
  * inlay lines towards the four directions.</li>
  * <li>Tier 2: four pylons with a cyan core and a lantern at the edges of the pavement.</li>
  * <li>Tier 3: an outer ring of blackstone with ember stones whose veins breathe, embers climb
- * the pylons.</li>
+ * the pylons, and the trunk gains a third band of runes.</li>
  * <li>Tier 4: four buttresses of arch stone with amethyst veins climb from the corners to the
  * trunk, amethyst at their tops and an end rod at their feet.</li>
  * <li>Tier 5: a crown of gilded stone under the cap with eight end rods.</li>
@@ -74,6 +74,8 @@ public final class ObeliskTiers {
                 for (Direction d : Direction.Plane.HORIZONTAL) {
                     out.add(new Placement(core.relative(d, 6).above(), ObeliskBlocks.OBELISK_EMBER.get().defaultBlockState(), true));
                 }
+                // and the trunk gains a third band of runes between the two it has
+                ring(core, 1, (dx, dz) -> out.add(new Placement(core.offset(dx, 8, dz), ObeliskBlocks.OBELISK_RUNES.get().defaultBlockState(), true)));
             }
             case 4 -> {
                 int[][] arc = {{7, 0}, {6, 1}, {5, 2}, {4, 3}, {3, 4}, {3, 5}, {2, 6}, {2, 7}};

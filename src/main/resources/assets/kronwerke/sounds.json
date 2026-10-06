@@ -1,0 +1,6 @@
+{
+  "obelisk.hum": { "subtitle": "Der Obelisk summt", "sounds": [ { "name": "kronwerke:hum", "stream": false } ] },
+  "obelisk.riser": { "subtitle": "Der Obelisk zieht an", "sounds": [ "kronwerke:riser" ] },
+  "obelisk.tear": { "subtitle": "Der Himmel reißt auf", "sounds": [ "kronwerke:tear" ] },
+  "obelisk.fanfare": { "subtitle": "Fanfare des Obelisken", "sounds": [ "kronwerke:fanfare" ] }
+}

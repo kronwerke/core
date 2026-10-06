@@ -46,6 +46,7 @@ public class KronwerkeCore {
         quietRcon();
         de.kronwerke.core.obelisk.ObeliskBlocks.register(modBus);
         de.kronwerke.core.obelisk.KwParticles.register(modBus);
+        de.kronwerke.core.obelisk.KwSounds.register(modBus);
         modBus.addListener(de.kronwerke.core.net.KwNetwork::register);
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);

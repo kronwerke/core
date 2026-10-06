@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.13.1
+
+- The obelisk has its own voice: a hum that loops and rises with the goal, a riser that carries the intake of the rite to the burst, the tear of the sky, and a fanfare for the roll call, all synthesized by `tools/sounds/synth.py`.
+- Sneaking with an empty hand at the obelisk shows your ledger: what you gave per pillar and which item most, your rank among the hands, your daily offering streak.
+- A hand deposit sends the item flying from the giver into the trunk. Lifting the hold before the event announces "Der Obelisk erwacht" to everyone with a flare, so the streams can turn to it.
+- The third stage adds a third band of runes to the trunk. A preview tier left over from before a restart is taken back when the server starts.
+
 ## 0.13.0
 
 - The sky tears open when a stage completes: every player in the obelisk's dimension sees a galaxy instead of the sky, drawn by the mod's own shader (a spiral with core, arms, dust lanes and star fields, three lit planets, one with a ring), opening from the zenith with a brass edge and closing again after twenty seconds per stage reached. While it is open the air darkens and the whole picture is graded cooler with a vignette (post shader `veil`). Late joiners get the open sky too.
