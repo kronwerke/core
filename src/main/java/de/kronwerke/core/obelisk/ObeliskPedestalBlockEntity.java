@@ -21,6 +21,9 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
     private String title = "";
     private String line = "";
     private long changedAt;
+    /** the gauge: which pillar this pedestal stands for (-1 for the pedestal of the last gift), how full it is, whether it is the one furthest behind */
+    private int pillar = -1, percent;
+    private boolean lowest;
 
     public ObeliskPedestalBlockEntity(BlockPos pos, BlockState state) {
         super(ObeliskBlocks.OBELISK_PEDESTAL_ENTITY.get(), pos, state);
@@ -40,6 +43,28 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
 
     public long changedAt() {
         return changedAt;
+    }
+
+    public int pillar() {
+        return pillar;
+    }
+
+    public int percent() {
+        return percent;
+    }
+
+    public boolean lowest() {
+        return lowest;
+    }
+
+    /** The gauge above the plate: the pillar's fill as a column of light, the weakest pillar flickering. */
+    public void gauge(int pillar, int percent, boolean lowest) {
+        if (this.pillar == pillar && this.percent == percent && this.lowest == lowest) return;
+        this.pillar = pillar;
+        this.percent = percent;
+        this.lowest = lowest;
+        setChanged();
+        if (level != null) level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), Block.UPDATE_CLIENTS);
     }
 
     /** Sets what the pedestal shows; only sends an update when something changed. */
@@ -62,6 +87,9 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
         tag.putString("title", title);
         tag.putString("line", line);
         tag.putLong("changedAt", changedAt);
+        tag.putInt("pillar", pillar);
+        tag.putInt("percent", percent);
+        tag.putBoolean("lowest", lowest);
     }
 
     @Override
@@ -71,6 +99,9 @@ public class ObeliskPedestalBlockEntity extends BlockEntity {
         title = tag.getString("title");
         line = tag.getString("line");
         changedAt = tag.getLong("changedAt");
+        pillar = tag.contains("pillar") ? tag.getInt("pillar") : -1;
+        percent = tag.getInt("percent");
+        lowest = tag.getBoolean("lowest");
     }
 
     @Override

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.4
+
+- The gauges: above each pillar's pedestal stands a column of light in the pillar's colour, as tall as the pillar is full, so the balance of stone, tech and magic can be read at the obelisk itself. The pillar furthest behind flickers. The pedestal lines are a little larger.
+
 ## 0.15.3
 
 - The sleeping stone has its own picture: after a day without a gift the lanterns, embers, pylons, arch stones, shards, the crown's glints and the paving's runes go out (every tier block carries `lit`), dust sifts down the trunk, one slow heartbeat sounds every thirty seconds, the hum is a murmur. The first gift after that is the awakening: the lights come back ring by ring from the plinth outward with a sound for each ring, runes run up the trunk, and everyone near reads "Der Stein erwacht".

@@ -656,15 +656,29 @@ public final class Obelisk {
         GoalManager gm = GoalManager.get();
         List<Goal> active = gm.activeGoals();
         Goal g = active.isEmpty() ? null : active.get(0);
+        // the weakest pillar flickers on its pedestal
+        int lowestIndex = -1, lowestPercent = 101;
+        if (g != null) {
+            for (int i = 0; i < g.pillars().size() && i < 3; i++) {
+                int pct = pillarPercent(gm, g, g.pillars().get(i));
+                if (pct < lowestPercent) {
+                    lowestPercent = pct;
+                    lowestIndex = i;
+                }
+            }
+        }
         for (int i = 0; i < 3; i++) {
             ObeliskPedestalBlockEntity pe = pedestal(level, i);
             if (pe == null) continue;
             if (g == null || i >= g.pillars().size()) {
                 pe.show(null, "", pe.line());
+                pe.gauge(i, 0, false);
                 continue;
             }
             Goal.Pillar pillar = g.pillars().get(i);
-            pe.show(null, pillar.title() + "  " + pillarPercent(gm, g, pillar) + "%", pe.line());
+            int pct = pillarPercent(gm, g, pillar);
+            pe.show(null, pillar.title() + "  " + pct + "%", pe.line());
+            pe.gauge(i, pct, i == lowestIndex && lowestPercent < 100 && g.pillars().size() > 1);
         }
         ObeliskTopBlockEntity top = top(level);
         if (top != null && top.rite() == 0) {
