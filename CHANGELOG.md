@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.17.0
+
+One network of servers through the launcher's bus (launcher 0.5.1 or later, `bus.port` set, the servers in one `network`). What is shared is set in the launcher's console.
+
+- Chat travels to the other servers with the sender's server in front, in its colour, and the rank glyph. With `sync.chat=radius` only players within the radius hear a line.
+- Joins and leaves show on the other servers, in each player's language.
+- The tab list shows every player of the network: the others with their rank, skin, ping and their server's name. The footer counts the whole network and the players here.
+- Roles: the launcher's `-Dlauncher.role`. `main` (or no launcher) owns season, goals, slots and the obelisk as before. Any other role is a side world: no obelisk, no season catch up, no goal tracking, `/kw` only says where things are, the slot menu points to main. main sends it the streamers and the running goal for its tab list.
+- A side world sends away players who join it directly (operators may); `network.directJoin` opens it.
+
 ## 0.16.1
 
 - `kw admin roster json`: every streamer and granted player with their slots, override, bonus and invited players, for the web console.

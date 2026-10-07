@@ -22,6 +22,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue SCALE_MIN;
     public static final ModConfigSpec.DoubleValue SCALE_MAX;
     public static final ModConfigSpec.BooleanValue TEST_COMMANDS;
+    public static final ModConfigSpec.BooleanValue DIRECT_JOIN;
     public static final ModConfigSpec.IntValue LOG_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
@@ -99,6 +100,11 @@ public final class KronwerkeConfig {
                 .defineInRange("lightningDamage", 8.0, 0.0, 200.0);
         BOSS_SHOCKWAVE_DAMAGE = b.comment("Damage of the shockwave.")
                 .defineInRange("shockwaveDamage", 6.0, 0.0, 200.0);
+        b.pop();
+
+        b.push("network");
+        DIRECT_JOIN = b.comment("On a side world (any launcher role but main): players may join it directly instead of moving there from main. Operators always may.")
+                .define("directJoin", false);
         b.pop();
 
         b.push("tab");

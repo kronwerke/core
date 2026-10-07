@@ -35,5 +35,9 @@
   "block.kronwerke.obelisk_crown": "Obelisk-Krone",
   "block.kronwerke.obelisk_paving": "Obelisk-Pflasterplatte",
   "block.kronwerke.obelisk_flagstone": "Obelisk-Fliese",
-  "block.kronwerke.obelisk_shard": "Obelisk-Splitter"
+  "block.kronwerke.obelisk_shard": "Obelisk-Splitter",
+  "kronwerke.network.moved": "%s geht nach %s",
+  "kronwerke.network.direct": "Diese Welt erreichst du nur über kronwerke.net.",
+  "kronwerke.network.main_only": "Das geht nur in der Hauptwelt.",
+  "kronwerke.network.side": "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt."
 }

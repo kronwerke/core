@@ -5,6 +5,8 @@ import de.kronwerke.core.command.BypassCommand;
 import de.kronwerke.core.command.KwCommand;
 import de.kronwerke.core.config.KronwerkeConfig;
 import de.kronwerke.core.goal.GoalManager;
+import de.kronwerke.core.link.NetworkSync;
+import de.kronwerke.core.link.Role;
 import de.kronwerke.core.lock.LockedItems;
 import de.kronwerke.core.lock.ClientHooks;
 import de.kronwerke.core.obelisk.Obelisk;
@@ -54,11 +56,16 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(this::onServerStopping);
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogin);
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogout);
-        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onRightClick);
-        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onPlace);
-        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onBreak);
-        NeoForge.EVENT_BUS.addListener(Obelisk.get()::onServerTick);
-        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> de.kronwerke.core.world.TestWorld.tick(e.getServer()));
+        if (Role.main()) {
+            // the obelisk and the test world belong to main; side worlds only show what main says
+            NeoForge.EVENT_BUS.addListener(Obelisk.get()::onRightClick);
+            NeoForge.EVENT_BUS.addListener(Obelisk.get()::onPlace);
+            NeoForge.EVENT_BUS.addListener(Obelisk.get()::onBreak);
+            NeoForge.EVENT_BUS.addListener(Obelisk.get()::onServerTick);
+            NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> de.kronwerke.core.world.TestWorld.tick(e.getServer()));
+        }
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, NetworkSync::onChat);
+        NeoForge.EVENT_BUS.addListener(NetworkSync::onTick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onPlace);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onMultiPlace);
@@ -104,36 +111,47 @@ public class KronwerkeCore {
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
-        KwCommand.register(event.getDispatcher());
+        if (Role.main()) KwCommand.register(event.getDispatcher());
+        else KwCommand.registerSide(event.getDispatcher());
         BypassCommand.register(event.getDispatcher());
     }
 
     private void onServerStarted(ServerStartedEvent event) {
+        TabList.init(event.getServer());
+        LogPruner.prune(FMLPaths.GAMEDIR.get().resolve("logs"), KronwerkeConfig.LOG_DAYS.get());
+        NetworkSync.start(event.getServer());
+        if (!Role.main()) {
+            LOGGER.info("Kronwerke Core ready as {} (role {}): season, goals, slots and the obelisk stay on main.", Role.server(), Role.role());
+            return;
+        }
         SlotManager.get().init(event.getServer());
         de.kronwerke.core.season.Season.init(event.getServer());
         GoalManager.get().init(event.getServer());
         Obelisk.get().init(event.getServer());
-        TabList.init(event.getServer());
-        LogPruner.prune(FMLPaths.GAMEDIR.get().resolve("logs"), KronwerkeConfig.LOG_DAYS.get());
         LOGGER.info("Kronwerke Core ready. {} goals loaded, {} streamers with slots.",
                 GoalManager.get().goalCount(), SlotManager.get().streamerCount());
     }
 
     private void onServerStopping(ServerStoppingEvent event) {
-        GoalManager.get().shutdown();
+        NetworkSync.stop();
+        if (Role.main()) GoalManager.get().shutdown();
     }
 
     private void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) de.kronwerke.core.season.Season.get().catchUp(sp);
-        GoalManager.get().onPlayerJoin(event.getEntity());
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
-            TabList.onJoin(sp);
+        if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
+        if (NetworkSync.refuse(sp)) return;
+        if (Role.main()) {
+            de.kronwerke.core.season.Season.get().catchUp(sp);
+            GoalManager.get().onPlayerJoin(sp);
             Obelisk.get().onJoin(sp);
         }
+        TabList.onJoin(sp);
+        NetworkSync.onJoin(sp);
     }
 
     private void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
-        GoalManager.get().onPlayerLeave(event.getEntity());
+        if (Role.main()) GoalManager.get().onPlayerLeave(event.getEntity());
         de.kronwerke.core.boss.BossScaling.forget(event.getEntity().getUUID());
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) NetworkSync.onLeave(sp);
     }
 }

@@ -341,6 +341,10 @@ public final class KwNetwork {
     private static void onAction(ActionPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer p)) return;
+            if (!de.kronwerke.core.link.Role.main()) {
+                p.sendSystemMessage(de.kronwerke.core.Text.t("network.main_only", "Das geht nur in der Hauptwelt.").withStyle(net.minecraft.ChatFormatting.GRAY));
+                return;
+            }
             SlotManager sm = SlotManager.get();
             SlotData.StreamerEntry me = sm.entry(p.getUUID(), p.getGameProfile().getName());
             String name = payload.name().trim();

@@ -6,7 +6,8 @@
   "mixins": [
     "ChaptersAuditMixin",
     "QuietPingMixin",
-    "QuestLoadMixin"
+    "QuestLoadMixin",
+    "PlayerInfoUpdateAccessor"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

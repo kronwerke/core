@@ -56,6 +56,7 @@ public final class TabList {
             if (owner.equalsIgnoreCase(name)) return "owner";
         }
         if (player.hasPermissions(2)) return "admin";
+        if (!de.kronwerke.core.link.Role.main()) return de.kronwerke.core.link.NetworkSync.streamer(name) ? "streamer" : "member";
         SlotData.StreamerEntry e = SlotManager.get().entryByName(name);
         if (e != null && SlotManager.get().allowance(e) > 2) return "streamer";
         return "member";
@@ -86,21 +87,39 @@ public final class TabList {
         for (ServerPlayer p : server.getPlayerList().getPlayers()) apply(p);
     }
 
+    /** A rank's glyph from the Nautical Ranks pack, for names that are not on a team here. */
+    public static MutableComponent badge(String rank) {
+        for (int i = 0; i < RANKS.length; i++) {
+            if (RANKS[i].equals(rank)) return Component.literal(GLYPHS[i] + " ").withStyle(ChatFormatting.WHITE);
+        }
+        return Component.literal(GLYPHS[3] + " ").withStyle(ChatFormatting.WHITE);
+    }
+
+    /** The running goal as one line ("title|state"), or empty. main only; side worlds get it from main. */
+    public static String goalLine() {
+        if (!de.kronwerke.core.link.Role.main()) return de.kronwerke.core.link.NetworkSync.goalLine();
+        List<Goal> active = GoalManager.get().activeGoals();
+        if (active.isEmpty()) return "";
+        Goal g = active.get(0);
+        double f = GoalManager.get().fraction(g);
+        String state = GoalManager.get().isHeld(g) ? "wartet auf das Event" : String.format(Locale.ROOT, "%d%%", Math.round(f * 100));
+        return g.title() + "|" + state;
+    }
+
     private static void sendHeader(ServerPlayer player) {
         MutableComponent header = Component.literal("Kronwerke Season 2").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
                 .append(Component.literal("\n" + KronwerkeConfig.TAB_LINE.get()).withStyle(ChatFormatting.GRAY));
         MutableComponent footer = Component.empty();
-        List<Goal> active = GoalManager.get().activeGoals();
-        if (!active.isEmpty()) {
-            Goal g = active.get(0);
-            double f = GoalManager.get().fraction(g);
-            String state = GoalManager.get().isHeld(g) ? "wartet auf das Event" : String.format(Locale.ROOT, "%d%%", Math.round(f * 100));
-            footer.append(Component.literal(g.title()).withStyle(ChatFormatting.GOLD))
-                    .append(Component.literal("  " + state).withStyle(ChatFormatting.WHITE))
+        String goal = goalLine();
+        int bar = goal.indexOf('|');
+        if (bar > 0) {
+            footer.append(Component.literal(goal.substring(0, bar)).withStyle(ChatFormatting.GOLD))
+                    .append(Component.literal("  " + goal.substring(bar + 1)).withStyle(ChatFormatting.WHITE))
                     .append(Component.literal("\n"));
         }
-        footer.append(Component.literal(server.getPlayerList().getPlayerCount() + " online").withStyle(ChatFormatting.GRAY))
-                .append(Component.literal("   /kw goals   /kw deposit").withStyle(ChatFormatting.DARK_GRAY));
+        int here = server.getPlayerList().getPlayerCount(), elsewhere = de.kronwerke.core.link.NetworkSync.remoteCount();
+        footer.append(Component.literal((here + elsewhere) + " online" + (elsewhere > 0 ? ", " + here + " hier" : "")).withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(de.kronwerke.core.link.Role.main() ? "   /kw goals   /kw deposit" : "").withStyle(ChatFormatting.DARK_GRAY));
         player.connection.send(new ClientboundTabListPacket(header, footer));
     }
 }

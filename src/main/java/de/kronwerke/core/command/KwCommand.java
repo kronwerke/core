@@ -40,6 +40,15 @@ import java.util.UUID;
  */
 public final class KwCommand {
 
+    /** On a side world: /kw only says where things are; season, goals and slots live on main. */
+    public static void registerSide(CommandDispatcher<CommandSourceStack> d) {
+        d.register(Commands.literal("kw").executes(c -> {
+            c.getSource().sendSuccess(() -> de.kronwerke.core.Text.t("network.side", "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
+                    de.kronwerke.core.link.Role.server()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
+            return 1;
+        }));
+    }
+
     public static void register(CommandDispatcher<CommandSourceStack> d) {
         d.register(Commands.literal("kw")
                 .executes(KwCommand::hub)

@@ -41,5 +41,9 @@
   "block.kronwerke.obelisk_crown": "Obelisk crown",
   "block.kronwerke.obelisk_paving": "Obelisk paving",
   "block.kronwerke.obelisk_flagstone": "Obelisk flagstone",
-  "block.kronwerke.obelisk_shard": "Obelisk shard"
+  "block.kronwerke.obelisk_shard": "Obelisk shard",
+  "kronwerke.network.moved": "%s goes to %s",
+  "kronwerke.network.direct": "You reach this world only through kronwerke.net.",
+  "kronwerke.network.main_only": "That only works in the main world.",
+  "kronwerke.network.side": "You are in %s. Season, goals and slots are in the main world."
 }
