@@ -47,6 +47,8 @@ dependencies {
     compileOnly "mezz.jei:jei-1.21.1-common-api:${jei_version}"
     // stage locks: locked items can be carried but not held, see lock/LockedItems; Chapters comes with the pack
     compileOnly "maven.modrinth:chapters:${chapters_version}"
+    // the shared network (share/): each mod's layer only loads when the mod is there
+    compileOnly "maven.modrinth:mekanism:${mekanism_version}"
 }
 
 var generatedResources = file("src/generated/resources")

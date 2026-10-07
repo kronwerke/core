@@ -37,6 +37,7 @@ import java.util.UUID;
  *   admin active            op: how many players count as active for scaling
  *   admin obelisk ...       op: where the obelisk is and its feeders, see ObeliskCommand
  *   admin invite|revoke|grant|ungrant|goals json   for the Discord bot, see BotCommand
+ *   share                   op: the shared network between the servers, see share/ShareCommand
  */
 public final class KwCommand {
 

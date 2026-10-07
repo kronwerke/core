@@ -67,6 +67,7 @@ public class KronwerkeCore {
         }
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, NetworkSync::onChat);
         NeoForge.EVENT_BUS.addListener(NetworkSync::onTick);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.share.Share::onTick);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.portal.Travel::onTick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, de.kronwerke.core.portal.Ignite::onRightClick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
@@ -117,12 +118,14 @@ public class KronwerkeCore {
         if (Role.main()) KwCommand.register(event.getDispatcher());
         else KwCommand.registerSide(event.getDispatcher());
         BypassCommand.register(event.getDispatcher());
+        de.kronwerke.core.share.ShareCommand.register(event.getDispatcher());
     }
 
     private void onServerStarted(ServerStartedEvent event) {
         TabList.init(event.getServer());
         LogPruner.prune(FMLPaths.GAMEDIR.get().resolve("logs"), KronwerkeConfig.LOG_DAYS.get());
         de.kronwerke.core.portal.Travel.init(event.getServer());
+        de.kronwerke.core.share.Share.start(event.getServer());
         NetworkSync.start(event.getServer());
         if (!Role.main()) {
             LOGGER.info("Kronwerke Core ready as {} (role {}): season, goals, slots and the obelisk stay on main.", Role.server(), Role.role());
@@ -138,6 +141,7 @@ public class KronwerkeCore {
 
     private void onServerStopping(ServerStoppingEvent event) {
         de.kronwerke.core.portal.Travel.onStopping();
+        de.kronwerke.core.share.Share.stop();
         NetworkSync.stop();
         if (Role.main()) GoalManager.get().shutdown();
     }

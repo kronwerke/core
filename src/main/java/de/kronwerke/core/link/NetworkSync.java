@@ -104,6 +104,11 @@ public final class NetworkSync {
         return n;
     }
 
+    /** sync.players: player data, and with it the shared network (de.kronwerke.core.share). */
+    public static boolean shares() {
+        return flag("players");
+    }
+
     private static String chatMode() {
         return policy.has("chat") ? policy.get("chat").getAsString() : "network";
     }
@@ -180,6 +185,10 @@ public final class NetworkSync {
                     de.kronwerke.core.portal.Travel.onMessage(str(m, "from"), topic, d);
                     return;
                 }
+                if (topic.equals(de.kronwerke.core.share.Share.TOPIC) && m.get("data") instanceof JsonObject d) {
+                    de.kronwerke.core.share.Share.onMessage(str(m, "from"), d);
+                    return;
+                }
                 if (topic.equals("kw.state") && m.get("data") instanceof JsonObject d) {
                     Set<String> s = new HashSet<>();
                     if (d.get("streamers") instanceof JsonArray a) for (JsonElement e : a) s.add(e.getAsString().toLowerCase());
@@ -197,6 +206,7 @@ public final class NetworkSync {
     private static void resync() {
         sendPlayers(null);
         if (Role.main()) sendState();
+        de.kronwerke.core.share.Share.resync();
     }
 
     // ---- to the bus ----
