@@ -241,7 +241,10 @@ public final class GoalManager {
     private void remember(String goal, Component name, String item, long amount) {
         synchronized (recent) {
             Recent last = recent.peekFirst();
-            String who = name.getString();
+            // the display name carries the rank in front; player names have no spaces
+            String who = name.getString().trim();
+            int space = who.lastIndexOf(' ');
+            if (space >= 0) who = who.substring(space + 1);
             // a feeder hands in stack after stack; one line per player and item within a few seconds
             if (last != null && last.goal().equals(goal) && last.name().equals(who) && last.item().equals(item)
                     && System.currentTimeMillis() - last.at() < 10_000) {

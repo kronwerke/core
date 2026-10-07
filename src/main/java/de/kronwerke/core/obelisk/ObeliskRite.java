@@ -247,10 +247,13 @@ public final class ObeliskRite {
             // about two turns over the pull, the last ones fast
             double omega = 0.015 + 0.075 * q * q;
             double targetPhi = phi + omega;
-            double targetY = core.getY() + 4 + 26 * q + Math.sin((ticks + p.getId() * 7) / 9.0) * 0.8;
+            double targetY = core.getY() + 4 + 26 * q + Math.sin((ticks + p.getId() * 7) / 14.0) * 0.25;
             double tx = cx + Math.cos(targetPhi) * targetRho, tz = cz + Math.sin(targetPhi) * targetRho;
-            // the velocity that reaches the target in one tick, with what gravity takes off it already added back
-            net.minecraft.world.phys.Vec3 want = new net.minecraft.world.phys.Vec3(tx - p.getX(), targetY - p.getY() + 0.08, tz - p.getZ());
+            // around: the velocity that reaches the target in one tick. Up and down: only a third
+            // of the way per tick and never fast, so the lag between server and client does not
+            // turn into bobbing. What gravity takes off is added back.
+            double vy = Math.max(-0.6, Math.min(0.6, (targetY - p.getY()) * 0.35)) + 0.08;
+            net.minecraft.world.phys.Vec3 want = new net.minecraft.world.phys.Vec3(tx - p.getX(), vy, tz - p.getZ());
             if (want.length() > 1.6) want = want.normalize().scale(1.6);
             net.minecraft.world.phys.Vec3 v = p.getDeltaMovement().lerp(want, 0.85 * ease);
             p.setDeltaMovement(v);

@@ -34,6 +34,7 @@ import java.util.UUID;
  *                                      (the config default when slots is left out)
  *   admin ungrant <player>             take that place back, with every slot the player gave
  *   admin goals json                   every goal with state, progress and top five
+ *   admin roster json                  every streamer and granted player with slots and invited players
  */
 public final class BotCommand {
     private static final Gson GSON = new Gson();
@@ -61,6 +62,39 @@ public final class BotCommand {
     static LiteralArgumentBuilder<CommandSourceStack> ungrant() {
         return Commands.literal("ungrant")
                 .then(Commands.argument("player", StringArgumentType.word()).executes(BotCommand::ungrant));
+    }
+
+    static LiteralArgumentBuilder<CommandSourceStack> roster() {
+        return Commands.literal("roster").then(Commands.literal("json").executes(BotCommand::rosterJson));
+    }
+
+    private static int rosterJson(CommandContext<CommandSourceStack> c) {
+        SlotManager sm = SlotManager.get();
+        JsonArray list = new JsonArray();
+        for (SlotData.StreamerEntry e : sm.allStreamers()) {
+            JsonObject o = new JsonObject();
+            o.addProperty("uuid", e.uuid.toString());
+            o.addProperty("name", e.name);
+            o.addProperty("granted", e.granted);
+            o.addProperty("slots", sm.allowance(e));
+            o.addProperty("override", e.slotOverride);
+            o.addProperty("bonus", e.bonusSlots);
+            o.addProperty("used", e.used());
+            JsonArray inv = new JsonArray();
+            e.invited.forEach((id, n) -> {
+                JsonObject i = new JsonObject();
+                i.addProperty("uuid", id.toString());
+                i.addProperty("name", n);
+                inv.add(i);
+            });
+            o.add("invited", inv);
+            list.add(o);
+        }
+        JsonObject out = new JsonObject();
+        out.addProperty("defaultSlots", de.kronwerke.core.config.KronwerkeConfig.DEFAULT_SLOTS.get());
+        out.add("streamers", list);
+        answer(c, "OK " + GSON.toJson(out));
+        return 1;
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> goals() {

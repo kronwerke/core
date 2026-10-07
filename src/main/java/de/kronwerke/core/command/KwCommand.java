@@ -86,6 +86,7 @@ public final class KwCommand {
                         .then(BotCommand.grant())
                         .then(BotCommand.ungrant())
                         .then(BotCommand.goals())
+                        .then(BotCommand.roster())
                         .then(Commands.literal("goal")
                                 .then(Commands.literal("reload").executes(c -> { GoalManager.get().reload(); ok(c, "Goals reloaded: " + GoalManager.get().goalCount()); return 1; }))
                                 .then(Commands.literal("complete").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "complete"))))

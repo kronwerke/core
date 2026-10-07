@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.16.1
+
+- `kw admin roster json`: every streamer and granted player with their slots, override, bonus and invited players, for the web console.
+- Deposits in `kw admin goals json` carry the plain player name, without the rank in front.
+- The rite lifts players more calmly: the vertical pull is damped and the wave is small, so the circling no longer bobs up and down.
+
 ## 0.16.0
 
 - The rite is ninety seconds in five acts. Stillness: the hum stops, black bars close in, the picture darkens, a riser swells. The pull: the sky tears, the beam comes down out of the tear, blocks of the ground around the plinth are torn up and spiral round the beam faster and higher (the clients draw copies of the real blocks there; the ground itself stays), players within 28 blocks lift off and circle the beam, the air around the crystal bends like light round a heavy star (`shaders/post/lens`), the view is drawn in. The burst: everything is drawn in and stops, then the crystal bursts in slow motion, the obelisk breaks apart in the air, the spiral is flung out, the players are thrown outward and sink down slowly, the view is punched out. The return: the pieces of the obelisk fly back and join, the new tier is built, arcs of light leap from the pylons to the crystal, the players and the ground. The galaxy: the roll call, the fanfare, five volleys of fireworks; the torn sky stays open longer with every stage.
