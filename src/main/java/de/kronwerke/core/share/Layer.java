@@ -41,6 +41,11 @@ public interface Layer {
     default void unpack(MinecraftServer server, java.util.UUID player, JsonObject data) {
     }
 
+    /** main: where a player arrives who chose a place of this layer on another server, or null. */
+    default de.kronwerke.core.portal.AwayData.Back arrive(MinecraftServer server, JsonObject arrive) {
+        return null;
+    }
+
     /** A line for /kw share: what this layer is doing. */
     default String describe() {
         return "";

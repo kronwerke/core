@@ -206,6 +206,17 @@ public final class Travel {
         return true;
     }
 
+    /**
+     * Sends a player home from a side world to a place a layer of the shared network names (a
+     * waystone on main, say): main puts them there instead of in front of their portal.
+     */
+    public static boolean moveTo(ServerPlayer p, JsonObject arrive) {
+        NetworkSync.Peer target = NetworkSync.portalTarget();
+        if (Role.main() || target == null || !target.bus() || !target.running()) return false;
+        depart(p, target, null, arrive);
+        return true;
+    }
+
     /** Where a player who went through the portal at pos stands when they come back: in front of it. */
     private static JsonObject back(ServerPlayer p, BlockPos pos) {
         if (!Role.main()) return null;
@@ -273,6 +284,10 @@ public final class Travel {
 
     /** Saves the player and hands them to the target; the move happens when the target is ready. */
     public static void depart(ServerPlayer p, NetworkSync.Peer target, JsonObject back) {
+        depart(p, target, back, null);
+    }
+
+    private static void depart(ServerPlayer p, NetworkSync.Peer target, JsonObject back, JsonObject arrive) {
         p.stopRiding();
         CompoundTag tag = p.saveWithoutId(new CompoundTag());
         JsonObject data = new JsonObject();
@@ -286,6 +301,7 @@ public final class Travel {
         }
         progress(p, data);
         if (back != null) data.add("back", back);
+        if (arrive != null) data.add("arrive", arrive);
         JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
         if (extra != null) data.add("extra", extra);
         String id = UUID.randomUUID().toString();
@@ -392,7 +408,8 @@ public final class Travel {
         if (server.getPlayerList().getPlayer(id) != null) return; // here already: the old move is stale
         CompoundTag tag = decode(str(d, "nbt"));
         if (Role.main()) {
-            AwayData.Back b = AwayData.get(server).back(id);
+            AwayData.Back b = d.get("arrive") instanceof JsonObject a ? de.kronwerke.core.share.Share.arrive(a) : null;
+            if (b == null) b = AwayData.get(server).back(id);
             place(tag, b == null ? spawn(server) : b);
             keepFromHere(id, tag);
             AwayData.get(server).home(id);

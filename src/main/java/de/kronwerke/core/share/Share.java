@@ -63,6 +63,7 @@ public final class Share {
         if (ModList.get().isLoaded("fluxnetworks")) add(de.kronwerke.core.share.flux.FluxLayer.create());
         if (ModList.get().isLoaded("powah")) add(de.kronwerke.core.share.powah.EnderLayer.create());
         if (ModList.get().isLoaded("functionalstorage")) add(de.kronwerke.core.share.fs.EnderDrawerLayer.create());
+        if (ModList.get().isLoaded("waystones")) add(de.kronwerke.core.share.ws.WaystoneLayer.create());
         if (ModList.get().isLoaded("ftbquests") && ModList.get().isLoaded("ftbteams")) add(de.kronwerke.core.share.ftb.QuestLayer.create());
         if (!layers.isEmpty()) KronwerkeCore.LOGGER.info("Shared network: {} (epoch {})", String.join(", ", layers.keySet()), data.epoch);
     }
@@ -208,6 +209,20 @@ public final class Share {
                 error(l.name(), e);
             }
         }
+    }
+
+    /** main: where a player arrives who chose a place of some layer (a waystone) on another server. */
+    public static de.kronwerke.core.portal.AwayData.Back arrive(JsonObject arrive) {
+        if (server == null || arrive == null) return null;
+        for (Layer l : layers.values()) {
+            try {
+                var b = l.arrive(server, arrive);
+                if (b != null) return b;
+            } catch (RuntimeException | LinkageError e) {
+                error(l.name(), e);
+            }
+        }
+        return null;
     }
 
     // ---- from the bus ----

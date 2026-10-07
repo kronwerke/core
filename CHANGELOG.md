@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.0
+
+More of the shared network.
+
+- Functional Storage's Ender Drawers: a frequency linked on main and on a side world is one drawer whose contents live on main. The side world keeps a stack (or half the drawer) at hand and main tops it up when it runs low; what goes in there beyond half again as much goes home. Before the side world stops or is reset, everything goes home. Creative drawers never give across.
+- Mekanism's QIO: a QIO frequency on a side world with the same name, owner and security as one on main sends everything in it home, as much as main has room for. Before the side world stops, all of it.
+- Waystones: main's waystones are in a side world's list (the ones the player has found on main). Choosing one moves the player home, standing at that waystone, free like the portal. In the side world's list they carry a dimension of their own, so a jump there can never land inside the side world.
+- Moves to a named place: a layer can tell main where an arriving player stands (used by the waystones).
+
 ## 0.19.0
 
 The shared network: the mods' own wireless things work between the servers of the network (`sync.players` on both). Each mod has a layer that only loads when the mod is there.

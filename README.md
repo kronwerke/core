@@ -167,6 +167,9 @@ With the Kronwerke launcher (bus, roles) Core joins its servers into one network
 | Applied Energistics 2 | A Quantum Network Bridge ring with one singularity of a pair on main and the other on a side world: the side world's network sees main's ME storage as a drive, takes out of it and puts into it. Channels and autocrafting stay on each side |
 | Flux Networks | main's networks exist on the side worlds with the same number, name, members and password. Plugs on one server feed points on the other; what is left fills the other side's storages |
 | Powah | Ender Cells and Ender Gates: each player's channels are one buffer on every server, energy flows to the side that draws from them |
+| Functional Storage | Ender Drawers: a frequency on both servers is one drawer whose contents live on main; a side world keeps a stack at hand and sends the rest home |
+| Mekanism QIO | A QIO frequency on a side world sends everything in it home to main's frequency of the same name |
+| Waystones | main's waystones are in the list on a side world; choosing one moves the player home to it |
 | FTB Quests | One quest book: a player's team progress travels with them, what they do on a side world comes back, and both sides exchange it every ten seconds |
 
 Nothing moves twice: whatever one server gives has already left its world and waits in a saved outbox until the other server answers; gives are numbered per start and taken exactly once, in order; a world that was reset sends back what it never took. `sync.players` must be on for both servers. `/kw share` (operators) shows the state, `/kw move <players>` sends players through the portal without the portal.

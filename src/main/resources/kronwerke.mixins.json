@@ -7,7 +7,9 @@
     "ChaptersAuditMixin",
     "QuietPingMixin",
     "QuestLoadMixin",
-    "PlayerInfoUpdateAccessor"
+    "PlayerInfoUpdateAccessor",
+    "WaystoneTravelMixin",
+    "WaystoneContextMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"
