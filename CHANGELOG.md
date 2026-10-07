@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.6
+
+- The clouds sit at 448 instead of 192, since the overworld builds up to 608 (`cloudHeight` in the client config). They are drawn with their own fog and far plane, so they spread across the whole sky instead of a small patch overhead.
+- A client setting `fewerFlashes` for players sensitive to flashing light; the coming rite honours it.
+
 ## 0.15.5
 
 - The champion of each pillar, the player who gave it the most, wears the crown on its pedestal: their head turns above the lines with their name under it, the skin fetched in the background.
