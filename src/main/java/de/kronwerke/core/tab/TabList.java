@@ -120,6 +120,13 @@ public final class TabList {
         int here = server.getPlayerList().getPlayerCount(), elsewhere = de.kronwerke.core.link.NetworkSync.remoteCount();
         footer.append(Component.literal((here + elsewhere) + " online" + (elsewhere > 0 ? ", " + here + " hier" : "")).withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(de.kronwerke.core.link.Role.main() ? "   /kw goals   /kw deposit" : "").withStyle(ChatFormatting.DARK_GRAY));
+        long reset = de.kronwerke.core.link.NetworkSync.resetAt();
+        if (!de.kronwerke.core.link.Role.main() && reset > System.currentTimeMillis()) {
+            long min = (reset - System.currentTimeMillis()) / 60_000;
+            String left = min >= 1440 ? (min / 1440) + " d " + (min % 1440) / 60 + " h" : min >= 60 ? (min / 60) + " h " + (min % 60) + " min" : min + " min";
+            footer.append(Component.literal("\n").append(de.kronwerke.core.Text.t("network.reset_in", "Diese Welt wird zurückgesetzt in %s", left)
+                    .withStyle(min < 60 ? ChatFormatting.RED : ChatFormatting.YELLOW)));
+        }
         player.connection.send(new ClientboundTabListPacket(header, footer));
     }
 }

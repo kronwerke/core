@@ -140,6 +140,13 @@ public final class ObeliskEffects {
         far = payload.tier() < 0 ? null : payload;
     }
 
+    /** Leaving a server: its obelisk is not in the next one (another server of the network has the same dimensions). */
+    public static void forget() {
+        far = null;
+        crystal = null;
+        sky = null;
+    }
+
     /** True when the server's word about the obelisk applies to the level the player is in. */
     static boolean farHere(Minecraft mc) {
         return far != null && mc.level != null && mc.level.dimension().location().toString().equals(far.dimension());

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.18.0
+
+The way into the mining world, and players moving between the servers of the network (launcher 0.7.0 or later, `public.host` set, `transfers=true` and `sync.players=true` on both servers).
+
+- The Grubenrahmen: dark slate bound in riveted iron with blue crystal veins, textures with labPBR maps for shader packs (normal, height, metal, glowing veins). In the pack, connected textures through Athena.
+- The Minenportal: a frame of Grubenrahmen like the Nether's (inside 2 to 21 wide, 3 to 21 high), lit with a source gem (an amethyst shard without Ars Nouveau). Blue light, gold sparks, its own sound.
+- Standing in the portal for two and a half seconds moves a player to the other server: the player file (inventory, ender chest, effects, every mod's attachments), advancements, statistics and Sophisticated Backpacks' contents are handed over, and only when the target has written them is the client sent there (Minecraft's transfer). From main the portal leads to the side world (`network.portalTarget`, default mining), from a side world home to main, in front of the portal the player went through.
+- The way there is drawn: light streams up and a beam comes down while the portal charges, then stars rushing past toward the name of the target for as long as the reconnect takes, then a white flash that clears over the new world.
+- A side world builds its arrival place once per world at its spawn: a platform with a portal home. Its spawn protection only covers that place.
+- A side world lets in only the players it expects (operators may always). It sends a player's state home every 30 seconds, when they log out there and when it stops, so main always has the newest; main keeps its own waystones (`network.keepOnMain`).
+- Items thrown into the portal come out on the other side: at the arrival place, or at home in front of the thrower's portal.
+- A world reset by the launcher sends everyone home first. The tab list counts down to the next reset.
+- Tiefgräber get Haste in the mining world.
+- The advancement "Ab in die Minenwelt" for the quest book.
+- Fix: the obelisk's effects of one server no longer show in another server's world after a move.
+
 ## 0.17.0
 
 One network of servers through the launcher's bus (launcher 0.5.1 or later, `bus.port` set, the servers in one `network`). What is shared is set in the launcher's console.

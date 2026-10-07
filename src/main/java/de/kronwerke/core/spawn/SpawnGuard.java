@@ -33,8 +33,10 @@ public final class SpawnGuard {
     private SpawnGuard() {
     }
 
+    /** On a side world only the arrival place is protected, the rest is there to be dug up. */
     private static int radius() {
-        return KronwerkeConfig.SPAWN_RADIUS.get();
+        int r = KronwerkeConfig.SPAWN_RADIUS.get();
+        return de.kronwerke.core.link.Role.main() ? r : Math.min(r, 8);
     }
 
     public static boolean inside(Level level, BlockPos pos) {

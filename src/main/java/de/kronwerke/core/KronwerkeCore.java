@@ -47,6 +47,7 @@ public class KronwerkeCore {
         }
         quietRcon();
         de.kronwerke.core.obelisk.ObeliskBlocks.register(modBus);
+        de.kronwerke.core.portal.PortalBlocks.register(modBus);
         de.kronwerke.core.obelisk.KwParticles.register(modBus);
         de.kronwerke.core.obelisk.KwSounds.register(modBus);
         modBus.addListener(de.kronwerke.core.net.KwNetwork::register);
@@ -66,6 +67,8 @@ public class KronwerkeCore {
         }
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, NetworkSync::onChat);
         NeoForge.EVENT_BUS.addListener(NetworkSync::onTick);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.portal.Travel::onTick);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, de.kronwerke.core.portal.Ignite::onRightClick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onPlace);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onMultiPlace);
@@ -119,6 +122,7 @@ public class KronwerkeCore {
     private void onServerStarted(ServerStartedEvent event) {
         TabList.init(event.getServer());
         LogPruner.prune(FMLPaths.GAMEDIR.get().resolve("logs"), KronwerkeConfig.LOG_DAYS.get());
+        de.kronwerke.core.portal.Travel.init(event.getServer());
         NetworkSync.start(event.getServer());
         if (!Role.main()) {
             LOGGER.info("Kronwerke Core ready as {} (role {}): season, goals, slots and the obelisk stay on main.", Role.server(), Role.role());
@@ -133,6 +137,7 @@ public class KronwerkeCore {
     }
 
     private void onServerStopping(ServerStoppingEvent event) {
+        de.kronwerke.core.portal.Travel.onStopping();
         NetworkSync.stop();
         if (Role.main()) GoalManager.get().shutdown();
     }
@@ -145,6 +150,7 @@ public class KronwerkeCore {
             GoalManager.get().onPlayerJoin(sp);
             Obelisk.get().onJoin(sp);
         }
+        de.kronwerke.core.portal.Travel.onLogin(sp);
         TabList.onJoin(sp);
         NetworkSync.onJoin(sp);
     }
@@ -152,6 +158,9 @@ public class KronwerkeCore {
     private void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
         if (Role.main()) GoalManager.get().onPlayerLeave(event.getEntity());
         de.kronwerke.core.boss.BossScaling.forget(event.getEntity().getUUID());
-        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) NetworkSync.onLeave(sp);
+        if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
+            NetworkSync.onLeave(sp);
+            de.kronwerke.core.portal.Travel.onLogout(sp);
+        }
     }
 }

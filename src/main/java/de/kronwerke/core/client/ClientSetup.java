@@ -20,6 +20,8 @@ public final class ClientSetup {
         });
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> LanguageScreen.showIfNeeded());
         ObeliskEffects.register(modBus);
+        TravelOverlay.register();
+        NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> ObeliskEffects.forget());
         // the overworld builds up to 608, so its clouds move up from vanilla's 192
         modBus.addListener((net.neoforged.neoforge.client.event.RegisterDimensionSpecialEffectsEvent e) ->
                 e.register(net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD_EFFECTS, new HighCloudEffects()));

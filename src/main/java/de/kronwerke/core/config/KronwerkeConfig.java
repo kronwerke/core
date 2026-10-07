@@ -23,6 +23,8 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue SCALE_MAX;
     public static final ModConfigSpec.BooleanValue TEST_COMMANDS;
     public static final ModConfigSpec.BooleanValue DIRECT_JOIN;
+    public static final ModConfigSpec.ConfigValue<String> PORTAL_TARGET;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> KEEP_ON_MAIN;
     public static final ModConfigSpec.IntValue LOG_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
@@ -105,6 +107,10 @@ public final class KronwerkeConfig {
         b.push("network");
         DIRECT_JOIN = b.comment("On a side world (any launcher role but main): players may join it directly instead of moving there from main. Operators always may.")
                 .define("directJoin", false);
+        PORTAL_TARGET = b.comment("The launcher role of the server the Grubenrahmen portal leads to from main.")
+                .define("portalTarget", "mining");
+        KEEP_ON_MAIN = b.comment("Parts of a player file (tag names) main keeps as it knows them when a player comes back from a side world: things that point at main's world, like the waystones a player has activated.")
+                .defineListAllowEmpty("keepOnMain", java.util.List.of("WaystonesData"), o -> o instanceof String);
         b.pop();
 
         b.push("tab");

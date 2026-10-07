@@ -269,6 +269,9 @@ public final class KwNetwork {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.gift(payload));
         });
         r.playToServer(ActionPayload.TYPE, ActionPayload.CODEC, KwNetwork::onAction);
+        r.playToClient(de.kronwerke.core.portal.TravelPayload.TYPE, de.kronwerke.core.portal.TravelPayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.TravelOverlay.receive(payload));
+        });
     }
 
     public static void sendHub(ServerPlayer p, String message, boolean error) {

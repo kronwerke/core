@@ -39,5 +39,15 @@
   "kronwerke.network.moved": "%s geht nach %s",
   "kronwerke.network.direct": "Diese Welt erreichst du nur über kronwerke.net.",
   "kronwerke.network.main_only": "Das geht nur in der Hauptwelt.",
-  "kronwerke.network.side": "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt."
+  "kronwerke.network.side": "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
+  "block.kronwerke.grubenrahmen": "Grubenrahmen",
+  "block.kronwerke.minenportal": "Minenportal",
+  "kronwerke.portal.closed": "Das Portal flackert: die andere Welt ist gerade nicht erreichbar.",
+  "kronwerke.portal.failed": "Die Reise hat nicht geklappt, versuch es gleich noch einmal.",
+  "kronwerke.portal.evacuate": "Diese Welt wird zurückgesetzt. Du reist jetzt nach Hause.",
+  "kronwerke.portal.reset": "Diese Welt wird zurückgesetzt.",
+  "kronwerke.portal.frame": "Der Rahmen ist nicht geschlossen: innen 2 bis 21 breit, 3 bis 21 hoch, rundherum Grubenrahmen.",
+  "kronwerke.network.reset_in": "Diese Welt wird zurückgesetzt in %s",
+  "advancements.kronwerke.minenwelt.title": "Ab in die Minenwelt",
+  "advancements.kronwerke.minenwelt.description": "Reise durch ein Minenportal"
 }

@@ -45,5 +45,15 @@
   "kronwerke.network.moved": "%s goes to %s",
   "kronwerke.network.direct": "You reach this world only through kronwerke.net.",
   "kronwerke.network.main_only": "That only works in the main world.",
-  "kronwerke.network.side": "You are in %s. Season, goals and slots are in the main world."
+  "kronwerke.network.side": "You are in %s. Season, goals and slots are in the main world.",
+  "block.kronwerke.grubenrahmen": "Mine Frame",
+  "block.kronwerke.minenportal": "Mine Portal",
+  "kronwerke.portal.closed": "The portal flickers: the other world cannot be reached right now.",
+  "kronwerke.portal.failed": "The journey did not work, try again in a moment.",
+  "kronwerke.portal.evacuate": "This world is being reset. You are travelling home now.",
+  "kronwerke.portal.reset": "This world is being reset.",
+  "kronwerke.portal.frame": "The frame is not closed: inside 2 to 21 wide, 3 to 21 high, Mine Frame all around.",
+  "kronwerke.network.reset_in": "This world is reset in %s",
+  "advancements.kronwerke.minenwelt.title": "Into the Mine World",
+  "advancements.kronwerke.minenwelt.description": "Travel through a Mine Portal"
 }

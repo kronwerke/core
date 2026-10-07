@@ -44,7 +44,7 @@ import java.util.UUID;
  */
 public final class NetworkSync {
     /** Another server of the network: how to name it. */
-    record Peer(String name, String label, int color) {}
+    public record Peer(String name, String label, int color, String role, String host, int port, boolean bus, boolean running) {}
 
     /** A player on another server, as shown in this server's tab list. */
     record Remote(UUID uuid, String name, String rank, int ping, String skin, String skinSig, String server) {}
@@ -123,8 +123,18 @@ public final class NetworkSync {
                 if (m.get("peers") instanceof JsonArray a) {
                     for (JsonElement e : a) {
                         JsonObject o = e.getAsJsonObject();
-                        peers.put(str(o, "name"), new Peer(str(o, "name"), str(o, "label"), color(str(o, "color"))));
+                        peers.put(str(o, "name"), new Peer(str(o, "name"), str(o, "label"), color(str(o, "color")), str(o, "role"),
+                                str(o, "host"), num(o, "port", 25565), o.has("bus") && o.get("bus").getAsBoolean(),
+                                o.has("running") && o.get("running").getAsBoolean()));
                     }
+                }
+                ownLabel = str(m, "label");
+                ownColor = color(str(m, "color"));
+                String r = str(m, "reset");
+                try {
+                    resetAt = r.isEmpty() ? 0 : java.time.Instant.parse(r).toEpochMilli();
+                } catch (RuntimeException e) {
+                    resetAt = 0;
                 }
                 for (String gone : new ArrayList<>(remote.keySet())) {
                     if (!peers.containsKey(gone) || !flag("tablist")) setRemote(gone, List.of());
@@ -146,6 +156,7 @@ public final class NetworkSync {
                 if (!flag("joins")) return;
                 String to = str(m, "to");
                 if (op.equals("join") && !str(m, "via").isEmpty()) return; // a move: the leave already said it
+                if (op.equals("leave") && to.equals(Role.server())) return; // coming here: the join says it
                 MutableComponent line = mark(str(m, "from"));
                 if (op.equals("leave") && !to.isEmpty()) {
                     Peer target = peers.get(to);
@@ -160,8 +171,16 @@ public final class NetworkSync {
             }
             case "say" -> server.getPlayerList().broadcastSystemMessage(Component.literal("[" + str(m, "who") + "] ").withStyle(ChatFormatting.GOLD)
                     .append(Component.literal(str(m, "text")).withStyle(ChatFormatting.WHITE)), false);
+            case "evacuate" -> de.kronwerke.core.portal.Travel.evacuate();
+            case "sent" -> de.kronwerke.core.portal.Travel.sent(str(m, "id"), m.has("delivered") && m.get("delivered").getAsBoolean());
             case "message" -> {
-                if (str(m, "topic").equals("kw.state") && m.get("data") instanceof JsonObject d) {
+                String topic = str(m, "topic");
+                if ((topic.startsWith("player.") || topic.startsWith("kw.items")) && m.get("data") instanceof JsonObject d) {
+                    if (!d.has("id") && !str(m, "id").isEmpty()) d.addProperty("id", str(m, "id"));
+                    de.kronwerke.core.portal.Travel.onMessage(str(m, "from"), topic, d);
+                    return;
+                }
+                if (topic.equals("kw.state") && m.get("data") instanceof JsonObject d) {
                     Set<String> s = new HashSet<>();
                     if (d.get("streamers") instanceof JsonArray a) for (JsonElement e : a) s.add(e.getAsString().toLowerCase());
                     streamers = s;
@@ -218,6 +237,8 @@ public final class NetworkSync {
         JsonObject m = op("join");
         m.addProperty("player", p.getGameProfile().getName());
         m.addProperty("uuid", p.getUUID().toString());
+        String via = de.kronwerke.core.portal.Travel.arrivedFrom(p.getUUID());
+        if (via != null) m.addProperty("via", via);
         bus.send(m);
         sendPlayers(null);
     }
@@ -227,6 +248,8 @@ public final class NetworkSync {
         JsonObject m = op("leave");
         m.addProperty("player", p.getGameProfile().getName());
         m.addProperty("uuid", p.getUUID().toString());
+        String to = de.kronwerke.core.portal.Travel.leavingTo(p.getUUID());
+        if (to != null && peers.containsKey(to)) m.addProperty("to", to);
         bus.send(m);
         sendPlayers(p.getUUID());
     }
@@ -359,6 +382,61 @@ public final class NetworkSync {
         }
     }
 
+    private static int num(JsonObject o, String key, int fallback) {
+        try {
+            return o.has(key) && !o.get(key).isJsonNull() ? Integer.parseInt(o.get(key).getAsString()) : fallback;
+        } catch (RuntimeException e) {
+            return fallback;
+        }
+    }
+
+    // ---- for the travel between servers ----
+
+    private static volatile String ownLabel = "";
+    private static volatile int ownColor = 0xAAAAAA;
+    private static volatile long resetAt;
+
+    public static Peer peer(String name) {
+        return peers.get(name);
+    }
+
+    /** The server a portal leads to: main from a side world, the first side world with the role from main. */
+    public static Peer portalTarget() {
+        for (Peer p : peers.values()) {
+            if (Role.main() ? p.role().equals(KronwerkeConfig.PORTAL_TARGET.get()) : p.role().equals("main")) return p;
+        }
+        return null;
+    }
+
+    public static String ownLabel() {
+        return ownLabel.isEmpty() ? Role.server() : ownLabel;
+    }
+
+    public static int ownColor() {
+        return ownColor;
+    }
+
+    /** When this world is reset next (ms), or 0. */
+    public static long resetAt() {
+        return resetAt;
+    }
+
+    /** A message for one mod of the network (or "*"); topic starting with player. needs sync.players. */
+    public static void send(String to, String topic, JsonObject data, String id) {
+        if (!on()) return;
+        JsonObject m = op("send");
+        m.addProperty("to", to);
+        m.addProperty("topic", topic);
+        m.add("data", data);
+        if (id != null) m.addProperty("id", id);
+        bus.send(m);
+    }
+
+    /** Tells the launcher that every player has left (after an evacuate). */
+    public static void evacuated() {
+        if (on()) bus.send(op("evacuated"));
+    }
+
     private static JsonObject op(String op) {
         JsonObject m = new JsonObject();
         m.addProperty("op", op);
@@ -373,6 +451,7 @@ public final class NetworkSync {
     /** Players who may only arrive through a move: everyone but operators, on a side world. */
     public static boolean refuse(ServerPlayer p) {
         if (Role.main() || KronwerkeConfig.DIRECT_JOIN.get() || p.hasPermissions(2)) return false;
+        if (de.kronwerke.core.portal.Travel.expected(p.getUUID())) return false;
         KronwerkeCore.LOGGER.info("{} joined {} directly; sent away", p.getGameProfile().getName(), Role.server());
         refused.add(p.getUUID());
         p.connection.disconnect(Text.t("network.direct", "Diese Welt erreichst du nur über kronwerke.net."));

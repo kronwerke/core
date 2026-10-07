@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:story/root",
+  "display": {
+    "icon": {"id": "kronwerke:grubenrahmen"},
+    "title": {"translate": "advancements.kronwerke.minenwelt.title"},
+    "description": {"translate": "advancements.kronwerke.minenwelt.description"},
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": false
+  },
+  "criteria": {"travel": {"trigger": "minecraft:impossible"}}
+}
