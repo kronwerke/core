@@ -3,5 +3,8 @@
   "obelisk.riser": { "subtitle": "Der Obelisk zieht an", "sounds": [ "kronwerke:riser" ] },
   "obelisk.tear": { "subtitle": "Der Himmel reißt auf", "sounds": [ "kronwerke:tear" ] },
   "obelisk.fanfare": { "subtitle": "Fanfare des Obelisken", "sounds": [ "kronwerke:fanfare" ] },
-  "obelisk.whisper": { "subtitle": "Der Obelisk flüstert", "sounds": [ "kronwerke:whisper" ] }
+  "obelisk.whisper": { "subtitle": "Der Obelisk flüstert", "sounds": [ "kronwerke:whisper" ] },
+  "obelisk.vortex": { "subtitle": "Ein Sturm um den Obelisken", "sounds": [ { "name": "kronwerke:vortex", "stream": true } ] },
+  "obelisk.implode": { "subtitle": "Alles wird hineingezogen", "sounds": [ "kronwerke:implode" ] },
+  "obelisk.boom": { "subtitle": "Der Obelisk birst", "sounds": [ "kronwerke:boom" ] }
 }

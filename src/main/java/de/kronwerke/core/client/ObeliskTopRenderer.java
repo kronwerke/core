@@ -9,7 +9,6 @@ import de.kronwerke.core.obelisk.ObeliskTopBlockEntity;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.blockentity.BeaconRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -72,30 +71,30 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         int mood = be.mood();
         float[] c = colour(be.percent(), mood, tier);
 
-        // the rite: a freeze, the crystal drawn in and burning white, the burst, the slow return
+        // the rite: the stillness, the crystal drawn in and burning white through the pull, the burst, the slow return
         float riteT = be.rite() > 0 ? gameTime - be.rite() + partialTick : -1;
-        boolean frozen = riteT >= 0 && riteT < ObeliskRite.T_INTAKE;
+        boolean frozen = riteT >= 0 && riteT < ObeliskRite.T_PULL;
         float riteScale = 1f, riteWhite = 0f, riteSpin = 1f;
-        boolean hideBeam = false;
         if (riteT >= 0 && riteT < ObeliskRite.T_END) {
             if (frozen) {
                 time = be.rite();
             } else if (riteT < ObeliskRite.T_BURST) {
-                float p = (riteT - ObeliskRite.T_INTAKE) / ObeliskRite.INTAKE;
-                riteScale = 1f - 0.5f * p;
-                riteWhite = p;
-                riteSpin = 1f + 6f * p;
-                hideBeam = true;
+                float p = (riteT - ObeliskRite.T_PULL) / ObeliskRite.PULL;
+                // slowly through the pull, then everything drawn in during the last two seconds
+                float late = Math.max(0f, (riteT - (ObeliskRite.T_BURST - 40)) / 40f);
+                riteScale = 1f + 0.35f * p - 0.85f * late * late;
+                riteWhite = Math.min(1f, p * p + late);
+                riteSpin = 1f + 5f * p + 10f * late;
             } else if (riteT < ObeliskRite.T_REFORM) {
                 float p = (riteT - ObeliskRite.T_BURST) / ObeliskRite.BURST;
-                riteScale = p < 0.15f ? 0.5f + 7.5f * (p / 0.15f) : Math.max(0.05f, 8f * (1 - (p - 0.15f) / 0.85f));
+                riteScale = p < 0.1f ? 0.5f + 9.5f * (p / 0.1f) : Math.max(0.05f, 10f * (1 - (p - 0.1f) / 0.9f));
                 riteWhite = 1f;
-                riteSpin = 8f;
+                riteSpin = 10f;
             } else if (riteT < ObeliskRite.T_ROLL) {
-                float p = (riteT - ObeliskRite.T_REFORM) / ObeliskRite.REFORM;
+                float p = Math.min(1f, (riteT - ObeliskRite.T_REFORM) / 160f);
                 riteScale = 0.05f + 0.95f * (1 - (1 - p) * (1 - p));
-                riteWhite = Math.max(0f, 1 - p * 3);
-                riteSpin = 1f + 2f * (1 - p);
+                riteWhite = Math.max(0f, 1 - p * 2);
+                riteSpin = 1f + 3f * (1 - p);
                 c = GOLD.clone();
             } else {
                 c = GOLD.clone();
@@ -192,36 +191,7 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
             pose.popPose();
         }
 
-        // the rite's great beam: it comes down from the sky during the intake, and after the
-        // burst it wraps the whole trunk in gold and tightens back to the ordinary beam
-        if (riteT >= ObeliskRite.T_INTAKE && riteT < ObeliskRite.T_ROLL) {
-            pose.pushPose();
-            if (riteT < ObeliskRite.T_BURST) {
-                float p = (riteT - ObeliskRite.T_INTAKE) / ObeliskRite.INTAKE;
-                p = p * p;
-                int bottom = (int) (BASE_Y + 1 + 420 * (1 - p));
-                float radius = 0.4f + 2.6f * p;
-                BeaconRenderer.renderBeaconBeam(pose, buffer, BeaconRenderer.BEAM_LOCATION, partialTick, 1.0f, gameTime, bottom, 1024 - bottom, 0xFFFFFF, radius, radius + 0.6f);
-            } else {
-                float p = riteT < ObeliskRite.T_REFORM ? 0f : (riteT - ObeliskRite.T_REFORM) / ObeliskRite.REFORM;
-                float radius = Mth.lerp(p * p, 3.2f, 0.25f);
-                int gold = 0xF6D68C, white = 0xFFFFFF;
-                BeaconRenderer.renderBeaconBeam(pose, buffer, BeaconRenderer.BEAM_LOCATION, partialTick, 1.0f, gameTime, -17, 1024, gold, radius, radius + 1.2f);
-                BeaconRenderer.renderBeaconBeam(pose, buffer, BeaconRenderer.BEAM_LOCATION, partialTick, 0.5f, gameTime * 3, -17, 1024, white, radius * 0.55f, radius * 0.55f + 0.3f);
-            }
-            pose.popPose();
-        }
-
-        // the beam, in the same colour, from the point of the crystal
-        if (!hideBeam) {
-            float[] bc = riteT >= ObeliskRite.T_BURST && riteT < ObeliskRite.T_BURST + 20 ? new float[]{1f, 1f, 1f} : c;
-            int colour = ((int) (bc[0] * 255) << 16) | ((int) (bc[1] * 255) << 8) | (int) (bc[2] * 255);
-            pose.pushPose();
-            pose.translate(0.0, BASE_Y + bob + 0.5 * size, 0.0);
-            float width = (asleep ? 0.08f : 0.14f + 0.02f * tier) + flare * 0.08f + (riteT >= ObeliskRite.T_BURST && riteT < ObeliskRite.T_BURST + 40 ? 0.3f : 0f);
-            BeaconRenderer.renderBeaconBeam(pose, buffer, BeaconRenderer.BEAM_LOCATION, partialTick, 1.0f, frozen ? be.rite() : gameTime, 0, 1024, colour, width, width + 0.05f);
-            pose.popPose();
-        }
+        // the beams are drawn by ObeliskEffects after the world, see ObeliskBeam
     }
 
     /**

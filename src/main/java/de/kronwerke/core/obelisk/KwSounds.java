@@ -16,6 +16,9 @@ public final class KwSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> TEAR = sound("obelisk.tear");
     public static final DeferredHolder<SoundEvent, SoundEvent> FANFARE = sound("obelisk.fanfare");
     public static final DeferredHolder<SoundEvent, SoundEvent> WHISPER = sound("obelisk.whisper");
+    public static final DeferredHolder<SoundEvent, SoundEvent> VORTEX = sound("obelisk.vortex");
+    public static final DeferredHolder<SoundEvent, SoundEvent> IMPLODE = sound("obelisk.implode");
+    public static final DeferredHolder<SoundEvent, SoundEvent> BOOM = sound("obelisk.boom");
 
     private KwSounds() {
     }

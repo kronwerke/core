@@ -198,6 +198,9 @@ public final class Obelisk {
             settled = true;
             try {
                 settleTier();
+                // a rite cut short by a restart may have left the stone hidden
+                ServerLevel lv = obeliskLevel();
+                if (lv != null) ObeliskStructure.setHidden(lv, data().pos(), false);
             } catch (Exception e) {
                 de.kronwerke.core.KronwerkeCore.LOGGER.warn("Could not settle the obelisk's tier", e);
             }

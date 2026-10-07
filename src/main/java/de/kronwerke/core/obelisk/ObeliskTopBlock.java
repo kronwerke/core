@@ -26,6 +26,12 @@ public class ObeliskTopBlock extends BaseEntityBlock {
 
     public ObeliskTopBlock(Properties properties) {
         super(properties);
+        registerDefaultState(stateDefinition.any().setValue(ObeliskPartBlock.HIDDEN, false));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(net.minecraft.world.level.block.state.StateDefinition.Builder<net.minecraft.world.level.block.Block, BlockState> builder) {
+        builder.add(ObeliskPartBlock.HIDDEN);
     }
 
     @Override
@@ -57,7 +63,8 @@ public class ObeliskTopBlock extends BaseEntityBlock {
 
     @Override
     protected RenderShape getRenderShape(BlockState state) {
-        return RenderShape.MODEL;
+        // hidden while the rite tears the obelisk apart; the crystal above it is drawn by the block entity all the same
+        return state.getValue(ObeliskPartBlock.HIDDEN) ? RenderShape.ENTITYBLOCK_ANIMATED : RenderShape.MODEL;
     }
 
     @Override

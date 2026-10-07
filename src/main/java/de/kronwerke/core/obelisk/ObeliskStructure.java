@@ -69,6 +69,27 @@ public final class ObeliskStructure {
         }
     }
 
+    /**
+     * Hides or shows every part of the obelisk and its tiers, for the rite's burst: while hidden
+     * the clients draw the pieces flying apart and coming back. Only the look changes; the
+     * blocks stay where they are, solid, with their light.
+     */
+    public static void setHidden(ServerLevel level, BlockPos core, boolean hidden) {
+        int r = PEDESTAL + 2;
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dz = -r; dz <= r; dz++) {
+                for (int dy = -1; dy <= HEIGHT; dy++) {
+                    BlockPos p = core.offset(dx, dy, dz);
+                    if (!level.isLoaded(p)) continue;
+                    BlockState s = level.getBlockState(p);
+                    if (s.hasProperty(ObeliskPartBlock.HIDDEN) && s.getValue(ObeliskPartBlock.HIDDEN) != hidden) {
+                        level.setBlock(p, s.setValue(ObeliskPartBlock.HIDDEN, hidden), net.minecraft.world.level.block.Block.UPDATE_CLIENTS | net.minecraft.world.level.block.Block.UPDATE_KNOWN_SHAPE);
+                    }
+                }
+            }
+        }
+    }
+
     /** Whether a block at pos belongs to the obelisk whose core is at core. */
     public static boolean contains(BlockPos core, BlockPos pos, BlockState state) {
         int dx = Math.abs(pos.getX() - core.getX()), dz = Math.abs(pos.getZ() - core.getZ()), dy = pos.getY() - core.getY();

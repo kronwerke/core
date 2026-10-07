@@ -106,13 +106,17 @@ public final class ObeliskEffects {
         if (be.rite() != lastRiteSeen) {
             lastRiteSeen = be.rite();
         }
+        depositTick = be.lastDeposit();
+        depositStrength = be.flashStrength();
         if (be.rite() > 0) {
             long t = now - be.rite();
             if (t >= de.kronwerke.core.obelisk.ObeliskRite.T_BURST && t < de.kronwerke.core.obelisk.ObeliskRite.T_BURST + 2 && waveStart != be.rite()) {
                 waveStart = be.rite();
-                shockwave(crystal, 1.4f, 45);
+                boolean soft = de.kronwerke.core.config.KronwerkeClientConfig.fewerFlashes();
+                shockwave(crystal, soft ? 0.6f : 1.6f, 60);
                 flashAt = System.currentTimeMillis();
-                shake(1.2f, 40);
+                shake(soft ? 0.3f : 1.4f, 50);
+                RiteFx.burst();
             }
         }
     }
@@ -130,29 +134,29 @@ public final class ObeliskEffects {
     private static float giftStrength;
 
     /** what the server last said about the obelisk, for the effects seen from far away */
-    private static KwNetwork.StatePayload far;
+    static KwNetwork.StatePayload far;
 
     public static void state(KwNetwork.StatePayload payload) {
         far = payload.tier() < 0 ? null : payload;
     }
 
     /** True when the server's word about the obelisk applies to the level the player is in. */
-    private static boolean farHere(Minecraft mc) {
+    static boolean farHere(Minecraft mc) {
         return far != null && mc.level != null && mc.level.dimension().location().toString().equals(far.dimension());
     }
 
     /** Where the crystal is: as last drawn when its blocks are in range, else as the server said. */
-    private static Vec3 where(Minecraft mc) {
+    static Vec3 where(Minecraft mc) {
         if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return crystal;
         return farHere(mc) ? new Vec3(far.x(), far.y(), far.z()) : null;
     }
 
-    private static int tierNow(Minecraft mc) {
+    static int tierNow(Minecraft mc) {
         if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return tier;
         return farHere(mc) ? far.tier() : 0;
     }
 
-    private static int moodNow(Minecraft mc) {
+    static int moodNow(Minecraft mc) {
         if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return mood;
         return farHere(mc) ? far.mood() : ObeliskTopBlockEntity.MOOD_IDLE;
     }
@@ -162,7 +166,7 @@ public final class ObeliskEffects {
         return far == null ? 0 : far.crowd();
     }
 
-    private static int percentNow(Minecraft mc) {
+    static int percentNow(Minecraft mc) {
         if (crystal != null && mc.level != null && mc.level.getGameTime() - lastSeen <= 100) return percent;
         return farHere(mc) ? far.percent() : 0;
     }
@@ -171,9 +175,13 @@ public final class ObeliskEffects {
     private static KwNetwork.SkyPayload sky;
     private static long shakeUntil;
     private static float shakeStrength;
-    private static long flashAt;
+    static long flashAt;
+    /** the last gift the top block showed, for the flare of the beam */
+    private static long depositTick;
+    private static float depositStrength;
 
     public static void register(net.neoforged.bus.api.IEventBus modBus) {
+        RiteFx.register();
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onRenderStage);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onFog);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onCamera);
@@ -187,6 +195,7 @@ public final class ObeliskEffects {
         modBus.addListener((net.neoforged.neoforge.client.event.RegisterShadersEvent e) -> {
             try {
                 e.registerShader(new ShaderInstance(e.getResourceProvider(), ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "galaxy"), DefaultVertexFormat.POSITION), sh -> galaxy = sh);
+                e.registerShader(new ShaderInstance(e.getResourceProvider(), ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "beam"), DefaultVertexFormat.POSITION_TEX_COLOR), ObeliskBeam::shader);
             } catch (Exception ex) {
                 KronwerkeCore.LOGGER.warn("The galaxy shader did not load, the sky stays as it is", ex);
             }
@@ -263,6 +272,7 @@ public final class ObeliskEffects {
 
     /** Resource reloads drop the chain, so it is read again with the new shaders. */
     public static void onReload() {
+        RiteFx.onReload();
         if (chain != null) chain.close();
         if (veil != null) veil.close();
         chain = null;
@@ -284,18 +294,48 @@ public final class ObeliskEffects {
 
     private static void onRenderStage(RenderLevelStageEvent event) {
         if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_LEVEL) {
+            // a shader pack paints its own sky over anything drawn with the sky, so then the galaxy
+            // comes first after the world, while the depth buffer still holds the world
+            if (shaderPack()) drawSky(event, true);
             gaze(event);
             drawRings(event);
             drawGifts(event);
             drawSignal(event);
-            drawFarBeam(event);
+            RiteFx.drawWorld(event);
+            drawBeams(event);
             drawPylonBeams(event);
             drawCracks(event);
             drawAurora(event);
+            // the post effects last: after a post pass the depth buffer is no longer the world's
+            RiteFx.drawPost(event);
             drawVeil(event);
             drawShockwave(event);
         } else if (event.getStage() == RenderLevelStageEvent.Stage.AFTER_SKY) {
-            drawSky(event);
+            if (!shaderPack()) drawSky(event, false);
+        }
+    }
+
+    private static java.lang.reflect.Method irisInUse;
+    private static Object irisApi;
+    private static boolean irisLooked;
+
+    /** True while an Iris shader pack is in use; Iris is optional, so it is asked through reflection. */
+    static boolean shaderPack() {
+        if (!irisLooked) {
+            irisLooked = true;
+            try {
+                Class<?> api = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+                irisApi = api.getMethod("getInstance").invoke(null);
+                irisInUse = api.getMethod("isShaderPackInUse");
+            } catch (Throwable ignored) {
+                irisApi = null;
+            }
+        }
+        if (irisApi == null) return false;
+        try {
+            return (Boolean) irisInUse.invoke(irisApi);
+        } catch (Throwable e) {
+            return false;
         }
     }
 
@@ -304,7 +344,7 @@ public final class ObeliskEffects {
      * top block entity when it is in view, else from the sky payload (sent 20 ticks before the
      * intake).
      */
-    private static float riteTime(Minecraft mc, float partial) {
+    static float riteTime(Minecraft mc, float partial) {
         if (mc.level == null) return -1;
         long now = mc.level.getGameTime();
         if (crystal != null && now - lastSeen <= 100) {
@@ -313,13 +353,13 @@ public final class ObeliskEffects {
             return t < de.kronwerke.core.obelisk.ObeliskRite.T_END ? t : -1;
         }
         if (sky == null) return -1;
-        float t = now + partial - sky.start() + (de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE - 20);
+        float t = now + partial - sky.start() + de.kronwerke.core.obelisk.ObeliskRite.T_PULL;
         return t >= 0 && t < de.kronwerke.core.obelisk.ObeliskRite.T_END ? t : -1;
     }
 
     // ---- the torn sky ----
 
-    private static void drawSky(RenderLevelStageEvent event) {
+    private static void drawSky(RenderLevelStageEvent event, boolean afterWorld) {
         if (galaxy == null) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.level == null) return;
@@ -367,7 +407,12 @@ public final class ObeliskEffects {
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.depthMask(false);
-        RenderSystem.disableDepthTest();
+        if (afterWorld) {
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_LEQUAL);
+        } else {
+            RenderSystem.disableDepthTest();
+        }
         RenderSystem.disableCull();
         // the camera's rotation sits in the event's matrix, so it goes on RenderSystem's stack and the
         // vertex positions stay plain world directions for the shader
@@ -441,14 +486,19 @@ public final class ObeliskEffects {
     /** The grading of the whole picture while the sky is open. */
     private static void drawVeil(RenderLevelStageEvent event) {
         float open = skyOpen();
-        if (open <= 0.01f) return;
+        // the stillness before the tear darkens the picture too
+        Minecraft mcv = Minecraft.getInstance();
+        float riteV = riteTime(mcv, event.getPartialTick().getGameTimeDeltaPartialTick(false));
+        float still = riteV >= 0 && riteV < de.kronwerke.core.obelisk.ObeliskRite.T_PULL + 60 ? Math.min(1f, riteV / 40f) * 0.8f : 0f;
+        if (open <= 0.01f && still <= 0.01f) return;
         PostChain c = veil();
         if (c == null) return;
         Minecraft mc = Minecraft.getInstance();
-        float strength = 0.75f * open;
+        float strength = Math.max(0.75f * open, still);
         // the flash lasts a second and a half of real time, the burst itself runs in slow motion
         float sinceFlash = (System.currentTimeMillis() - flashAt) / 1500f;
         float flash = flashAt > 0 && sinceFlash < 1f ? (1 - sinceFlash) * (1 - sinceFlash) : 0f;
+        if (de.kronwerke.core.config.KronwerkeClientConfig.fewerFlashes()) flash *= 0.25f;
         for (PostPass pass : passes(c)) {
             var eff = pass.getEffect();
             eff.safeGetUniform("Strength").set(strength);
@@ -651,75 +701,84 @@ public final class ObeliskEffects {
         BufferUploader.drawWithShader(b.buildOrThrow());
     }
 
-    // ---- the rite's beam, seen from far ----
+    // ---- the beams ----
 
     /**
-     * The great beam of the rite for players too far away for the obelisk's blocks to be
-     * drawn: the column that comes down from the tear and the gold pillar that follows the
-     * burst, timed from the sky payload like the renderer times them from the block entity.
+     * Every beam of the obelisk, near or far, drawn with {@link ObeliskBeam}: the everyday beam
+     * from the point of the crystal in its colour, and through the rite the great beam that
+     * comes down out of the tear, swells white at the burst and narrows back in gold.
      */
-    private static void drawFarBeam(RenderLevelStageEvent event) {
+    private static void drawBeams(RenderLevelStageEvent event) {
         Minecraft mc = Minecraft.getInstance();
-        if (sky == null || mc.level == null) return;
-        // in range the renderer of the top block draws the real thing
-        if (crystal != null && mc.level.getGameTime() - lastSeen <= 100) return;
-        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
-        // the sky opened 20 ticks before the intake began
-        float riteT = mc.level.getGameTime() + partial - sky.start() + (de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE - 20);
-        if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE || riteT >= de.kronwerke.core.obelisk.ObeliskRite.T_ROLL) return;
+        if (!ObeliskBeam.ready() || mc.level == null) return;
+        Vec3 c = where(mc);
+        if (c == null) return;
         Vec3 cam = event.getCamera().getPosition();
-        PoseStack pose = new PoseStack();
-        pose.mulPose(event.getModelViewMatrix());
-        pose.translate(sky.x() - cam.x, sky.y() - cam.y, sky.z() - cam.z);
-        Matrix4f m = pose.last().pose();
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
-        float fogStart = RenderSystem.getShaderFogStart(), fogEnd = RenderSystem.getShaderFogEnd();
-        RenderSystem.setShaderFogStart(Float.MAX_VALUE);
-        RenderSystem.setShaderFogEnd(Float.MAX_VALUE);
-        RenderSystem.enableBlend();
-        RenderSystem.blendFunc(com.mojang.blaze3d.platform.GlStateManager.SourceFactor.SRC_ALPHA, com.mojang.blaze3d.platform.GlStateManager.DestFactor.ONE);
-        RenderSystem.depthMask(false);
-        RenderSystem.disableCull();
+        if (cam.distanceToSqr(c) > 700 * 700) return;
+        float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float riteT = riteTime(mc, partial);
+        int tier = tierNow(mc), mood = moodNow(mc);
+        boolean asleep = mood == ObeliskTopBlockEntity.MOOD_ASLEEP;
+        float[] colour = ObeliskTopRenderer.colour(percentNow(mc), mood, tier);
         float[] white = {1f, 1f, 1f};
-        float[] gold = {1f, 0.84f, 0.5f};
-        // the beam faces the camera as a sheet with soft edges, so it reads as light and not as a pipe
-        Vec3 toCam = new Vec3(cam.x - sky.x(), 0, cam.z - sky.z());
-        float side = (float) Math.atan2(toCam.z, toCam.x) + Mth.HALF_PI;
-        if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_BURST) {
-            float p = (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_INTAKE) / de.kronwerke.core.obelisk.ObeliskRite.INTAKE;
-            p = p * p;
-            float bottom = 1 + 420 * (1 - p);
-            float radius = 0.4f + 2.6f * p;
-            sheet(m, side, bottom, 1024, radius * 2.5f, white, 0.35f);
-            sheet(m, side, bottom, 1024, radius, white, 0.9f);
-        } else {
-            float p = riteT < de.kronwerke.core.obelisk.ObeliskRite.T_REFORM ? 0f : (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_REFORM) / de.kronwerke.core.obelisk.ObeliskRite.REFORM;
-            float radius = Mth.lerp(p * p, 3.2f, 0.25f);
-            sheet(m, side, -17, 1024, radius * 3f, gold, 0.3f);
-            sheet(m, side, -17, 1024, radius * 1.2f, gold, 0.7f);
-            sheet(m, side, -17, 1024, radius * 0.5f, white, 0.9f);
-        }
-        RenderSystem.setShaderFogStart(fogStart);
-        RenderSystem.setShaderFogEnd(fogEnd);
-        RenderSystem.enableCull();
-        RenderSystem.depthMask(true);
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableBlend();
-    }
+        float[] gold = {1f, 0.82f, 0.45f};
+        float[] cold = {0.75f, 0.92f, 1f};
+        long now = mc.level.getGameTime();
+        float since = now - depositTick + partial;
+        float flare = depositTick > 0 && since < 40 ? (1 - since / 40f) * depositStrength : 0f;
+        boolean soft = de.kronwerke.core.config.KronwerkeClientConfig.fewerFlashes();
+        double ground = farHere(mc) ? far.baseY() : c.y - 18;
+        Vec3 tip = c.add(0, 0.6, 0);
+        float seconds = (System.currentTimeMillis() % 1_000_000L) / 1000f;
+        float flow = 1f, rings = soft ? 0.3f : 0.7f;
 
-    /** A vertical sheet of light turned to face the camera, bright along its middle and clear at the edges. */
-    private static void sheet(Matrix4f m, float side, float y0, float y1, float halfWidth, float[] c, float alpha) {
-        float dx = Mth.cos(side) * halfWidth, dz = Mth.sin(side) * halfWidth;
-        BufferBuilder b = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-        vertex(b, m, -dx, y0, -dz, c, 0);
-        vertex(b, m, -dx, y1, -dz, c, 0);
-        vertex(b, m, 0, y1, 0, c, alpha);
-        vertex(b, m, 0, y0, 0, c, alpha);
-        vertex(b, m, 0, y0, 0, c, alpha);
-        vertex(b, m, 0, y1, 0, c, alpha);
-        vertex(b, m, dx, y1, dz, c, 0);
-        vertex(b, m, dx, y0, dz, c, 0);
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        ObeliskBeam.begin(event.getModelViewMatrix(), cam);
+        if (riteT < 0 || riteT >= de.kronwerke.core.obelisk.ObeliskRite.T_END) {
+            float r = (asleep ? 0.2f : 0.38f + 0.04f * tier) + flare * 0.35f;
+            ObeliskBeam.column(tip, 900, r, colour, asleep ? 0.35f : 0.85f + flare * 0.3f);
+            flow = asleep ? 0.3f : 1f + flare;
+        } else if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_PULL) {
+            // the stillness: the beam goes out
+            float fade = 1f - riteT / de.kronwerke.core.obelisk.ObeliskRite.T_PULL;
+            ObeliskBeam.column(tip, 900, 0.38f + 0.04f * tier, colour, 0.85f * fade * fade);
+            flow = 0.2f;
+        } else if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_BURST) {
+            // the pull: the great beam comes down out of the tear, then swells and throbs
+            float p = (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_PULL) / de.kronwerke.core.obelisk.ObeliskRite.PULL;
+            float down = Math.min(1f, (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_PULL) / 80f);
+            down = 1 - (1 - down) * (1 - down) * (1 - down);
+            double bottom = c.y + 480 * (1 - down);
+            float throb = 1f + 0.12f * Mth.sin(riteT * 0.35f) * p;
+            float r = (0.6f + 1.8f * p * p) * throb;
+            float[] mix = {Mth.lerp(p, cold[0], 1f), Mth.lerp(p, cold[1], 1f), Mth.lerp(p, cold[2], 1f)};
+            ObeliskBeam.column(new Vec3(c.x, bottom, c.z), (float) (900 - (bottom - c.y)), r, mix, 1f);
+            ObeliskBeam.column(new Vec3(c.x, bottom, c.z), (float) (900 - (bottom - c.y)), r * 3.2f, mix, 0.18f + 0.15f * p);
+            flow = 1f + p;
+            rings = soft ? 0.3f : 0.6f + 0.4f * p;
+        } else if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_REFORM) {
+            // the burst: a white pillar from the ground to the sky, wider than the obelisk
+            float bt = riteT - de.kronwerke.core.obelisk.ObeliskRite.T_BURST;
+            float swell = bt < 6 ? bt / 6f : Math.max(0f, 1f - (bt - 6) / (de.kronwerke.core.obelisk.ObeliskRite.BURST - 6f));
+            float r = 2.4f + 6f * swell;
+            Vec3 base = new Vec3(c.x, ground, c.z);
+            ObeliskBeam.column(base, 960, r, white, 1f);
+            ObeliskBeam.column(base, 960, r * 2.5f, gold, 0.35f * swell + 0.1f);
+            flow = 2f;
+            rings = soft ? 0.3f : 1f;
+        } else if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_ROLL) {
+            // the return: the gold pillar narrows back to the everyday beam
+            float p = (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_REFORM) / de.kronwerke.core.obelisk.ObeliskRite.REFORM;
+            float e = p * p * (3 - 2 * p);
+            float r = Mth.lerp(e, 2.6f, 0.5f);
+            Vec3 base = new Vec3(c.x, Mth.lerp(e, (float) ground, (float) tip.y), c.z);
+            ObeliskBeam.column(base, 960, r, gold, 1f);
+            ObeliskBeam.column(base, 960, r * 0.4f, white, 0.8f);
+            flow = 1.5f - 0.5f * p;
+        } else {
+            ObeliskBeam.column(tip, 900, 0.55f, gold, 1f);
+            flow = 1.2f;
+        }
+        ObeliskBeam.end(seconds, flow, rings);
     }
 
     // ---- the gift ----
@@ -1160,7 +1219,7 @@ public final class ObeliskEffects {
     }
 
     /** The ground height at a point, the top of the highest solid block, or the plinth's floor when the chunk is not there. */
-    private static float groundAt(Minecraft mc, float x, float z, int fallback) {
+    static float groundAt(Minecraft mc, float x, float z, int fallback) {
         BlockPos p = BlockPos.containing(x, 0, z);
         if (!mc.level.hasChunkAt(p)) return fallback;
         int y = mc.level.getHeight(net.minecraft.world.level.levelgen.Heightmap.Types.MOTION_BLOCKING, p.getX(), p.getZ());
@@ -1236,7 +1295,7 @@ public final class ObeliskEffects {
         return Mth.clamp(day * 0.9f + 0.6f, 0f, 1f);
     }
 
-    private static void vertex(BufferBuilder b, Matrix4f m, float x, float y, float z, float[] c, float a) {
+    static void vertex(BufferBuilder b, Matrix4f m, float x, float y, float z, float[] c, float a) {
         b.addVertex(m, x, y, z).setColor(c[0], c[1], c[2], a);
     }
 

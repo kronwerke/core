@@ -6,6 +6,9 @@
   tear      the moment the sky opens, a low boom with a long shimmer
   fanfare   the roll call, three brass like chords over a bell
   whisper   the stone noticing a gaze, two seconds of breath and a bending tone
+  vortex    the twenty seconds of the pull: a storm that winds up around a rising drone
+  implode   the last two seconds before the burst: everything drawn in, then silence
+  boom      the burst itself: a sub-bass drop, a crack and a long ringing tail
 
 Everything is additive synthesis with numpy, no samples, so the same script makes the
 same files. ffmpeg turns the wav into ogg.
@@ -142,6 +145,64 @@ def whisper():
     return normalize(out, 0.55)
 
 
+def vortex():
+    tt = t(20.0)
+    rng = np.random.default_rng(13)
+    ramp = np.linspace(0, 1, len(tt))
+    # wind: noise through a low pass whose cutoff rises, swelling and gusting
+    wind = rng.normal(0, 1, len(tt))
+    low = lowpass(wind, 250)
+    high = lowpass(wind, 1400) - lowpass(wind, 500)
+    gust = 0.6 + 0.4 * np.sin(2 * np.pi * (0.15 + 0.6 * ramp) * tt) ** 2
+    out = (low * (0.6 + 0.6 * ramp) + high * ramp ** 2 * 0.9) * gust
+    # a drone that climbs a fifth over the whole pull, with a slow beat
+    freq = 55 * 2 ** (ramp * 7 / 12)
+    phase = np.cumsum(freq) / RATE
+    drone = np.sin(2 * np.pi * phase) + 0.5 * np.sin(2 * np.pi * phase * 2.003) + 0.25 * np.sin(2 * np.pi * phase * 3.01)
+    out += drone * (0.25 + 0.5 * ramp) * 0.7
+    # whooshes passing by, faster towards the end
+    whoosh = np.zeros_like(tt)
+    k = 0.0
+    while k < 19.0:
+        s0 = int(k * RATE)
+        n = int(0.9 * RATE)
+        seg = lowpass(rng.normal(0, 1, n), 900) * np.hanning(n)
+        whoosh[s0:s0 + n] += seg[: max(0, min(n, len(tt) - s0))]
+        k += 1.6 - 1.2 * (k / 19.0)
+    out += whoosh * 0.5 * (0.3 + ramp)
+    out *= env(len(tt), 1.5, 0.4)
+    return normalize(out, 0.8)
+
+
+def implode():
+    tt = t(2.5)
+    rng = np.random.default_rng(17)
+    # a reversed swell: noise and a falling tone that rush in and stop dead
+    swell = np.linspace(0, 1, len(tt)) ** 3
+    noise = lowpass(rng.normal(0, 1, len(tt)), 2000) * swell
+    freq = 400 * 2 ** (-2 * np.linspace(0, 1, len(tt)))
+    phase = np.cumsum(freq) / RATE
+    tone = np.sin(2 * np.pi * phase) * swell
+    out = noise * 0.8 + tone * 0.6
+    cut = int(len(tt) * 0.96)
+    out[cut:] *= np.linspace(1, 0, len(tt) - cut)
+    return normalize(out, 0.85)
+
+
+def boom():
+    tt = t(6.0)
+    rng = np.random.default_rng(19)
+    sub = np.sin(2 * np.pi * 36 * tt * np.exp(-tt * 0.5)) * np.exp(-tt * 0.9)
+    sub += 0.6 * np.sin(2 * np.pi * 52 * tt) * np.exp(-tt * 1.6)
+    crack = lowpass(rng.normal(0, 1, len(tt)), 5000) * np.exp(-tt * 9) * 1.2
+    rumble = lowpass(rng.normal(0, 1, len(tt)), 120) * np.exp(-tt * 0.7) * 1.4
+    ring = np.zeros_like(tt)
+    for f, a in ((660, 0.3), (990, 0.22), (1320, 0.16), (1980, 0.1)):
+        ring += a * np.sin(2 * np.pi * f * tt) * np.exp(-tt * 0.6)
+    out = sub * 1.6 + crack + rumble + ring * 0.35
+    return normalize(out, 0.95)
+
+
 def write(name, data):
     os.makedirs(OUT, exist_ok=True)
     wav = os.path.join(OUT, name + ".wav")
@@ -163,4 +224,7 @@ if __name__ == "__main__":
     write("tear", tear())
     write("fanfare", fanfare())
     write("whisper", whisper())
+    write("vortex", vortex())
+    write("implode", implode())
+    write("boom", boom())
     print("ok", os.path.abspath(OUT))

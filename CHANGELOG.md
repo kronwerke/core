@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.16.0
+
+- The rite is ninety seconds in five acts. Stillness: the hum stops, black bars close in, the picture darkens, a riser swells. The pull: the sky tears, the beam comes down out of the tear, blocks of the ground around the plinth are torn up and spiral round the beam faster and higher (the clients draw copies of the real blocks there; the ground itself stays), players within 28 blocks lift off and circle the beam, the air around the crystal bends like light round a heavy star (`shaders/post/lens`), the view is drawn in. The burst: everything is drawn in and stops, then the crystal bursts in slow motion, the obelisk breaks apart in the air, the spiral is flung out, the players are thrown outward and sink down slowly, the view is punched out. The return: the pieces of the obelisk fly back and join, the new tier is built, arcs of light leap from the pylons to the crystal, the players and the ground. The galaxy: the roll call, the fanfare, five volleys of fireworks; the torn sky stays open longer with every stage.
+- The obelisk's own beam (`shaders/core/beam`) replaces the beacon's everywhere: a white core in a glow of its colour, threads of energy streaming up, a spiral and rings travelling along it, timed in real seconds so it stays smooth in slow motion.
+- Three new sounds for the rite: the storm of the pull, the implosion before the burst, the burst itself.
+- With an Iris shader pack in use the galaxy is drawn after the world, since the pack paints its own sky over anything drawn with the sky; the rite's post effects run after all of its geometry.
+- `fewerFlashes` softens the flash, the shake, the lens, the arcs and the field of view punch.
+
 ## 0.15.6
 
 - The clouds sit at 448 instead of 192, since the overworld builds up to 608 (`cloudHeight` in the client config). They are drawn with their own fog and far plane, so they spread across the whole sky instead of a small patch overhead.

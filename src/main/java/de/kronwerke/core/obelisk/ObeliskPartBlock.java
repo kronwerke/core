@@ -20,18 +20,25 @@ public class ObeliskPartBlock extends Block {
 
     /** Lit while the obelisk is awake; the sleeping stone puts its lanterns, embers and glows out. */
     public static final net.minecraft.world.level.block.state.properties.BooleanProperty LIT = net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT;
+    /** Not drawn while the rite tears the obelisk apart; the clients draw flying copies in its place. */
+    public static final net.minecraft.world.level.block.state.properties.BooleanProperty HIDDEN = net.minecraft.world.level.block.state.properties.BooleanProperty.create("hidden");
 
     private final VoxelShape shape;
 
     public ObeliskPartBlock(Properties properties, VoxelShape shape) {
         super(properties);
         this.shape = shape;
-        registerDefaultState(stateDefinition.any().setValue(LIT, true));
+        registerDefaultState(stateDefinition.any().setValue(LIT, true).setValue(HIDDEN, false));
     }
 
     @Override
     protected void createBlockStateDefinition(net.minecraft.world.level.block.state.StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(LIT);
+        builder.add(LIT, HIDDEN);
+    }
+
+    @Override
+    protected net.minecraft.world.level.block.RenderShape getRenderShape(BlockState state) {
+        return state.getValue(HIDDEN) ? net.minecraft.world.level.block.RenderShape.INVISIBLE : net.minecraft.world.level.block.RenderShape.MODEL;
     }
 
     @Override
@@ -46,7 +53,7 @@ public class ObeliskPartBlock extends Block {
 
     @Override
     public void animateTick(BlockState state, net.minecraft.world.level.Level level, BlockPos pos, net.minecraft.util.RandomSource random) {
-        if (!state.getValue(LIT)) return;
+        if (!state.getValue(LIT) || state.getValue(HIDDEN)) return;
         double x = pos.getX() + random.nextDouble(), z = pos.getZ() + random.nextDouble();
         if (this == ObeliskBlocks.OBELISK_RUNES.get()) {
             // the rune bands let a few glowing motes rise from their faces towards the crystal
