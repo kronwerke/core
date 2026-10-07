@@ -61,6 +61,7 @@ public final class Share {
         if (ModList.get().isLoaded("ae2")) add(de.kronwerke.core.share.ae2.BridgeLayer.create());
         if (ModList.get().isLoaded("fluxnetworks")) add(de.kronwerke.core.share.flux.FluxLayer.create());
         if (ModList.get().isLoaded("powah")) add(de.kronwerke.core.share.powah.EnderLayer.create());
+        if (ModList.get().isLoaded("functionalstorage")) add(de.kronwerke.core.share.fs.EnderDrawerLayer.create());
         if (ModList.get().isLoaded("ftbquests") && ModList.get().isLoaded("ftbteams")) add(de.kronwerke.core.share.ftb.QuestLayer.create());
         if (!layers.isEmpty()) KronwerkeCore.LOGGER.info("Shared network: {} (epoch {})", String.join(", ", layers.keySet()), data.epoch);
     }
