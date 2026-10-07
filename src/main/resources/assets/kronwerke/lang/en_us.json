@@ -55,5 +55,7 @@
   "kronwerke.portal.frame": "The frame is not closed: inside 2 to 21 wide, 3 to 21 high, Mine Frame all around.",
   "kronwerke.network.reset_in": "This world is reset in %s",
   "advancements.kronwerke.minenwelt.title": "Into the Mine World",
-  "advancements.kronwerke.minenwelt.description": "Travel through a Mine Portal"
+  "advancements.kronwerke.minenwelt.description": "Travel through a Mine Portal",
+  "kronwerke.portal.nowhere": "The other world cannot be reached right now.",
+  "kronwerke.portal.moving": "%s players on their way."
 }

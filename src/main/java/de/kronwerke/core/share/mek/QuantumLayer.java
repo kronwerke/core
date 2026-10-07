@@ -333,6 +333,8 @@ public final class QuantumLayer implements Layer {
         long room = pm - pn;
         if (room <= 0) return;
         boolean theyDrain = theirs.get("d").getAsBoolean(), weDrain = drains(key, type, now);
+        // the side that empties its buffer gets everything and gives nothing back; otherwise half the difference
+        if (weDrain && !theyDrain) return;
         long want = theyDrain && !weDrain ? n : (n - pn) / 2;
         want = Math.min(want, room);
         if (want <= 0 || !Share.canGive(peer)) return;

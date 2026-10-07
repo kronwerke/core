@@ -67,7 +67,8 @@ public class KronwerkeCore {
         }
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, NetworkSync::onChat);
         NeoForge.EVENT_BUS.addListener(NetworkSync::onTick);
-        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.share.Share::onTick);
+        // last in the tick, after the mods' own networks (Flux) have moved their energy
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, de.kronwerke.core.share.Share::onTick);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.portal.Travel::onTick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, de.kronwerke.core.portal.Ignite::onRightClick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
@@ -119,6 +120,7 @@ public class KronwerkeCore {
         else KwCommand.registerSide(event.getDispatcher());
         BypassCommand.register(event.getDispatcher());
         de.kronwerke.core.share.ShareCommand.register(event.getDispatcher());
+        de.kronwerke.core.portal.MoveCommand.register(event.getDispatcher());
     }
 
     private void onServerStarted(ServerStartedEvent event) {

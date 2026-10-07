@@ -24,6 +24,23 @@ public interface Layer {
     /** Put back what came back from the other server. Returns what still does not fit (tried again later), or null. */
     JsonObject refund(MinecraftServer server, JsonObject data);
 
+    /** A message from the same layer on another server through {@link Share#tell}; nothing moves with it. */
+    default void onTell(MinecraftServer server, String from, JsonObject data) {
+    }
+
+    /** The server stops (or its world is reset): send home what belongs elsewhere, while the bus is still there. */
+    default void onStopping(MinecraftServer server) {
+    }
+
+    /** What goes along with a player who moves to another server, or null. */
+    default JsonObject pack(net.minecraft.server.level.ServerPlayer player) {
+        return null;
+    }
+
+    /** What came along with a player, before they log in here. */
+    default void unpack(MinecraftServer server, java.util.UUID player, JsonObject data) {
+    }
+
     /** A line for /kw share: what this layer is doing. */
     default String describe() {
         return "";

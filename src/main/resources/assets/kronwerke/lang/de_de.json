@@ -49,5 +49,7 @@
   "kronwerke.portal.frame": "Der Rahmen ist nicht geschlossen: innen 2 bis 21 breit, 3 bis 21 hoch, rundherum Grubenrahmen.",
   "kronwerke.network.reset_in": "Diese Welt wird zurückgesetzt in %s",
   "advancements.kronwerke.minenwelt.title": "Ab in die Minenwelt",
-  "advancements.kronwerke.minenwelt.description": "Reise durch ein Minenportal"
+  "advancements.kronwerke.minenwelt.description": "Reise durch ein Minenportal",
+  "kronwerke.portal.nowhere": "Die andere Welt ist gerade nicht erreichbar.",
+  "kronwerke.portal.moving": "%s Spieler auf dem Weg."
 }

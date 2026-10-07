@@ -157,6 +157,19 @@ Ranks are scoreboard teams with a glyph prefix from the Nautical Ranks resource 
 - `dimensions.locked` lists dimensions as `dimension=stage`. A player without the stage cannot enter, by portal or by command; creative players can. The Nether opens with stage 2, the End with stage 4 by default.
 - Items in goals and messages are shown by name, tags as "Bruchstein (alle Arten)".
 
+## The network
+
+With the Kronwerke launcher (bus, roles) Core joins its servers into one network: chat, joins and the tab list are shared, the Minenportal moves players between main and a side world with everything they carry, and the shared network lets the mods' own wireless things work across the servers as if both worlds were one:
+
+| Mod | What works between the servers |
+| --- | --- |
+| Mekanism | Quantum Entangloporters on the same frequency (name, owner, security): items, fluids, chemicals and energy flow to the side that empties its buffer, heat evens out |
+| Applied Energistics 2 | A Quantum Network Bridge ring with one singularity of a pair on main and the other on a side world: the side world's network sees main's ME storage as a drive, takes out of it and puts into it. Channels and autocrafting stay on each side |
+| Flux Networks | main's networks exist on the side worlds with the same number, name, members and password. Plugs on one server feed points on the other; what is left fills the other side's storages |
+| FTB Quests | One quest book: a player's team progress travels with them, what they do on a side world comes back, and both sides exchange it every ten seconds |
+
+Nothing moves twice: whatever one server gives has already left its world and waits in a saved outbox until the other server answers; gives are numbered per start and taken exactly once, in order; a world that was reset sends back what it never took. `sync.players` must be on for both servers. `/kw share` (operators) shows the state, `/kw move <players>` sends players through the portal without the portal.
+
 ## Planned
 
 - A screen for the obelisk showing both pillars and the top contributors (needs the mod on clients).

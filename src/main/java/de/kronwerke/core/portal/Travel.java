@@ -185,6 +185,27 @@ public final class Travel {
         }
     }
 
+    /**
+     * Sends a player to the portal's other side without the portal (/kw move): from main to the
+     * mining world, coming back where they stood; from a side world home. False when there is no
+     * such server on the bus.
+     */
+    public static boolean move(ServerPlayer p) {
+        NetworkSync.Peer target = NetworkSync.portalTarget();
+        if (target == null || !target.bus() || !target.running()) return false;
+        JsonObject b = null;
+        if (Role.main()) {
+            b = new JsonObject();
+            b.addProperty("dim", p.level().dimension().location().toString());
+            b.addProperty("x", p.getX());
+            b.addProperty("y", p.getY());
+            b.addProperty("z", p.getZ());
+            b.addProperty("yaw", p.getYRot());
+        }
+        depart(p, target, b);
+        return true;
+    }
+
     /** Where a player who went through the portal at pos stands when they come back: in front of it. */
     private static JsonObject back(ServerPlayer p, BlockPos pos) {
         if (!Role.main()) return null;
@@ -265,7 +286,7 @@ public final class Travel {
         }
         progress(p, data);
         if (back != null) data.add("back", back);
-        JsonObject extra = Compat.collect(p);
+        JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
         if (extra != null) data.add("extra", extra);
         String id = UUID.randomUUID().toString();
         pending.put(id, new Departure(p.getUUID(), target.name(), System.currentTimeMillis() + 12_000, back));
@@ -317,7 +338,7 @@ public final class Travel {
         data.addProperty("uuid", id.toString());
         data.addProperty("nbt", encode(p.saveWithoutId(new CompoundTag())));
         progress(p, data);
-        JsonObject extra = Compat.collect(p);
+        JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
         if (extra != null) data.add("extra", extra);
         NetworkSync.send(home.name(), "player.home", data, null);
     }
@@ -380,7 +401,10 @@ public final class Travel {
         }
         writePlayer(id, tag);
         writeProgress(id, d);
-        if (d.get("extra") instanceof JsonObject x) Compat.restore(server, x);
+        if (d.get("extra") instanceof JsonObject x) {
+            Compat.restore(server, x);
+            de.kronwerke.core.share.Share.unpack(id, x);
+        }
         expected.put(id, new Arrival(from, System.currentTimeMillis() + 90_000));
         NetworkSync.send(from, "player.ready", withId(d), null);
     }
@@ -398,7 +422,10 @@ public final class Travel {
         keepFromHere(id, tag);
         writePlayer(id, tag);
         writeProgress(id, d);
-        if (d.get("extra") instanceof JsonObject x) Compat.restore(server, x);
+        if (d.get("extra") instanceof JsonObject x) {
+            Compat.restore(server, x);
+            de.kronwerke.core.share.Share.unpack(id, x);
+        }
         if (final_) away.home(id);
     }
 

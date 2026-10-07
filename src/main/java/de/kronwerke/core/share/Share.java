@@ -58,6 +58,10 @@ public final class Share {
         epochs.clear();
         answeredAt.clear();
         if (ModList.get().isLoaded("mekanism")) add(de.kronwerke.core.share.mek.QuantumLayer.create());
+        if (ModList.get().isLoaded("ae2")) add(de.kronwerke.core.share.ae2.BridgeLayer.create());
+        if (ModList.get().isLoaded("fluxnetworks")) add(de.kronwerke.core.share.flux.FluxLayer.create());
+        if (ModList.get().isLoaded("powah")) add(de.kronwerke.core.share.powah.EnderLayer.create());
+        if (ModList.get().isLoaded("ftbquests") && ModList.get().isLoaded("ftbteams")) add(de.kronwerke.core.share.ftb.QuestLayer.create());
         if (!layers.isEmpty()) KronwerkeCore.LOGGER.info("Shared network: {} (epoch {})", String.join(", ", layers.keySet()), data.epoch);
     }
 
@@ -66,6 +70,15 @@ public final class Share {
     }
 
     public static void stop() {
+        if (server != null && data != null) {
+            for (Layer l : layers.values()) {
+                try {
+                    l.onStopping(server);
+                } catch (RuntimeException | LinkageError x) {
+                    error(l.name(), x);
+                }
+            }
+        }
         server = null;
         data = null;
         layers.clear();
@@ -121,6 +134,15 @@ public final class Share {
         NetworkSync.send("*", TOPIC, d, null);
     }
 
+    /** A message for the same layer on one other server; nothing moves with it, so it may get lost. */
+    public static void tell(Layer l, String peer, JsonObject what) {
+        if (!on()) return;
+        JsonObject d = msg("tell");
+        d.addProperty("layer", l.name());
+        d.add("d", what);
+        NetworkSync.send(peer, TOPIC, d, null);
+    }
+
     /** Whether something of this layer and tag is still on its way to that server. */
     public static boolean busy(Layer l, String peer, String tag) {
         if (data == null) return true;
@@ -155,6 +177,37 @@ public final class Share {
         return true;
     }
 
+    // ---- along with a player ----
+
+    /** Adds every layer's part for a player who moves to another server to the move's extra data. */
+    public static JsonObject pack(net.minecraft.server.level.ServerPlayer p, JsonObject extra) {
+        if (server == null) return extra;
+        for (Layer l : layers.values()) {
+            try {
+                JsonObject x = l.pack(p);
+                if (x == null) continue;
+                if (extra == null) extra = new JsonObject();
+                extra.add("share:" + l.name(), x);
+            } catch (RuntimeException | LinkageError e) {
+                error(l.name(), e);
+            }
+        }
+        return extra;
+    }
+
+    /** Hands each layer its part of what came along with a player. */
+    public static void unpack(java.util.UUID player, JsonObject extra) {
+        if (server == null || extra == null) return;
+        for (Layer l : layers.values()) {
+            if (!(extra.get("share:" + l.name()) instanceof JsonObject x)) continue;
+            try {
+                l.unpack(server, player, x);
+            } catch (RuntimeException | LinkageError e) {
+                error(l.name(), e);
+            }
+        }
+    }
+
     // ---- from the bus ----
 
     public static void onMessage(String from, JsonObject d) {
@@ -168,6 +221,10 @@ public final class Share {
                     if (l != null && d.get("s") instanceof JsonObject s) l.onState(from, s);
                 }
                 case "give" -> take(from, d);
+                case "tell" -> {
+                    Layer l = layers.get(str(d, "layer"));
+                    if (l != null && d.get("d") instanceof JsonObject w) l.onTell(server, from, w);
+                }
                 case "ack" -> answered(from, str(d, "ep"), str(d, "run"), d.get("seq").getAsLong(), d.get("rest") instanceof JsonObject r ? r : null, false);
                 case "gone" -> answered(from, str(d, "was"), str(d, "run"), d.get("seq").getAsLong(), null, true);
                 case "nack" -> {

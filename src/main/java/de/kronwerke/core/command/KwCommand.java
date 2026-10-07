@@ -38,6 +38,7 @@ import java.util.UUID;
  *   admin obelisk ...       op: where the obelisk is and its feeders, see ObeliskCommand
  *   admin invite|revoke|grant|ungrant|goals json   for the Discord bot, see BotCommand
  *   share                   op: the shared network between the servers, see share/ShareCommand
+ *   move <players>          op: to the portal's other side without the portal, see portal/MoveCommand
  */
 public final class KwCommand {
 
