@@ -194,6 +194,7 @@ public final class NetworkSync {
                     if (d.get("streamers") instanceof JsonArray a) for (JsonElement e : a) s.add(e.getAsString().toLowerCase());
                     streamers = s;
                     goalLine = str(d, "goal");
+                    if (d.has("stage")) de.kronwerke.core.mobs.MobStages.setRemoteStage(d.get("stage").getAsInt());
                 }
             }
             default -> {
@@ -309,6 +310,7 @@ public final class NetworkSync {
         }
         d.add("streamers", s);
         d.addProperty("goal", TabList.goalLine());
+        d.addProperty("stage", de.kronwerke.core.mobs.MobStages.stage());
         JsonObject m = op("send");
         m.addProperty("to", "*");
         m.addProperty("topic", "kw.state");

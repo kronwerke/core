@@ -78,6 +78,8 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(TabList::onTick);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.boss.BossScaling::onTick);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.boss.BossScaling::onDamage);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.mobs.MobStages::onSpawn);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.mobs.MobStages::onJoin);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.PlayerTickEvent.Post e) -> {
             if (e.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp && sp.tickCount % 60 == 0) de.kronwerke.core.boss.BossScaling.chaosHint(sp);
         });

@@ -140,6 +140,10 @@ Every screen sits on the same frame (`client/ui/KwScreen`): a slate panel with a
 
 `bosses.scaling` lists the bosses that grow with the group (the Cataclysm and Mowzie's bosses, the Chaos Guardian, the dragon and the wither by default). Every player near the boss beyond the first adds `healthPerPlayer` (60 percent) health and `damagePerPlayer` (15 percent) damage, capped at `maxPlayers`. With two or more players the boss uses three extra attacks every `attackInterval` ticks: lightning on one player, a shockwave around itself, and a rage that heals it and makes it hit harder for a few seconds. All of it runs on events; the boss mods stay untouched (Cataclysm's licence allows no derivatives). A player who comes within 96 blocks of the Chaos Guardian gets the four lines on how the fight works, once per session.
 
+## Mobs and the stages
+
+Hostile mobs get tougher with every stage that opens: more health, more damage, some armor (`mobs` in `kronwerke-common.toml`, per stage). Some mobs spawn naturally only from a stage on, and a crowded mod can be told to spawn less (`minStage`, `spawnChance`, by entity or `mod:*`). Spawners, eggs and structures are left alone, bosses scale with the group instead. Side worlds take the stage from main over the bus.
+
 ## The test world
 
 `/kw testworld` (operators) teleports into `kronwerke:testworld`, a void dimension the pack defines, and builds the screenshot scenes on the first visit. `/kw testworld rebuild` builds them again (from the console too) and removes the scene mobs first; `/kw testworld back` returns to spawn. The pack lists the rows of boxes with their area in `data/kronwerke/shots/rows.json`; Core loads a row's chunks and runs its function, one row per server tick, so a rebuild on the live server only stutters briefly.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.22.0
+
+- Hostile mobs grow with the stages: health plus 30, 70, 120 and 180 percent, damage plus 20, 45, 75 and 110 percent, armor plus 2 to 10 from stage 2 to 5. Every value is in the config.
+- Mobs that only spawn naturally from a stage on (Eidolon's wraiths and brutes from 3, the strongest Born in Chaos mobs from 2 and 3, Iron's Spells' necromancer from 2, Mowzie's naga from 3), and Born in Chaos spawning at 55 percent so it no longer makes up half of all monsters.
+- Side worlds learn the open stage from main.
+
 ## 0.21.0
 
 Sophisticated's linked storage across servers.

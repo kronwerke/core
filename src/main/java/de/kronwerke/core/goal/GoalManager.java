@@ -74,6 +74,10 @@ public final class GoalManager {
         return goals.get(id);
     }
 
+    public boolean isCompleted(Goal g) {
+        return data().isCompleted(g.id());
+    }
+
     public Iterable<Goal> allGoals() {
         return goals.values();
     }
@@ -97,6 +101,7 @@ public final class GoalManager {
     }
 
     public void reload() {
+        de.kronwerke.core.mobs.MobStages.reload();
         goals.clear();
         Path file = goalsFile();
         try {

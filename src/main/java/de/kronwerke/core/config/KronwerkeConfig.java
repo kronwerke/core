@@ -39,6 +39,11 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue BOSS_LIGHTNING_DAMAGE;
     public static final ModConfigSpec.DoubleValue BOSS_SHOCKWAVE_DAMAGE;
     public static final ModConfigSpec.ConfigValue<String> TAB_LINE;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Double>> MOB_HEALTH;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Double>> MOB_DAMAGE;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Double>> MOB_ARMOR;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_MIN_STAGE;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_SPAWN_CHANCE;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -102,6 +107,25 @@ public final class KronwerkeConfig {
                 .defineInRange("lightningDamage", 8.0, 0.0, 200.0);
         BOSS_SHOCKWAVE_DAMAGE = b.comment("Damage of the shockwave.")
                 .defineInRange("shockwaveDamage", 6.0, 0.0, 200.0);
+        b.pop();
+
+        b.push("mobs");
+        MOB_HEALTH = b.comment("Extra health of hostile mobs per open stage (1 to 5), as a fraction of their base (0.5 = plus 50 percent).")
+                .defineList("health", java.util.List.of(0.0, 0.3, 0.7, 1.2, 1.8), o -> o instanceof Double);
+        MOB_DAMAGE = b.comment("Extra attack damage of hostile mobs per open stage, as a fraction of their base.")
+                .defineList("damage", java.util.List.of(0.0, 0.2, 0.45, 0.75, 1.1), o -> o instanceof Double);
+        MOB_ARMOR = b.comment("Extra armor points of hostile mobs per open stage.")
+                .defineList("armor", java.util.List.of(0.0, 2.0, 4.0, 7.0, 10.0), o -> o instanceof Double);
+        MOB_MIN_STAGE = b.comment("Mobs that spawn naturally only from a stage on: \"mod:entity=stage\" or \"mod:*=stage\".")
+                .defineListAllowEmpty("minStage", java.util.List.of(
+                        "eidolon_repraised:wraith=3", "eidolon_repraised:zombie_brute=3", "irons_spellbooks:necromancer=2", "mowziesmobs:naga=3",
+                        "born_in_chaos_v1:dread_hound=2", "born_in_chaos_v1:dire_hound_leader=2", "born_in_chaos_v1:mother_spider=2",
+                        "born_in_chaos_v1:fallen_chaos_knight=2", "born_in_chaos_v1:sir_pumpkinhead=2", "born_in_chaos_v1:missioner=2",
+                        "born_in_chaos_v1:skeleton_demoman=2", "born_in_chaos_v1:phantom_creeper=2",
+                        "born_in_chaos_v1:nightmare_stalker=3", "born_in_chaos_v1:lifestealer=3", "born_in_chaos_v1:krampus=3",
+                        "born_in_chaos_v1:krampus_henchman=3", "born_in_chaos_v1:supreme_bonescaller=3", "born_in_chaos_v1:spiritof_chaos=3"), o -> o instanceof String);
+        MOB_SPAWN_CHANCE = b.comment("How many of a mob's natural spawns happen (0 to 1), so one mod does not crowd out the rest: \"mod:entity=0.5\" or \"mod:*=0.5\".")
+                .defineListAllowEmpty("spawnChance", java.util.List.of("born_in_chaos_v1:*=0.55"), o -> o instanceof String);
         b.pop();
 
         b.push("network");
