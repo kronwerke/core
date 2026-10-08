@@ -57,5 +57,9 @@
   "advancements.kronwerke.minenwelt.title": "Into the Mine World",
   "advancements.kronwerke.minenwelt.description": "Travel through a Mine Portal",
   "kronwerke.portal.nowhere": "The other world cannot be reached right now.",
-  "kronwerke.portal.moving": "%s players on their way."
+  "kronwerke.portal.moving": "%s players on their way.",
+  "kronwerke.linked.fetching": "This storage is in %s right now. It is on its way, you can open it in a moment.",
+  "kronwerke.linked.busy": "This storage is open in %s right now. It comes here as soon as it is closed there.",
+  "kronwerke.linked.offline": "This storage is in %s right now, and there is no connection there at the moment.",
+  "kronwerke.linked.here": "Your linked storage is here now, you can open it."
 }

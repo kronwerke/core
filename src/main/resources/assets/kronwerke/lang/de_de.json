@@ -51,5 +51,9 @@
   "advancements.kronwerke.minenwelt.title": "Ab in die Minenwelt",
   "advancements.kronwerke.minenwelt.description": "Reise durch ein Minenportal",
   "kronwerke.portal.nowhere": "Die andere Welt ist gerade nicht erreichbar.",
-  "kronwerke.portal.moving": "%s Spieler auf dem Weg."
+  "kronwerke.portal.moving": "%s Spieler auf dem Weg.",
+  "kronwerke.linked.fetching": "Dieser Speicher ist gerade in %s. Er wird hergeholt, gleich kannst du ihn öffnen.",
+  "kronwerke.linked.busy": "Dieser Speicher ist gerade in %s offen. Sobald er dort zu ist, kommt er her.",
+  "kronwerke.linked.offline": "Dieser Speicher ist gerade in %s, und dorthin gibt es gerade keine Verbindung.",
+  "kronwerke.linked.here": "Dein verknüpfter Speicher ist jetzt hier, du kannst ihn öffnen."
 }

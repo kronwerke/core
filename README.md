@@ -170,6 +170,7 @@ With the Kronwerke launcher (bus, roles) Core joins its servers into one network
 | Functional Storage | Ender Drawers: a frequency on both servers is one drawer whose contents live on main; a side world keeps a stack at hand and sends the rest home |
 | Mekanism QIO | A QIO frequency on a side world sends everything in it home to main's frequency of the same name |
 | Waystones | main's waystones are in the list on a side world; choosing one moves the player home to it |
+| Sophisticated linked storage | A group of linked backpacks and storage blocks is on one server at a time and comes to where it is wanted: opened there, carried there by a player, or carried there while it lies unused elsewhere. Where it is not, it holds nothing and takes nothing. A side world sends it home when nobody there uses it, and main keeps a copy in case a side world is reset without sending it |
 | FTB Quests | One quest book: a player's team progress travels with them, what they do on a side world comes back, and both sides exchange it every ten seconds |
 
 Nothing moves twice: whatever one server gives has already left its world and waits in a saved outbox until the other server answers; gives are numbered per start and taken exactly once, in order; a world that was reset sends back what it never took. `sync.players` must be on for both servers. `/kw share` (operators) shows the state, `/kw move <players>` sends players through the portal without the portal.

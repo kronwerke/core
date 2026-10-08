@@ -60,6 +60,9 @@ dependencies {
     compileOnly "maven.modrinth:functional-storage:${functionalstorage_version}"
     compileOnly "maven.modrinth:waystones:${waystones_version}"
     compileOnly "maven.modrinth:balm:${balm_version}"
+    compileOnly "maven.modrinth:sophisticated-core:${soph_core_version}"
+    compileOnly "maven.modrinth:sophisticated-storage:${soph_storage_version}"
+    compileOnly "maven.modrinth:sophisticated-backpacks:${soph_backpacks_version}"
     compileOnly("dev.ftb.mods:ftb-quests-neoforge:${ftb_quests_version}") { transitive = false }
     compileOnly("dev.ftb.mods:ftb-teams-neoforge:${ftb_teams_version}") { transitive = false }
     compileOnly("dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}") { transitive = false }

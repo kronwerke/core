@@ -9,7 +9,12 @@
     "QuestLoadMixin",
     "PlayerInfoUpdateAccessor",
     "WaystoneTravelMixin",
-    "WaystoneContextMixin"
+    "WaystoneContextMixin",
+    "SophInventoryGateMixin",
+    "SophUpgradeGateMixin",
+    "SophGroupsAccessor",
+    "SophManagerAccessor",
+    "SophMembershipMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

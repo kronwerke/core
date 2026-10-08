@@ -64,6 +64,7 @@ public final class Share {
         if (ModList.get().isLoaded("powah")) add(de.kronwerke.core.share.powah.EnderLayer.create());
         if (ModList.get().isLoaded("functionalstorage")) add(de.kronwerke.core.share.fs.EnderDrawerLayer.create());
         if (ModList.get().isLoaded("waystones")) add(de.kronwerke.core.share.ws.WaystoneLayer.create());
+        if (ModList.get().isLoaded("sophisticatedcore")) add(de.kronwerke.core.share.soph.LinkedLayer.create());
         if (ModList.get().isLoaded("ftbquests") && ModList.get().isLoaded("ftbteams")) add(de.kronwerke.core.share.ftb.QuestLayer.create());
         if (!layers.isEmpty()) KronwerkeCore.LOGGER.info("Shared network: {} (epoch {})", String.join(", ", layers.keySet()), data.epoch);
     }
@@ -126,6 +127,11 @@ public final class Share {
             if (q != null && q.bus() && q.running()) out.add(p);
         }
         return out;
+    }
+
+    /** The world epoch another server last said it has, or null. */
+    public static String epochOf(String peer) {
+        return epochs.get(peer);
     }
 
     /** Tells every other server how things stand here, for the layer of the same name there. */

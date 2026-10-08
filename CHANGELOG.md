@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.21.0
+
+Sophisticated's linked storage across servers.
+
+- A group of linked backpacks and storage blocks (joined with the Ender Linker) is on exactly one server at a time, with everything in it. On every other server its backpacks and blocks hold nothing and let nothing in or out, so nothing put there could get lost when the group comes back.
+- The group comes to where it is wanted: when a player opens it there (as soon as nobody has it open where it is; the player is told it is on its way and when it is there), when a player who carries it moves there, or when a player there carries it and it has lain unused for two minutes where it is.
+- A side world sends a group home to main when nobody there carries it and it has not been used for a minute, and sends every group home before it stops or is reset.
+- main keeps the copy a side world last sent of each group it holds (every ten seconds when it changed). If a side world is reset without having sent a group home, main takes the group back from that copy.
+- A backpack or block linked on one server is a member of its group on every server; Sophisticated no longer fails on an endpoint it does not know.
+
 ## 0.20.0
 
 More of the shared network.
