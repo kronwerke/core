@@ -76,6 +76,7 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onMultiPlace);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onExplosion);
         NeoForge.EVENT_BUS.addListener(TabList::onTick);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.perf.RadiationScan::onTags);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.boss.BossScaling::onTick);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.boss.BossScaling::onDamage);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.mobs.MobStages::onSpawn);

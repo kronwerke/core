@@ -17,7 +17,8 @@
     "SophMembershipMixin",
     "StartGateMixin",
     "ConnectionChannelAccessor",
-    "BotSendMixin"
+    "BotSendMixin",
+    "RadiationScanMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

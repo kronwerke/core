@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.1
+
+- Nuclear Radiation's scan of every loading chunk skips sections that cannot hold a radioactive block or fluid (the section palette says so). In the load test with players flying around, that scan was a fifth of the server tick. Sections with radioactive blocks are scanned as before.
+
 ## 0.23.0
 
 - The start gate: until the season starts, only operators and the names on the gate list get onto the main server. Everyone else on the whitelist reads the start on the login screen, in German or English (`join.seasonStart` in the config, local time in Europe/Berlin). It opens by itself with `/kw admin season start`; `/kw admin gate beta on` lets everyone with a place of their own (streamers, Season 1 players) through for the beta, while the players they invited wait. `/kw admin gate on|off|allow|deny` for the rest. Never in singleplayer.
