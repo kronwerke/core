@@ -84,6 +84,27 @@ public final class KwCommand {
                                 .then(Commands.literal("start").executes(KwCommand::seasonStart))
                                 .then(Commands.literal("pause").executes(c -> { de.kronwerke.core.season.Season.get().pause(); ok(c, "Zurück in der Vorbereitung."); return 1; }))
                                 .then(Commands.literal("json").executes(KwCommand::seasonJson)))
+                        .then(Commands.literal("gate")
+                                .executes(KwCommand::gateInfo)
+                                .then(Commands.literal("on").executes(c -> gateSet(c, true)))
+                                .then(Commands.literal("off").executes(c -> gateSet(c, false)))
+                                .then(Commands.literal("beta")
+                                        .then(Commands.literal("on").executes(c -> gateBeta(c, true)))
+                                        .then(Commands.literal("off").executes(c -> gateBeta(c, false))))
+                                .then(Commands.literal("allow").then(Commands.argument("player", StringArgumentType.word()).executes(c -> gateAllow(c, true))))
+                                .then(Commands.literal("deny").then(Commands.argument("player", StringArgumentType.word()).executes(c -> gateAllow(c, false)))))
+                        .then(Commands.literal("loadtest")
+                                .executes(KwCommand::loadtestInfo)
+                                .then(Commands.literal("stop").executes(c -> { ok(c, de.kronwerke.core.loadtest.LoadTest.stop(c.getSource().getServer()) + " Testspieler entfernt."); return 1; }))
+                                .then(Commands.literal("start")
+                                        .then(Commands.argument("settlers", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
+                                                .then(Commands.argument("travellers", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
+                                                        .executes(c -> loadtestStart(c, 3000, 1.5))
+                                                        .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(64, 20000))
+                                                                .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"), 1.5))
+                                                                .then(Commands.argument("speed", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0.05, 10))
+                                                                        .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"),
+                                                                                com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "speed")))))))))
                         .then(Commands.literal("start-season").executes(KwCommand::seasonStart))
                         .then(Commands.literal("slots")
                                 .then(Commands.argument("streamer", StringArgumentType.word())
@@ -130,6 +151,8 @@ public final class KwCommand {
             line(c, "/kw testworld", "Die Screenshot-Welt mit den grauen Boxen, /kw testworld back zum Spawn");
             line(c, "/kw admin", "Das Admin-Menü: Season, Ziele, Team, Obelisk, Spieler");
             line(c, "/kw admin season start", "Setzt alle Ziele zurück und startet die Season");
+            line(c, "/kw admin gate", "Startsperre: bis zum Start nur Ops und die Liste (on, off, beta on|off, allow, deny)");
+            line(c, "/kw admin loadtest", "Lasttest mit Testspielern (start, stop)");
         }
         return 1;
     }
@@ -222,12 +245,60 @@ public final class KwCommand {
         return 1;
     }
 
+    private static int gateInfo(CommandContext<CommandSourceStack> c) {
+        var s = de.kronwerke.core.season.Season.get();
+        String list = s.gateList().isEmpty() ? "niemand" : String.join(", ", s.gateList());
+        if (s.running()) ok(c, "Die Season läuft, die Startsperre ist offen.");
+        else if (s.gateClosed()) ok(c, "Startsperre zu: nur Ops" + (s.beta() ? ", Beta-Tester mit eigenem Platz" : "") + " und die Liste kommen rein. Liste: " + list + ".");
+        else ok(c, "Startsperre aus: jeder auf der Whitelist kommt rein. Liste: " + list + ".");
+        return 1;
+    }
+
+    private static int gateSet(CommandContext<CommandSourceStack> c, boolean on) {
+        de.kronwerke.core.season.Season.get().setGate(on);
+        ok(c, on ? "Startsperre an. Bis zum Season-Start kommen nur Ops und die Liste rein." : "Startsperre aus. Jeder auf der Whitelist kommt rein.");
+        return 1;
+    }
+
+    private static int gateBeta(CommandContext<CommandSourceStack> c, boolean on) {
+        de.kronwerke.core.season.Season.get().setBeta(on);
+        ok(c, on ? "Beta an: Streamer und Season-1-Spieler mit eigenem Platz kommen durch die Startsperre, ihre Leute noch nicht."
+                : "Beta aus: durch die Startsperre kommen nur Ops und die Liste.");
+        return 1;
+    }
+
+    private static int gateAllow(CommandContext<CommandSourceStack> c, boolean add) {
+        String name = StringArgumentType.getString(c, "player");
+        boolean changed = de.kronwerke.core.season.Season.get().allow(name, add);
+        if (add) ok(c, changed ? name + " kommt jetzt durch die Startsperre." : name + " stand schon auf der Liste.");
+        else ok(c, changed ? name + " ist von der Liste." : name + " stand nicht auf der Liste.");
+        return 1;
+    }
+
+    private static int loadtestInfo(CommandContext<CommandSourceStack> c) {
+        int n = de.kronwerke.core.loadtest.LoadTest.count();
+        ok(c, n == 0 ? "Kein Lasttest. /kw admin loadtest start <stehend> <fliegend> [radius] [blöcke pro tick]"
+                : n + " Testspieler, davon " + de.kronwerke.core.loadtest.LoadTest.travellers() + " fliegend. Zusammen "
+                        + de.kronwerke.core.loadtest.LoadTest.waited() + " Ticks auf Chunks gewartet. /kw admin loadtest stop entfernt sie.");
+        return 1;
+    }
+
+    private static int loadtestStart(CommandContext<CommandSourceStack> c, int radius, double speed) {
+        int settlers = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "settlers");
+        int travellers = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "travellers");
+        int n = de.kronwerke.core.loadtest.LoadTest.start(c.getSource().getServer(), settlers, travellers, radius, speed, 320);
+        if (n == 0 && de.kronwerke.core.loadtest.LoadTest.waiting()) ok(c, "Die Chunks um den Spawn laden noch, die Testspieler kommen gleich.");
+        else ok(c, n + " Testspieler dazu (" + travellers + " fliegend, " + speed + " Blöcke pro Tick, Radius " + radius + "). Jetzt "
+                + de.kronwerke.core.loadtest.LoadTest.count() + ".");
+        return 1;
+    }
+
     /** For the bot: the season in one line of JSON. */
     private static int seasonJson(CommandContext<CommandSourceStack> c) {
         var s = de.kronwerke.core.season.Season.get();
         var ob = de.kronwerke.core.obelisk.Obelisk.get();
         c.getSource().sendSuccess(() -> Component.literal("OK {\"running\":" + s.running() + ",\"number\":" + s.number() + ",\"startedAt\":" + s.startedAt()
-                + ",\"tier\":" + ob.tier() + ",\"slumbering\":" + ob.slumbering() + "}"), false);
+                + ",\"gate\":" + s.gateClosed() + ",\"beta\":" + s.beta() + ",\"tier\":" + ob.tier() + ",\"slumbering\":" + ob.slumbering() + "}"), false);
         return 1;
     }
 

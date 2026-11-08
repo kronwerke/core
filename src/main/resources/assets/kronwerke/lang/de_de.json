@@ -55,5 +55,8 @@
   "kronwerke.linked.fetching": "Dieser Speicher ist gerade in %s. Er wird hergeholt, gleich kannst du ihn öffnen.",
   "kronwerke.linked.busy": "Dieser Speicher ist gerade in %s offen. Sobald er dort zu ist, kommt er her.",
   "kronwerke.linked.offline": "Dieser Speicher ist gerade in %s, und dorthin gibt es gerade keine Verbindung.",
-  "kronwerke.linked.here": "Dein verknüpfter Speicher ist jetzt hier, du kannst ihn öffnen."
+  "kronwerke.linked.here": "Dein verknüpfter Speicher ist jetzt hier, du kannst ihn öffnen.",
+  "kronwerke.gate.title": "Kronwerke Season 2",
+  "kronwerke.gate.start": "Startet %1$s.",
+  "kronwerke.gate.listed": "Du stehst auf der Whitelist, bis dann!"
 }

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.23.0
+
+- The start gate: until the season starts, only operators and the names on the gate list get onto the main server. Everyone else on the whitelist reads the start on the login screen, in German or English (`join.seasonStart` in the config, local time in Europe/Berlin). It opens by itself with `/kw admin season start`; `/kw admin gate beta on` lets everyone with a place of their own (streamers, Season 1 players) through for the beta, while the players they invited wait. `/kw admin gate on|off|allow|deny` for the rest. Never in singleplayer.
+- Load test bots: `/kw admin loadtest start <standing> <flying> [radius] [blocks per tick]` adds players without a client around the spawn (Last01 and up). Standing ones stay put like players in their bases, flying ones cross the area at elytra speed and keep generating chunks. The server does everything it does for a player except writing to the network. `/kw admin loadtest stop` removes them with their player files.
+
 ## 0.22.0
 
 - Hostile mobs grow with the stages: health plus 30, 70, 120 and 180 percent, damage plus 20, 45, 75 and 110 percent, armor plus 2 to 10 from stage 2 to 5. Every value is in the config.

@@ -12,7 +12,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
 
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 
 /**
@@ -21,6 +24,10 @@ import java.util.UUID;
  * team deposits is only a test. Starting the season resets every goal, the leaderboards and
  * the starter kits, and takes the goal stages from everyone (players who are offline lose
  * them on their next join, through the season number).
+ *
+ * The start gate belongs to the preparation: while it is closed, only operators and the
+ * names on its list may join (StartGate); during the beta also everyone with a place of their
+ * own. It opens by itself when the season starts.
  */
 public final class Season extends SavedData {
     public static final String NAME = "kronwerke_season";
@@ -31,6 +38,12 @@ public final class Season extends SavedData {
     private long startedAt;
     /** player -> season number they were last brought up to date with */
     private final Map<UUID, Integer> seen = new HashMap<>();
+    /** whether the start gate is up while the season is in preparation */
+    private boolean gate = true;
+    /** during the beta, everyone with a place of their own passes the closed gate as well */
+    private boolean beta;
+    /** names, in lower case, that may pass the closed gate (testers) */
+    private final Set<String> gateAllow = new TreeSet<>();
 
     private static MinecraftServer server;
 
@@ -82,6 +95,43 @@ public final class Season extends SavedData {
         setDirty();
     }
 
+    /** True while players who are not on the gate list are kept out. */
+    public boolean gateClosed() {
+        return gate && !running;
+    }
+
+    public boolean gateOn() {
+        return gate;
+    }
+
+    public void setGate(boolean on) {
+        gate = on;
+        setDirty();
+    }
+
+    public boolean beta() {
+        return beta;
+    }
+
+    public void setBeta(boolean on) {
+        beta = on;
+        setDirty();
+    }
+
+    public boolean gateAllows(String name) {
+        return gateAllow.contains(name.toLowerCase(Locale.ROOT));
+    }
+
+    public boolean allow(String name, boolean add) {
+        boolean changed = add ? gateAllow.add(name.toLowerCase(Locale.ROOT)) : gateAllow.remove(name.toLowerCase(Locale.ROOT));
+        if (changed) setDirty();
+        return changed;
+    }
+
+    public Set<String> gateList() {
+        return Set.copyOf(gateAllow);
+    }
+
     /** Takes the goal stages and kits of earlier seasons from a player who missed the start. */
     public void catchUp(ServerPlayer p) {
         if (seen.getOrDefault(p.getUUID(), 0) == number) return;
@@ -106,6 +156,11 @@ public final class Season extends SavedData {
         CompoundTag s = new CompoundTag();
         seen.forEach((k, v) -> s.putInt(k.toString(), v));
         tag.put("seen", s);
+        tag.putBoolean("gate", gate);
+        tag.putBoolean("beta", beta);
+        net.minecraft.nbt.ListTag allow = new net.minecraft.nbt.ListTag();
+        for (String n : gateAllow) allow.add(net.minecraft.nbt.StringTag.valueOf(n));
+        tag.put("gateAllow", allow);
         return tag;
     }
 
@@ -116,6 +171,10 @@ public final class Season extends SavedData {
         d.startedAt = tag.getLong("startedAt");
         CompoundTag s = tag.getCompound("seen");
         for (String k : s.getAllKeys()) d.seen.put(UUID.fromString(k), s.getInt(k));
+        d.gate = !tag.contains("gate") || tag.getBoolean("gate");
+        d.beta = tag.getBoolean("beta");
+        net.minecraft.nbt.ListTag allow = tag.getList("gateAllow", net.minecraft.nbt.Tag.TAG_STRING);
+        for (int i = 0; i < allow.size(); i++) d.gateAllow.add(allow.getString(i));
         return d;
     }
 }

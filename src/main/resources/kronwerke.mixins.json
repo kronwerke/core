@@ -14,7 +14,10 @@
     "SophUpgradeGateMixin",
     "SophGroupsAccessor",
     "SophManagerAccessor",
-    "SophMembershipMixin"
+    "SophMembershipMixin",
+    "StartGateMixin",
+    "ConnectionChannelAccessor",
+    "BotSendMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

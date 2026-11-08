@@ -32,6 +32,12 @@ public final class SlotManager {
         }
     }
 
+    /** Whether the player holds a place of their own (streamer or Season 1), not a slot given by someone. */
+    public boolean hasOwnPlace(java.util.UUID player) {
+        SlotData.StreamerEntry e = data().find(player);
+        return e != null && e.granted;
+    }
+
     private SlotData data() {
         return server.overworld().getDataStorage().computeIfAbsent(SlotData.FACTORY, SlotData.NAME);
     }

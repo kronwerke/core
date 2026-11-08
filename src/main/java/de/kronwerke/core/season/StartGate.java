@@ -1,0 +1,60 @@
+package de.kronwerke.core.season;
+
+import com.mojang.authlib.GameProfile;
+import de.kronwerke.core.Text;
+import de.kronwerke.core.config.KronwerkeConfig;
+import de.kronwerke.core.link.Role;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Locale;
+
+/**
+ * Keeps the server closed until the season starts. Streamers link their names and give out
+ * their slots weeks before the start, so the whitelist fills early; the gate turns away
+ * everyone on it with the start date until the season runs. Operators and the names on the
+ * gate list (testers) always pass; during the beta also everyone with a place of their own
+ * (streamers and Season 1 players), while the players they invited wait for the start.
+ *
+ * Only on the main server of a dedicated setup: side worlds already take only the players
+ * main sends them, and a singleplayer world is never gated.
+ */
+public final class StartGate {
+    private StartGate() {
+    }
+
+    /** The reason to refuse this login, or null to let it through. */
+    public static Component refuse(MinecraftServer server, GameProfile profile) {
+        if (!server.isDedicatedServer() || !Role.main() || !Season.available()) return null;
+        Season s = Season.get();
+        if (!s.gateClosed()) return null;
+        if (server.getPlayerList().isOp(profile) || s.gateAllows(profile.getName())) return null;
+        if (s.beta() && de.kronwerke.core.slot.SlotManager.get().hasOwnPlace(profile.getId())) return null;
+        String[] when = when(KronwerkeConfig.SEASON_START.get().trim());
+        return Component.empty()
+                .append(Text.t("gate.title", "Kronwerke Season 2").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                .append("\n\n")
+                .append(Text.t("gate.start", "Startet " + when[0] + ".", when[0], when[1]).withStyle(ChatFormatting.WHITE))
+                .append("\n")
+                .append(Text.t("gate.listed", "Du stehst auf der Whitelist, bis dann!").withStyle(ChatFormatting.GRAY));
+    }
+
+    private static final DateTimeFormatter DE = DateTimeFormatter.ofPattern("'am' EEEE, d. MMMM yyyy, 'um' H 'Uhr'", Locale.GERMAN);
+    private static final DateTimeFormatter EN = DateTimeFormatter.ofPattern("'on' EEEE, d MMMM yyyy, 'at' h a 'CET'", Locale.ENGLISH);
+
+    /** The start in German and in English, for the two lang files. */
+    static String[] when(String iso) {
+        try {
+            LocalDateTime t = LocalDateTime.parse(iso);
+            String de = DE.format(t);
+            if (t.getMinute() != 0) de = de.replace(" Uhr", ":" + String.format("%02d", t.getMinute()) + " Uhr");
+            return new String[]{de, EN.format(t).replace("AM", "am").replace("PM", "pm")};
+        } catch (DateTimeParseException e) {
+            return new String[]{"Mitte Januar 2027", "in mid January 2027"};
+        }
+    }
+}

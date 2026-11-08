@@ -28,6 +28,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.IntValue LOG_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
+    public static final ModConfigSpec.ConfigValue<String> SEASON_START;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
@@ -76,6 +77,8 @@ public final class KronwerkeConfig {
         b.pop();
 
         b.push("join");
+        SEASON_START = b.comment("When the season starts, as local time in Europe/Berlin (2027-01-16T18:00). The closed start gate names it; empty says mid January 2027.")
+                .define("seasonStart", "");
         JOIN_KIT = b.comment("Items every player gets once, on the first join, as item or item*count.")
                 .defineListAllowEmpty("kit", java.util.List.of("waystones:waystone", "waystones:warp_dust*4"), o -> o instanceof String);
         b.pop();
