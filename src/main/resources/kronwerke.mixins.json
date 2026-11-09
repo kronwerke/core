@@ -23,7 +23,8 @@
     "MahouLivingMixin",
     "RadiationNearbyMixin",
     "ChunkDirtyMixin",
-    "ChunkBlockDirtyMixin"
+    "ChunkBlockDirtyMixin",
+    "ChunkLoadCleanMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

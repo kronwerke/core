@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.5
+
+- Chunks read from disk start out unchanged. Vanilla marks every loaded chunk as changed while reading it, so every chunk a player passed through was serialized and written again when it unloaded, on the server thread: 15 500 such marks in two minutes of the load test against a few hundred real changes, a tenth of the tick. Real changes (blocks, block entities, attachments, light) still mark the chunk. `performance.cleanChunkLoads` in the config turns it off.
+
 ## 0.23.4
 
 - `/kw admin dirty start|show|stop`: counts who marks chunks as changed, by the code that did it. Changed chunks are written again when they unload, which took a tenth of the tick in the load tests. Off, it costs one check per change.

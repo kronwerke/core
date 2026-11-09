@@ -29,6 +29,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
     public static final ModConfigSpec.ConfigValue<String> SEASON_START;
+    public static final ModConfigSpec.BooleanValue CLEAN_CHUNK_LOADS;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
@@ -176,6 +177,11 @@ public final class KronwerkeConfig {
         b.push("privacy");
         LOG_DAYS = b.comment("Delete old server logs (logs/*.log.gz, with names and addresses of players) after this many days, checked at every start. 0 keeps them.")
                 .defineInRange("logDays", 30, 0, 3650);
+        b.pop();
+
+        b.push("performance");
+        CLEAN_CHUNK_LOADS = b.comment("Chunks read from disk count as unchanged. Vanilla marks every loaded chunk as changed (through setLightCorrect), so every chunk anyone passed through is written again when it unloads. Real changes still mark it.")
+                .define("cleanChunkLoads", true);
         b.pop();
 
         b.push("testing");
