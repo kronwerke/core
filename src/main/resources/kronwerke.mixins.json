@@ -34,7 +34,12 @@
     "CuriosEmptyMobMixin",
     "CuriosTickEmptyMobMixin",
     "ArtifactsEmptyMobMixin",
-    "LootrTickerMixin"
+    "LootrTickerMixin",
+    "LodestoneCurioCacheMixin",
+    "SpawnCountGateMixin",
+    "SpawnChunkGateMixin",
+    "JourneyMapOverlayMixin",
+    "MowzieLivingTickMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

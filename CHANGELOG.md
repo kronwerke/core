@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.10
+
+Per tick work, from the 50 player load test:
+- Natural spawning: ServerCore lets each mob category spawn only every n ticks (monsters every second tick, animals every 400th), but vanilla still counted every mob in a dimension and walked every chunk through the spawner on every tick (4 % of the tick for the count alone). On ticks where no category is due, both are skipped. Due ticks spawn exactly as before.
+- Mowzie's Mobs no longer fetches, creates and saves three data attachments on every mob every tick. Ordinary mobs only tick its frost data once something froze them or they carry an effect; players and Mowzie's own mobs run as before.
+- JourneyMap only rebuilds its loaded chunk overlay (every three seconds, in one go) when an operator in that dimension has the overlay on, and once more after it is switched off so the map clears.
+- Lodestone's curio check (used by Malum's Necklace of the Hidden Harmony whenever anything looks for a target) is kept per item and entity for the rest of the tick.
+
 ## 0.23.9
 
 - Lootr containers (chests, trapped chests, barrels, pots, suspicious blocks) get no server ticker while nothing is set to decay or refresh. Their server tick only counts down decay and refresh, which this pack does not use, so every loot chest in every structure ticked for nothing (1.4 % of the tick with 50 players). Shulker boxes and the client lid animation are untouched.
