@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.3
+
+- An Industrial Foregoing Infinity Nuke that was saved while exploding no longer goes off again when its chunk loads; it is dropped and its position goes to the log. Two such nukes in the season world blew 173 block craters during the load tests and stalled the server for seconds. Nukes placed and armed by players are not touched.
+
 ## 0.23.2
 
 Mods that do work for every living entity every tick, found with a look at our spark profile by Kristi from BacoNetworks:
