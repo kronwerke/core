@@ -18,7 +18,10 @@
     "StartGateMixin",
     "ConnectionChannelAccessor",
     "BotSendMixin",
-    "RadiationScanMixin"
+    "RadiationScanMixin",
+    "AccessoriesTickMixin",
+    "MahouLivingMixin",
+    "RadiationNearbyMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

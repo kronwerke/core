@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.23.2
+
+Mods that do work for every living entity every tick, found with a look at our spark profile by Kristi from BacoNetworks:
+- Accessories (comes with the Aether) walks every mob's slots once a second instead of every tick. Players as before.
+- Mahou Tsukai skips mobs without any effect; all its per entity checks are about its effects.
+- Nuclear Radiation only looks at players as carriers of radioactive items, instead of every living entity within 64 blocks of every other one.
+
 ## 0.23.1
 
 - Nuclear Radiation's scan of every loading chunk skips sections that cannot hold a radioactive block or fluid (the section palette says so). In the load test with players flying around, that scan was a fifth of the server tick. Sections with radioactive blocks are scanned as before.
