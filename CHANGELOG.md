@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.23.6
+
+Per mob work, from the 50 player load test:
+- Apothic Enchanting asked for every animal and every nearby player, every tick, whether the player's item has an enchantment effect, and each answer ran through Apotheosis' gem and affix lookup (1.6 % of the tick). The answer per item stack and effect is kept for the rest of the tick.
+- Draconic Evolution's modular armor tick only runs for players; mobs never wear it (1.1 %).
+- Nuclear Radiation works out mob doses every fourth round with four times the time step, so mobs collect the same dose in larger steps. Players as before.
+
 ## 0.23.5
 
 - Chunks read from disk start out unchanged. Vanilla marks every loaded chunk as changed while reading it, so every chunk a player passed through was serialized and written again when it unloaded, on the server thread: 15 500 such marks in two minutes of the load test against a few hundred real changes, a tenth of the tick. Real changes (blocks, block entities, attachments, light) still mark the chunk. `performance.cleanChunkLoads` in the config turns it off.

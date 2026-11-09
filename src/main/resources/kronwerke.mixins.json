@@ -24,7 +24,10 @@
     "RadiationNearbyMixin",
     "ChunkDirtyMixin",
     "ChunkBlockDirtyMixin",
-    "ChunkLoadCleanMixin"
+    "ChunkLoadCleanMixin",
+    "EnchantHasCacheMixin",
+    "DraconicArmorTickMixin",
+    "RadiationMobDoseMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"
