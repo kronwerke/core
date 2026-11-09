@@ -21,7 +21,9 @@
     "RadiationScanMixin",
     "AccessoriesTickMixin",
     "MahouLivingMixin",
-    "RadiationNearbyMixin"
+    "RadiationNearbyMixin",
+    "ChunkDirtyMixin",
+    "ChunkBlockDirtyMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

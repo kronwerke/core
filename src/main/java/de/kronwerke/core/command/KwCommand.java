@@ -105,6 +105,14 @@ public final class KwCommand {
                                                                 .then(Commands.argument("speed", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0.05, 10))
                                                                         .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"),
                                                                                 com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "speed")))))))))
+                        .then(Commands.literal("dirty")
+                                .then(Commands.literal("start").executes(c -> { de.kronwerke.core.perf.DirtyChunks.start(); ok(c, "Zähle, wer Chunks als geändert markiert."); return 1; }))
+                                .then(Commands.literal("stop").executes(c -> { de.kronwerke.core.perf.DirtyChunks.stop(); ok(c, "Zählen gestoppt."); return 1; }))
+                                .then(Commands.literal("show").executes(c -> {
+                                    java.util.List<String> top = de.kronwerke.core.perf.DirtyChunks.top(25);
+                                    ok(c, top.isEmpty() ? "Noch nichts gezählt." : String.join("\n", top));
+                                    return 1;
+                                })))
                         .then(Commands.literal("start-season").executes(KwCommand::seasonStart))
                         .then(Commands.literal("slots")
                                 .then(Commands.argument("streamer", StringArgumentType.word())
@@ -153,6 +161,7 @@ public final class KwCommand {
             line(c, "/kw admin season start", "Setzt alle Ziele zurück und startet die Season");
             line(c, "/kw admin gate", "Startsperre: bis zum Start nur Ops und die Liste (on, off, beta on|off, allow, deny)");
             line(c, "/kw admin loadtest", "Lasttest mit Testspielern (start, stop)");
+            line(c, "/kw admin dirty", "Wer Chunks als geändert markiert (start, show, stop)");
         }
         return 1;
     }

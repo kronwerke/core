@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.4
+
+- `/kw admin dirty start|show|stop`: counts who marks chunks as changed, by the code that did it. Changed chunks are written again when they unload, which took a tenth of the tick in the load tests. Off, it costs one check per change.
+
 ## 0.23.3
 
 - An Industrial Foregoing Infinity Nuke that was saved while exploding no longer goes off again when its chunk loads; it is dropped and its position goes to the log. Two such nukes in the season world blew 173 block craters during the load tests and stalled the server for seconds. Nukes placed and armed by players are not touched.
