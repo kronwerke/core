@@ -29,7 +29,11 @@
     "DraconicArmorTickMixin",
     "RadiationMobDoseMixin",
     "ReliquaryCharmTickMixin",
-    "IronsCurioCacheMixin"
+    "IronsCurioCacheMixin",
+    "LivingCurioStateMixin",
+    "CuriosEmptyMobMixin",
+    "CuriosTickEmptyMobMixin",
+    "ArtifactsEmptyMobMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

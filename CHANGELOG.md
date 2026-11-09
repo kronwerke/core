@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.8
+
+- Mobs that wear nothing skip the Curios slot tick, curio searches and Artifacts' per tick update. Artifacts gives zombies, skeletons, piglins and others curio slots so a few spawn wearing an artifact; for that every such mob was ticked and searched every tick. Whether a mob's slots are empty is looked at when it is first seen and every five seconds after. Mobs that wear an artifact and all players run as before, and mobs still spawn with and drop artifacts.
+
 ## 0.23.7
 
 - Reliquary checks each mob's target for mob charms four times a second instead of every tick.
