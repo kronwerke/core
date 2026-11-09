@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.23.7
+
+- Reliquary checks each mob's target for mob charms four times a second instead of every tick.
+- Iron's Spellbooks' curio check (whether an entity wears its ring) is kept per item and entity for the rest of the tick. It runs whenever anything asks whether an entity is invisible to someone.
+
 ## 0.23.6
 
 Per mob work, from the 50 player load test:

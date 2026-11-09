@@ -27,7 +27,9 @@
     "ChunkLoadCleanMixin",
     "EnchantHasCacheMixin",
     "DraconicArmorTickMixin",
-    "RadiationMobDoseMixin"
+    "RadiationMobDoseMixin",
+    "ReliquaryCharmTickMixin",
+    "IronsCurioCacheMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"
