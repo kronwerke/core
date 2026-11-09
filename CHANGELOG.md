@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.23.9
+
+- Lootr containers (chests, trapped chests, barrels, pots, suspicious blocks) get no server ticker while nothing is set to decay or refresh. Their server tick only counts down decay and refresh, which this pack does not use, so every loot chest in every structure ticked for nothing (1.4 % of the tick with 50 players). Shulker boxes and the client lid animation are untouched.
+
 ## 0.23.8
 
 - Mobs that wear nothing skip the Curios slot tick, curio searches and Artifacts' per tick update. Artifacts gives zombies, skeletons, piglins and others curio slots so a few spawn wearing an artifact; for that every such mob was ticked and searched every tick. Whether a mob's slots are empty is looked at when it is first seen and every five seconds after. Mobs that wear an artifact and all players run as before, and mobs still spawn with and drop artifacts.

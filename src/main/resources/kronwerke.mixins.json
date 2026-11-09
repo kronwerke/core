@@ -33,7 +33,8 @@
     "LivingCurioStateMixin",
     "CuriosEmptyMobMixin",
     "CuriosTickEmptyMobMixin",
-    "ArtifactsEmptyMobMixin"
+    "ArtifactsEmptyMobMixin",
+    "LootrTickerMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"
