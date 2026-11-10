@@ -6,6 +6,7 @@ Client fixes:
 - Giving an item to the obelisk could crash the game ("BufferBuilder was empty"): when the gift's light trail was right in front of the camera, nothing was drawn, and drawing nothing threw. Every obelisk effect now skips an empty draw.
 - Choosing the language after the first join no longer reloads every resource of every mod (which froze the game until Windows said "not responding"); only the language files are reloaded.
 - The creative menu no longer freezes the first time it opens: after joining, the tabs are filled a few milliseconds per tick in the background (filling all at once took over three seconds even on a fast CPU). `/kw admin tabs` shows how long each tab takes to fill.
+- The obelisk's beam keeps about three pixels of width at any distance (it was thinner than a pixel from across the map and flickered) and gets a little brighter far away.
 
 ## 0.24.0
 
