@@ -52,7 +52,8 @@
   "client": [
     "ChaptersJeiBatchMixin",
     "ClientReadTimeoutMixin",
-    "CreativeTabsAccessor"
+    "CreativeTabsAccessor",
+    "OreVeinsOverlayMixin"
   ],
   "injectors": {
     "defaultRequire": 0
