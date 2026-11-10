@@ -105,6 +105,29 @@ public final class KwCommand {
                                                                 .then(Commands.argument("speed", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0.05, 10))
                                                                         .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"),
                                                                                 com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "speed")))))))))
+                        .then(Commands.literal("tabs").executes(c -> {
+                            // times how long each creative tab takes to fill, to find what freezes the creative menu
+                            var params = new net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters(
+                                    c.getSource().getServer().getWorldData().enabledFeatures(), true, c.getSource().getServer().registryAccess());
+                            java.util.List<String> lines = new java.util.ArrayList<>();
+                            long total = 0;
+                            for (var e : net.minecraft.core.registries.BuiltInRegistries.CREATIVE_MODE_TAB.entrySet()) {
+                                long t0 = System.nanoTime();
+                                try {
+                                    e.getValue().buildContents(params);
+                                } catch (RuntimeException ex) {
+                                    lines.add("FAIL " + e.getKey().location() + " " + ex);
+                                    continue;
+                                }
+                                long ms = (System.nanoTime() - t0) / 1_000_000;
+                                total += ms;
+                                lines.add(String.format(java.util.Locale.ROOT, "%6d ms %6d items  %s", ms, e.getValue().getDisplayItems().size(), e.getKey().location()));
+                            }
+                            lines.sort(java.util.Comparator.reverseOrder());
+                            de.kronwerke.core.KronwerkeCore.LOGGER.info("Creative tabs, {} ms in total:\n{}", total, String.join("\n", lines));
+                            ok(c, "Creative tabs: " + total + " ms in total, slowest:\n" + String.join("\n", lines.subList(0, Math.min(12, lines.size()))));
+                            return 1;
+                        }))
                         .then(Commands.literal("dirty")
                                 .then(Commands.literal("start").executes(c -> { de.kronwerke.core.perf.DirtyChunks.start(); ok(c, "Zähle, wer Chunks als geändert markiert."); return 1; }))
                                 .then(Commands.literal("stop").executes(c -> { de.kronwerke.core.perf.DirtyChunks.stop(); ok(c, "Zählen gestoppt."); return 1; }))

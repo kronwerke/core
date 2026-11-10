@@ -21,6 +21,9 @@ import org.joml.Matrix4f;
  * Calls go between {@link #begin} and {@link #end}; each {@link #column} adds one beam.
  */
 public final class ObeliskBeam {
+    /** Half width per block of distance that keeps a beam about three pixels wide at 1080p and 70 degrees. */
+    private static final double MIN_RADIUS_PER_BLOCK = 0.0017;
+
     private static ShaderInstance shader;
     private static BufferBuilder buffer;
     private static Matrix4f view;
@@ -54,6 +57,13 @@ public final class ObeliskBeam {
         double len = Math.sqrt(dx * dx + dz * dz);
         // straight underneath, any side will do
         float sx = len < 1e-3 ? 1f : (float) (-dz / len), sz = len < 1e-3 ? 0f : (float) (dx / len);
+        // from far away a beam half a block wide is thinner than a pixel and flickers; it keeps
+        // at least about three pixels on screen at any distance instead, and gets a little brighter
+        float minRadius = (float) (len * MIN_RADIUS_PER_BLOCK);
+        if (minRadius > radius) {
+            alpha = Math.min(1f, alpha * (1f + 0.5f * Math.min(1f, (minRadius - radius) / radius)));
+            radius = minRadius;
+        }
         float x = (float) (bottom.x - cam.x), y = (float) (bottom.y - cam.y), z = (float) (bottom.z - cam.z);
         float fadeIn = Math.min(2f, height * 0.1f), fadeOut = height * 0.2f;
         float[] ys = {0, fadeIn, height - fadeOut, height};

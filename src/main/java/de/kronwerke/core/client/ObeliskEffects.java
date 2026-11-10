@@ -441,7 +441,7 @@ public final class ObeliskEffects {
         for (float[] f : faces) {
             for (int i = 0; i < 4; i++) b.addVertex(m, f[i * 3] * r, f[i * 3 + 1] * r, f[i * 3 + 2] * r);
         }
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
         stack.popMatrix();
         RenderSystem.applyModelViewMatrix();
         RenderSystem.enableCull();
@@ -598,7 +598,7 @@ public final class ObeliskEffects {
                 vertex(b, m, x0, baseY + h0 + w0, z0, hi, alpha * 0.25f * bright0);
             }
         }
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
         RenderSystem.setShaderFogStart(fogStart);
         RenderSystem.setShaderFogEnd(fogEnd);
         RenderSystem.enableCull();
@@ -705,7 +705,7 @@ public final class ObeliskEffects {
             vertex(b, m, Mth.cos(a1) * r * 2.4f, height * 0.8f, Mth.sin(a1) * r * 2.4f, colour, 0);
             vertex(b, m, Mth.cos(a0) * r * 2.4f, height * 0.8f, Mth.sin(a0) * r * 2.4f, colour, 0);
         }
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
     }
 
     // ---- the beams ----
@@ -900,11 +900,21 @@ public final class ObeliskEffects {
             vertex(b, m, (float) a0.x, (float) a0.y - w, (float) a0.z, colour, 0);
             prevRel = a0;
         }
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
         RenderSystem.enableCull();
         RenderSystem.depthMask(true);
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableBlend();
+    }
+
+    /**
+     * Draws what was added to the buffer, if anything. buildOrThrow crashed the whole game when
+     * nothing was drawn, for example when a gift's trail was right in front of the camera and
+     * every segment was skipped (Megakid's crash on 10 November).
+     */
+    private static void drawIfAny(BufferBuilder b) {
+        com.mojang.blaze3d.vertex.MeshData mesh = b.build();
+        if (mesh != null) BufferUploader.drawWithShader(mesh);
     }
 
     private static Vec3 prevRel = Vec3.ZERO;
@@ -939,7 +949,7 @@ public final class ObeliskEffects {
             vertex(b, m, Mth.cos(a1) * (r + width * 0.5f), 0, Mth.sin(a1) * (r + width * 0.5f), colour, 0);
             vertex(b, m, Mth.cos(a0) * (r + width * 0.5f), 0, Mth.sin(a0) * (r + width * 0.5f), colour, 0);
         }
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
         RenderSystem.enableCull();
         RenderSystem.depthMask(true);
         RenderSystem.defaultBlendFunc();
@@ -1057,7 +1067,7 @@ public final class ObeliskEffects {
             b.addVertex(m, -dy * w, dx * w, 0).setColor(1f, 1f, 1f, alpha * 0.6f);
             b.addVertex(m, -dx * len, -dy * len, 0).setColor(colour[0], colour[1], colour[2], 0f);
         }
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
         RenderSystem.enableCull();
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
@@ -1108,7 +1118,7 @@ public final class ObeliskEffects {
             beam(m, from, target, cam, 0.7f + 0.6f * p, colour, 0.5f * strength);
             beam(m, from, target, cam, 0.15f + 0.12f * p, white, 1.0f * strength);
         }
-        BufferUploader.drawWithShader(beamBuffer.buildOrThrow());
+        drawIfAny(beamBuffer);
         beamBuffer = null;
         RenderSystem.setShaderFogStart(fogStart);
         RenderSystem.setShaderFogEnd(fogEnd);
@@ -1218,7 +1228,7 @@ public final class ObeliskEffects {
                 py = ny;
             }
         }
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
         RenderSystem.enableCull();
         RenderSystem.depthMask(true);
         RenderSystem.defaultBlendFunc();
@@ -1291,7 +1301,7 @@ public final class ObeliskEffects {
         b.addVertex(m, -r, 0, r).setUv(0, 1).setColor(c[0], c[1], c[2], alpha);
         b.addVertex(m, r, 0, r).setUv(1, 1).setColor(c[0], c[1], c[2], alpha);
         b.addVertex(m, r, 0, -r).setUv(1, 0).setColor(c[0], c[1], c[2], alpha);
-        BufferUploader.drawWithShader(b.buildOrThrow());
+        drawIfAny(b);
         pose.popPose();
     }
 

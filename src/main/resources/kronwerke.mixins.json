@@ -51,7 +51,8 @@
   ],
   "client": [
     "ChaptersJeiBatchMixin",
-    "ClientReadTimeoutMixin"
+    "ClientReadTimeoutMixin",
+    "CreativeTabsAccessor"
   ],
   "injectors": {
     "defaultRequire": 0

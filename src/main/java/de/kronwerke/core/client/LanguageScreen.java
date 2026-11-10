@@ -46,7 +46,10 @@ public final class LanguageScreen extends KwScreen {
         if (!code.equals(mc.options.languageCode)) {
             mc.options.languageCode = code;
             mc.options.save();
-            mc.reloadResourcePacks();
+            // only the language files: a full resource reload (what vanilla does) loads every
+            // texture and model of 250 mods again and froze the game until Windows said "not responding"
+            mc.getLanguageManager().setSelected(code);
+            mc.getLanguageManager().onResourceManagerReload(mc.getResourceManager());
         }
         mc.setScreen(parent);
     }
