@@ -64,5 +64,16 @@
   "kronwerke.linked.here": "Your linked storage is here now, you can open it.",
   "kronwerke.gate.title": "Kronwerke Season 2",
   "kronwerke.gate.start": "Starts %2$s.",
-  "kronwerke.gate.listed": "You are on the whitelist, see you then!"
+  "kronwerke.gate.listed": "You are on the whitelist, see you then!",
+  "kronwerke.queue.title": "Queue",
+  "kronwerke.queue.leave": "Leave the queue",
+  "kronwerke.queue.left": "You left the queue.",
+  "kronwerke.queue.turn": "It is your turn, joining now.",
+  "kronwerke.queue.full": "Kronwerke is full right now.",
+  "kronwerke.queue.place": "Place %s of %s in the queue",
+  "kronwerke.queue.online": "%s of %s players on the network",
+  "kronwerke.queue.waited": "Waiting for %s:%s.",
+  "kronwerke.queue.auto": "As soon as a place is free, you join by yourself.",
+  "kronwerke.machinelock.grid": "You can make this from %s on.",
+  "kronwerke.machinelock.machine": "This machine makes that from %s on."
 }

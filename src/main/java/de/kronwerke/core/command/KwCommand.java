@@ -105,6 +105,66 @@ public final class KwCommand {
                                                                 .then(Commands.argument("speed", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0.05, 10))
                                                                         .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"),
                                                                                 com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "speed")))))))))
+                        .then(Commands.literal("dumprecipes").requires(src -> src.hasPermission(4)).executes(c -> {
+                            // every recipe as the server has it (jars, KubeJS, removals), for the pack's tools/check_progression.py
+                            var server = c.getSource().getServer();
+                            var ops = server.registryAccess().createSerializationContext(com.mojang.serialization.JsonOps.INSTANCE);
+                            com.google.gson.JsonArray list = new com.google.gson.JsonArray();
+                            int failed = 0;
+                            for (var holder : server.getRecipeManager().getRecipes()) {
+                                var enc = net.minecraft.world.item.crafting.Recipe.CODEC.encodeStart(ops, holder.value());
+                                if (enc.result().isEmpty()) {
+                                    failed++;
+                                    continue;
+                                }
+                                com.google.gson.JsonObject e = new com.google.gson.JsonObject();
+                                e.addProperty("id", holder.id().toString());
+                                e.add("json", enc.result().get());
+                                try {
+                                    // the result a machine shows and makes first; the machine stage locks go by it
+                                    var res = holder.value().getResultItem(server.registryAccess());
+                                    if (!res.isEmpty()) e.addProperty("result", net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(res.getItem()).toString());
+                                } catch (RuntimeException ignored) {
+                                    // some recipes only know their result with an input
+                                }
+                                list.add(e);
+                            }
+                            com.google.gson.JsonObject root = new com.google.gson.JsonObject();
+                            root.add("recipes", list);
+                            java.nio.file.Path out = net.neoforged.fml.loading.FMLPaths.GAMEDIR.get().resolve("kronwerke-dump").resolve("recipes.json");
+                            try {
+                                java.nio.file.Files.createDirectories(out.getParent());
+                                java.nio.file.Files.writeString(out, root.toString());
+                            } catch (java.io.IOException ex) {
+                                c.getSource().sendFailure(net.minecraft.network.chat.Component.literal(ex.toString()));
+                                return 0;
+                            }
+                            int n = list.size(), f = failed;
+                            c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(n + " recipes written to " + out + ", " + f + " could not be written"), false);
+                            return n;
+                        }))
+                        .then(Commands.literal("locks")
+                                .executes(c -> {
+                                    c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(
+                                            de.kronwerke.core.lock.MachineLocks.on()
+                                                    ? "Stufensperre für Maschinen an: Stufe " + de.kronwerke.core.lock.MachineLocks.appliedStage() + " offen, " + de.kronwerke.core.lock.MachineLocks.heldCount() + " Rezepte zurückgehalten"
+                                                    : "Stufensperre für Maschinen aus"), false);
+                                    return 1;
+                                })
+                                .then(Commands.literal("on").executes(c -> setLocks(c, true)))
+                                .then(Commands.literal("off").executes(c -> setLocks(c, false))))
+                        .then(Commands.literal("queue")
+                                .executes(c -> {
+                                    c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(de.kronwerke.core.queue.JoinQueue.status()), false);
+                                    return 1;
+                                })
+                                .then(Commands.literal("limit").then(Commands.argument("players", com.mojang.brigadier.arguments.IntegerArgumentType.integer(1, 999))
+                                        .executes(c -> {
+                                            int n = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "players");
+                                            de.kronwerke.core.queue.JoinQueue.setLimit(n);
+                                            c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Spielerlimit ist jetzt " + n + ". " + de.kronwerke.core.queue.JoinQueue.status()), true);
+                                            return 1;
+                                        }))))
                         .then(Commands.literal("tabs").executes(c -> {
                             // times how long each creative tab takes to fill, to find what freezes the creative menu
                             var params = new net.minecraft.world.item.CreativeModeTab.ItemDisplayParameters(
@@ -517,5 +577,15 @@ public final class KwCommand {
 
     private static void fail(CommandContext<CommandSourceStack> c, String msg) {
         c.getSource().sendFailure(Component.literal(msg).withStyle(ChatFormatting.RED));
+    }
+
+    /** /kw admin locks on|off: the machine stage locks, kept in the config; the recipes load again. */
+    private static int setLocks(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> c, boolean on) {
+        KronwerkeConfig.MACHINE_LOCKS.set(on);
+        KronwerkeConfig.SPEC.save();
+        var server = c.getSource().getServer();
+        c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Stufensperre für Maschinen " + (on ? "an" : "aus") + ", die Rezepte laden neu (ein paar Sekunden)."), true);
+        server.reloadResources(server.getPackRepository().getSelectedIds());
+        return 1;
     }
 }

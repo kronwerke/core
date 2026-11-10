@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0
+
+Server:
+- The join queue. When the network (main and the side worlds together) holds `queueLimit` players (50), a joining player is no longer turned away: the connection waits in its configuration phase, the client shows the queue screen with the place, and the join goes on by itself when a place is free. Nobody reconnects. Operators, owners, streamers and players coming back from a side world never wait. `/kw admin queue` shows the queue, `/kw admin queue limit <n>` changes the limit in game or from the console. Vanilla's max-players turns nobody away while the queue is on, and the server list shows the network's players out of the queue's limit.
+- Stage locks for machines. Every recipe whose result belongs to a stage that is not open is held back when the recipes load (19,280 of 45,072 in stage 1): no machine, ritual, autocrafter or crafting grid makes it any more, not only the crafting table. Whoever tries, or the players next to the machine, read in the action bar which stage it needs. When a goal completes, the recipes load again once its rite is over. Admins with the bypass still craft by hand; `/kw admin locks off` turns the machine locks off for testing.
+- `/kw admin dumprecipes` writes every recipe with its main result for the pack's progression checker.
+
+Client:
+- The queue screen.
+
 ## 0.25.0
 
 Server:

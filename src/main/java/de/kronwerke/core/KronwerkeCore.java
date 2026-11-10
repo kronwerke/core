@@ -51,6 +51,15 @@ public class KronwerkeCore {
         de.kronwerke.core.obelisk.KwParticles.register(modBus);
         de.kronwerke.core.obelisk.KwSounds.register(modBus);
         modBus.addListener(de.kronwerke.core.net.KwNetwork::register);
+        // the join queue holds new connections in their configuration phase while the network is full
+        modBus.addListener(de.kronwerke.core.queue.JoinQueue::onTasks);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.queue.JoinQueue::onTick);
+        // a stage opened (or main told a side world): the recipes load again with the stage's recipes
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
+            if (e.getServer().getTickCount() % 100 == 0 && de.kronwerke.core.mobs.MobStages.stageKnown()) {
+                de.kronwerke.core.lock.MachineLocks.tick(e.getServer(), de.kronwerke.core.mobs.MobStages.stage());
+            }
+        });
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
@@ -129,6 +138,7 @@ public class KronwerkeCore {
 
     private void onServerStarted(ServerStartedEvent event) {
         TabList.init(event.getServer());
+        de.kronwerke.core.queue.JoinQueue.start(event.getServer());
         LogPruner.prune(FMLPaths.GAMEDIR.get().resolve("logs"), KronwerkeConfig.LOG_DAYS.get());
         de.kronwerke.core.portal.Travel.init(event.getServer());
         de.kronwerke.core.share.Share.start(event.getServer());

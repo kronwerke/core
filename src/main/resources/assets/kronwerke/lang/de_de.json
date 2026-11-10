@@ -58,5 +58,16 @@
   "kronwerke.linked.here": "Dein verknüpfter Speicher ist jetzt hier, du kannst ihn öffnen.",
   "kronwerke.gate.title": "Kronwerke Season 2",
   "kronwerke.gate.start": "Startet %1$s.",
-  "kronwerke.gate.listed": "Du stehst auf der Whitelist, bis dann!"
+  "kronwerke.gate.listed": "Du stehst auf der Whitelist, bis dann!",
+  "kronwerke.queue.title": "Warteschlange",
+  "kronwerke.queue.leave": "Warteschlange verlassen",
+  "kronwerke.queue.left": "Du hast die Warteschlange verlassen.",
+  "kronwerke.queue.turn": "Du bist dran, gleich geht es los.",
+  "kronwerke.queue.full": "Kronwerke ist gerade voll.",
+  "kronwerke.queue.place": "Platz %s von %s in der Warteschlange",
+  "kronwerke.queue.online": "%s von %s Spielern im Netzwerk",
+  "kronwerke.queue.waited": "Du wartest seit %s:%s.",
+  "kronwerke.queue.auto": "Sobald ein Platz frei ist, geht es von selbst weiter.",
+  "kronwerke.machinelock.grid": "Das kannst du erst ab %s herstellen.",
+  "kronwerke.machinelock.machine": "Diese Maschine stellt das erst ab %s her."
 }

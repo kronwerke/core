@@ -59,12 +59,20 @@ public final class ObeliskRite {
     public static final int LIFT_RADIUS = 28;
     private static final int[] PILLAR_COLOURS = {0x9aa0a8, 0xd4a24a, 0x9a6fd6};
 
+    /** While a rite runs (until its end, ten minutes at most): the stage's recipe reload waits for it. */
+    private static volatile long runningUntil;
+
     private ObeliskRite() {
+    }
+
+    public static boolean running() {
+        return System.currentTimeMillis() < runningUntil;
     }
 
     /** Schedules the whole rite for the goal that just completed. */
     public static void start(Obelisk ob, ServerLevel level, Goal done, int newTier) {
         MinecraftServer server = level.getServer();
+        runningUntil = System.currentTimeMillis() + 600_000;
         BlockPos core = ob.data().pos();
         ObeliskTopBlockEntity top = ob.top(level);
         long now = level.getGameTime();
@@ -209,6 +217,7 @@ public final class ObeliskRite {
             }
         });
         s.at(T_END, () -> {
+            runningUntil = 0;
             server.tickRateManager().setTickRate(20f);
             ObeliskStructure.setHidden(level, core, false);
             ObeliskTopBlockEntity t = ob.top(level);

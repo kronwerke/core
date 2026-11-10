@@ -33,6 +33,7 @@ public final class MobStages {
     private static final ResourceLocation ARMOR_ID = ResourceLocation.fromNamespaceAndPath("kronwerke", "stage_armor");
 
     private static volatile int remoteStage = 1;
+    private static volatile boolean remoteKnown;
     private static Map<String, Integer> minStage;
     private static Map<String, Double> chance;
 
@@ -57,6 +58,7 @@ public final class MobStages {
     /** A side world: main said which stage is open. */
     public static void setRemoteStage(int s) {
         remoteStage = Math.max(1, Math.min(5, s));
+        remoteKnown = true;
     }
 
     private static Map<String, Integer> minStage() {
@@ -92,6 +94,11 @@ public final class MobStages {
 
     private static boolean hostile(LivingEntity e) {
         return e instanceof Enemy || e.getType().getCategory() == MobCategory.MONSTER;
+    }
+
+    /** Whether this server knows the open stage: main always, a side world once main said it. */
+    public static boolean stageKnown() {
+        return Role.main() || remoteKnown;
     }
 
     /** Natural spawns of a later stage do not happen yet; crowded mods spawn less. */

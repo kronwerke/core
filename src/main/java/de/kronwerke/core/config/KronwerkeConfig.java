@@ -34,6 +34,9 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue CLEAN_LIGHT_UPDATES;
     public static final ModConfigSpec.DoubleValue AUTOSAVE_MS_PER_TICK;
     public static final ModConfigSpec.DoubleValue TNT_MS_PER_TICK;
+    public static final ModConfigSpec.BooleanValue QUEUE;
+    public static final ModConfigSpec.IntValue QUEUE_LIMIT;
+    public static final ModConfigSpec.BooleanValue MACHINE_LOCKS;
     public static final ModConfigSpec.BooleanValue CHEAP_TNT_EXPOSURE;
     public static final ModConfigSpec.IntValue GOAL_PAUSE_TICKS;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
@@ -74,6 +77,11 @@ public final class KronwerkeConfig {
                 .defineInRange("broadcastDepositMin", 64, 1, 1_000_000);
         b.pop();
 
+        b.push("locks");
+        MACHINE_LOCKS = b.comment("Recipes whose result belongs to a stage that is not open are held back when the recipes load, so no machine, ritual, autocrafter or crafting grid makes it; the players are told which stage it needs. When a stage opens the recipes load again.")
+                .define("machineLocks", true);
+        b.pop();
+
         b.push("dimensions");
         LOCKED_DIMENSIONS = b.comment("Dimensions that open with a stage, as dimension=stage. A player without the stage cannot enter; creative players can.")
                 .defineListAllowEmpty("locked", java.util.List.of(
@@ -88,6 +96,10 @@ public final class KronwerkeConfig {
                 .define("seasonStart", "");
         JOIN_KIT = b.comment("Items every player gets once, on the first join, as item or item*count.")
                 .defineListAllowEmpty("kit", java.util.List.of("waystones:waystone", "waystones:warp_dust*4"), o -> o instanceof String);
+        QUEUE = b.comment("The join queue on main: when the network is full, a joining player waits in a queue screen (still connected) until a place is free, instead of being turned away. Vanilla's max-players no longer turns anyone away while it is on.")
+                .define("queue", true);
+        QUEUE_LIMIT = b.comment("How many players the whole network holds (main and the side worlds together) before new players queue. Operators, owners, streamers and players coming back from a side world never queue. Change it in game with /kw admin queue limit <n>.")
+                .defineInRange("queueLimit", 50, 1, 999);
         b.pop();
 
         b.push("spawn");

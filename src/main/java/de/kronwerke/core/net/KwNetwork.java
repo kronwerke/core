@@ -252,6 +252,12 @@ public final class KwNetwork {
 
     public static void register(RegisterPayloadHandlersEvent event) {
         PayloadRegistrar r = event.registrar("3").optional();
+        // the join queue's place, while the connection is still in its configuration phase
+        r.configurationToClient(de.kronwerke.core.queue.QueuePayload.TYPE, de.kronwerke.core.queue.QueuePayload.CODEC, (payload, ctx) -> {
+            if (net.neoforged.fml.loading.FMLEnvironment.dist.isClient()) {
+                ctx.enqueueWork(() -> de.kronwerke.core.client.QueueScreen.show(payload, ctx.connection()));
+            }
+        });
         r.playToClient(SlotsPayload.TYPE, SlotsPayload.CODEC, KwNetwork::onSlots);
         r.playToClient(HubPayload.TYPE, HubPayload.CODEC, (payload, ctx) -> {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.KwHubScreen.receive(payload));
