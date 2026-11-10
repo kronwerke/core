@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.25.0
+
+Server:
+- Big blasts run much faster. Primed TNT is asked with one ray instead of 27 how much of it an explosion sees (only its knockback depends on it, `cheapTntExposure`), and Iron Furnaces, which looked up every broken block once for every pushed entity to find exploding million furnaces, does that once per explosion now. In the 29,000 TNT test these two were most of the explosion time.
+- Crowded animals cost less. A mob that decided not to flee, and a baby that decided not to follow its parent, ask again after a quarter second instead of every other tick (`goalPauseTicks`); both searched every entity around, which made a pen of 100 animals cost 26 ms per tick.
+- Malum looks for a weeping well next to a player only in chunks that are loaded; right after a join or a teleport it used to load them on the server thread.
+- Messages to the launcher's bus are written by a thread of their own; a large player handoff no longer holds up the tick while the launcher reads it. On shutdown the last messages still go out.
+- The boss check on every entity tick no longer builds a text of the entity's name each time.
+
+Client:
+- The pack's key layout without clashes (from the pack's tools/keys/layout.py). Default Options only sets it in new instances, so Core moves every key that still sits on a mod default or on the earlier pack layout to the new one, once; keys a player set stay.
+- A JourneyMap plugin that fails as mapping starts or stops is skipped instead of breaking what called it (on a server transfer that was the "Network Protocol Error").
+
 ## 0.24.2
 
 Server:

@@ -35,6 +35,10 @@ public final class Bus {
     private volatile Socket socket;
     private volatile BufferedWriter out;
     private Thread thread;
+    /** Lines waiting for the writer thread, so the server thread never waits on the socket. */
+    private final java.util.concurrent.LinkedBlockingQueue<String> outbox = new java.util.concurrent.LinkedBlockingQueue<>(20_000);
+    private Thread writer;
+    private volatile boolean dropWarned;
 
     private Bus(String host, int port, Path keyFile, String server, Consumer<JsonObject> handler, Runnable connected) {
         this.host = host;
@@ -62,9 +66,24 @@ public final class Bus {
         thread = new Thread(this::loop, "kronwerke-bus");
         thread.setDaemon(true);
         thread.start();
+        writer = new Thread(this::write, "kronwerke-bus-out");
+        writer.setDaemon(true);
+        writer.start();
     }
 
     public void stop() {
+        // what was sent last (checkpoints, goodbyes) still goes out, for up to three seconds
+        long until = System.currentTimeMillis() + 3000;
+        while (!outbox.isEmpty() && out != null && System.currentTimeMillis() < until) {
+            try {
+                Thread.sleep(10);
+            } catch (InterruptedException e) {
+                break;
+            }
+        }
+        synchronized (this) {
+            // the line being written finishes first
+        }
         running = false;
         Socket s = socket;
         if (s != null) {
@@ -75,23 +94,47 @@ public final class Bus {
             }
         }
         if (thread != null) thread.interrupt();
+        if (writer != null) writer.interrupt();
     }
 
     public boolean connected() {
         return out != null;
     }
 
-    /** Sends one message; dropped while the bus is away (state is sent again on reconnect). */
+    /**
+     * Sends one message; dropped while the bus is away (state is sent again on reconnect). The
+     * line is written by the bus's own writer thread: a player handoff can be a large line, and
+     * the server thread used to write it itself, so a launcher that was slow to read held up
+     * the whole tick.
+     */
     public void send(JsonObject m) {
-        BufferedWriter w = out;
-        if (w == null) return;
-        synchronized (this) {
+        if (out == null) return;
+        if (!outbox.offer(m.toString()) && !dropWarned) {
+            dropWarned = true;
+            KronwerkeCore.LOGGER.warn("The launcher's bus does not read; messages are dropped until it does");
+        }
+    }
+
+    private void write() {
+        while (running) {
+            String line;
             try {
-                w.write(m.toString());
-                w.write('\n');
-                w.flush();
-            } catch (IOException e) {
-                close();
+                line = outbox.take();
+            } catch (InterruptedException e) {
+                return;
+            }
+            BufferedWriter w = out;
+            if (w == null) continue; // away: dropped, the state is sent again on reconnect
+            synchronized (this) {
+                try {
+                    w.write(line);
+                    w.write('\n');
+                    // more waiting: write them all before the flush
+                    if (outbox.isEmpty()) w.flush();
+                    dropWarned = false;
+                } catch (IOException e) {
+                    close();
+                }
             }
         }
     }
@@ -131,6 +174,7 @@ public final class Bus {
                 if (first == null) throw new IOException("closed");
                 JsonObject welcome = JsonParser.parseString(first).getAsJsonObject();
                 if (!"welcome".equals(welcome.get("op").getAsString())) throw new IOException(first);
+                outbox.clear(); // lines from before the reconnect belong to the old connection
                 out = w;
                 wait = 1000;
                 told = false;

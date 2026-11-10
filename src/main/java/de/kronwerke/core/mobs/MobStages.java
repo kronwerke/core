@@ -111,7 +111,7 @@ public final class MobStages {
     /** Every hostile mob that enters a world carries the modifiers of the open stage. */
     public static void onJoin(EntityJoinLevelEvent e) {
         if (e.getLevel().isClientSide() || !(e.getEntity() instanceof Mob mob) || !hostile(mob)) return;
-        if (KronwerkeConfig.BOSSES.get().contains(EntityType.getKey(mob.getType()).toString())) return;
+        if (de.kronwerke.core.boss.BossScaling.bossTypes().contains(mob.getType())) return;
         int s = stage();
         List<? extends Double> hp = KronwerkeConfig.MOB_HEALTH.get(), dmg = KronwerkeConfig.MOB_DAMAGE.get(), arm = KronwerkeConfig.MOB_ARMOR.get();
         apply(mob, Attributes.MAX_HEALTH, HEALTH_ID, at(hp, s), AttributeModifier.Operation.ADD_MULTIPLIED_BASE, true);

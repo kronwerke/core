@@ -8,6 +8,7 @@
     "ArsWeatherDirtyMixin",
     "ArtifactsEmptyMobMixin",
     "AutosaveMarkMixin",
+    "AvoidEntityPauseMixin",
     "BotSendMixin",
     "ChaptersAuditMixin",
     "ChunkBlockDirtyMixin",
@@ -20,6 +21,7 @@
     "DraconicArmorTickMixin",
     "EnchantHasCacheMixin",
     "ExplosionSeenMixin",
+    "FollowParentPauseMixin",
     "IronFurnacesExplosionMixin",
     "IronsCurioCacheMixin",
     "JourneyMapOverlayMixin",
@@ -30,6 +32,7 @@
     "LodestoneCurioCacheMixin",
     "LootrTickerMixin",
     "MahouLivingMixin",
+    "MalumWellLoadedMixin",
     "MowzieLivingTickMixin",
     "PlayerInfoUpdateAccessor",
     "QuestLoadMixin",
@@ -56,6 +59,7 @@
     "ChaptersJeiBatchMixin",
     "ClientReadTimeoutMixin",
     "CreativeTabsAccessor",
+    "JourneyMapListenerMixin",
     "OreVeinsOverlayMixin"
   ],
   "injectors": {

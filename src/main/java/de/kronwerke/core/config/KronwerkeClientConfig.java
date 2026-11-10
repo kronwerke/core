@@ -8,6 +8,7 @@ public final class KronwerkeClientConfig {
     public static final ModConfigSpec.BooleanValue LANGUAGE_CHOSEN;
     public static final ModConfigSpec.IntValue CLOUD_HEIGHT;
     public static final ModConfigSpec.BooleanValue FEWER_FLASHES;
+    public static final ModConfigSpec.IntValue KEYS_APPLIED;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -17,6 +18,8 @@ public final class KronwerkeClientConfig {
                 .defineInRange("cloudHeight", 448, 64, 1024);
         FEWER_FLASHES = b.comment("Softens the white flashes, the shaking and the strobing light of the obelisk's rite, for players who are sensitive to flashing light.")
                 .define("fewerFlashes", false);
+        KEYS_APPLIED = b.comment("Which version of the pack's key layout was applied to this instance. Core moves keys only from their mod default to the pack's, and only once per version, so keys a player set stay. Set to 0 to apply the layout again.")
+                .defineInRange("keysApplied", 0, 0, Integer.MAX_VALUE);
         SPEC = b.build();
     }
 

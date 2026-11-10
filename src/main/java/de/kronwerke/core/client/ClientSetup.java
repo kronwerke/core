@@ -23,6 +23,9 @@ public final class ClientSetup {
         // the rank icons' resource pack, always on (see RanksPack)
         modBus.addListener(RanksPack::onFind);
         TravelOverlay.register();
+        // the pack's key layout for instances that never got Default Options' keybindings.txt
+        DefaultKeys.register();
+        KeyDump.register();
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> ObeliskEffects.forget());
         // fills the creative tabs bit by bit after joining instead of all at once when the menu opens
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> CreativePrewarm.reset());

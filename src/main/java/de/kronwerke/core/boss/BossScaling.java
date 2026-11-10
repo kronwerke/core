@@ -40,14 +40,27 @@ public final class BossScaling {
     private static final ResourceLocation RAGE_ID = ResourceLocation.fromNamespaceAndPath("kronwerke", "boss_rage");
     private static final int RANGE = 48;
 
-    private static Set<String> bosses;
+    private static Set<EntityType<?>> bosses;
 
     private BossScaling() {
     }
 
+    /** The configured bosses as entity types, so the check on every entity tick allocates nothing. */
+    public static Set<EntityType<?>> bossTypes() {
+        Set<EntityType<?>> b = bosses;
+        if (b == null) {
+            b = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+            for (String id : KronwerkeConfig.BOSSES.get()) {
+                ResourceLocation rl = ResourceLocation.tryParse(id);
+                if (rl != null) net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getOptional(rl).ifPresent(b::add);
+            }
+            bosses = b;
+        }
+        return b;
+    }
+
     private static boolean isBoss(LivingEntity e) {
-        if (bosses == null) bosses = new HashSet<>(KronwerkeConfig.BOSSES.get());
-        return bosses.contains(EntityType.getKey(e.getType()).toString());
+        return bossTypes().contains(e.getType());
     }
 
     public static void reload() {
@@ -59,8 +72,9 @@ public final class BossScaling {
     }
 
     public static void onTick(EntityTickEvent.Post event) {
+        // every entity ticks through here: the cheap checks first
+        if (event.getEntity().tickCount % 40 != 0) return;
         if (!(event.getEntity() instanceof LivingEntity boss) || !(boss.level() instanceof ServerLevel level) || !isBoss(boss)) return;
-        if (boss.tickCount % 40 != 0) return;
         int n = playersNear(level, boss).size();
         apply(boss, n);
         if (n >= 2 && boss.tickCount % KronwerkeConfig.BOSS_ATTACK_INTERVAL.get() == 0) {
