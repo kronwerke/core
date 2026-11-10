@@ -20,6 +20,7 @@
     "DraconicArmorTickMixin",
     "EnchantHasCacheMixin",
     "ExplosionSeenMixin",
+    "IronFurnacesExplosionMixin",
     "IronsCurioCacheMixin",
     "JourneyMapOverlayMixin",
     "KeepAliveGraceMixin",
