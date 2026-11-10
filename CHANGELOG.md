@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.24.2
+
+Client:
+- The language question comes once the world is loaded and the player stands in it. Shown at the join, it sat on top of seconds of loading work and looked frozen.
+- Items on the obelisk pedestals turn smoothly, and every obelisk effect animates smoothly: animations ran on the full game time as a float, which after some weeks only moves in quarter ticks. They now run on the game time modulo an hour.
+- The Nautical Ranks resource pack (rank icons in the tab list and chat) is always on, added by Core as a required pack. Default Options only switched it on at a client's very first start, so instances started before never got it.
+
 ## 0.24.1
 
 Client fixes:

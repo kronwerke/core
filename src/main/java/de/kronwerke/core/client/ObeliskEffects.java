@@ -373,9 +373,9 @@ public final class ObeliskEffects {
         float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         float fade, tear, tier;
         float cxd = 0, cyd = 1, czd = 0;
-        if (sky != null && mc.level.getGameTime() + partial - sky.start() > sky.duration()) sky = null;
+        if (sky != null && (mc.level.getGameTime() - sky.start()) + partial > sky.duration()) sky = null;
         if (sky != null) {
-            float t = mc.level.getGameTime() + partial - sky.start();
+            float t = (mc.level.getGameTime() - sky.start()) + partial;
             if (t < 0) return;
             float in = Math.min(1f, t / 70f);
             float out = Math.min(1f, (sky.duration() - t) / 80f);
@@ -391,7 +391,7 @@ public final class ObeliskEffects {
             double dist = cam.distanceTo(at);
             if (dist > 160) return;
             float near = (float) Mth.clamp(1 - (dist - 100) / 60, 0, 1);
-            float breathe = 0.8f + 0.2f * Mth.sin((mc.level.getGameTime() + partial) / 90f);
+            float breathe = 0.8f + 0.2f * Mth.sin(((mc.level.getGameTime() % ANIM_PERIOD) + partial) / 90f);
             fade = (0.14f + 0.07f * (tierNow - 2)) * near * breathe;
             if (moodNow(mc) == ObeliskTopBlockEntity.MOOD_ASLEEP) fade *= 0.4f;
             tear = 0.16f + 0.03f * (tierNow - 2);
@@ -403,7 +403,7 @@ public final class ObeliskEffects {
             czd = (float) c.z;
         }
         if (fade <= 0.002f) return;
-        float time = (mc.level.getGameTime() + partial) / 20f;
+        float time = ((mc.level.getGameTime() % ANIM_PERIOD) + partial) / 20f;
 
         galaxy.safeGetUniform("Time").set(time);
         galaxy.safeGetUniform("Fade").set(fade);
@@ -550,7 +550,7 @@ public final class ObeliskEffects {
         if (crystal == null || tier < 4) return;
         Vec3 cam = event.getCamera().getPosition();
         if (cam.distanceToSqr(crystal) > 400 * 400) return;
-        float time = mc.level.getGameTime() + event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float time = (mc.level.getGameTime() % ANIM_PERIOD) + event.getPartialTick().getGameTimeDeltaPartialTick(false);
         // only at night and dusk, like the real thing
         float visibility = Mth.clamp(1f - skyBrightness(mc, event), 0f, 1f);
         if (visibility <= 0.02f) return;
@@ -622,7 +622,7 @@ public final class ObeliskEffects {
         Vec3 cam = event.getCamera().getPosition();
         double dist = cam.distanceTo(crystal);
         if (dist > 600) return;
-        float time = mc.level.getGameTime() + event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float time = (mc.level.getGameTime() % ANIM_PERIOD) + event.getPartialTick().getGameTimeDeltaPartialTick(false);
         float day = skyBrightness(mc, event);
         float strength = mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.3f : 1f;
         strength *= 1f + 0.08f * Math.min(crowd(), 6);
@@ -917,6 +917,12 @@ public final class ObeliskEffects {
         if (mesh != null) BufferUploader.drawWithShader(mesh);
     }
 
+    /**
+     * Animations run on the game time modulo an hour: the full game time as a float has steps of
+     * a quarter tick and more after some weeks, which made everything turn and pulse in jerks.
+     */
+    static final long ANIM_PERIOD = 72_000L;
+
     private static Vec3 prevRel = Vec3.ZERO;
 
     /** A ring of light that runs out over the pavement from the plinth, wider for a bigger gift. */
@@ -1093,7 +1099,7 @@ public final class ObeliskEffects {
         Vec3 cam = event.getCamera().getPosition();
         Vec3 crystal = new Vec3(far.x(), far.y(), far.z());
         if (cam.distanceToSqr(crystal) > 300 * 300) return;
-        float time = mc.level.getGameTime() + partial;
+        float time = (mc.level.getGameTime() % ANIM_PERIOD) + partial;
         float[] colour = ObeliskTopRenderer.colour(far.percent(), far.mood(), far.tier());
         float[] white = {1f, 1f, 1f};
         PoseStack pose = new PoseStack();
@@ -1166,7 +1172,7 @@ public final class ObeliskEffects {
         float grow = Mth.clamp((riteT - start) / 30f, 0f, 1f);
         grow = 1 - (1 - grow) * (1 - grow);
         float fade = riteT < de.kronwerke.core.obelisk.ObeliskRite.T_REFORM ? 1f : 1 - (riteT - de.kronwerke.core.obelisk.ObeliskRite.T_REFORM) / 60f;
-        float time = mc.level.getGameTime() + partial;
+        float time = (mc.level.getGameTime() % ANIM_PERIOD) + partial;
         float[] gold = {1f, 0.85f, 0.5f};
         float[] white = {1f, 0.97f, 0.9f};
         PoseStack pose = new PoseStack();
@@ -1258,7 +1264,7 @@ public final class ObeliskEffects {
         double cx = far.x(), cz = far.z(), cy = far.baseY() + 0.03;
         double dist = cam.distanceTo(new Vec3(cx, cy, cz));
         if (dist > 64) return;
-        float time = mc.level.getGameTime() + event.getPartialTick().getGameTimeDeltaPartialTick(false);
+        float time = (mc.level.getGameTime() % ANIM_PERIOD) + event.getPartialTick().getGameTimeDeltaPartialTick(false);
         float night = Mth.clamp(1f - skyBrightness(mc, event), 0f, 1f);
         int mood = moodNow(mc);
         float strength = (0.35f + 0.65f * night) * (mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.35f : 1f) * (float) Mth.clamp(1 - (dist - 40) / 24, 0, 1);

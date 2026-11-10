@@ -34,11 +34,12 @@ public class PedestalRenderer implements BlockEntityRenderer<ObeliskPedestalBloc
     @Override
     public void render(ObeliskPedestalBlockEntity be, float partial, PoseStack pose, MultiBufferSource buffer, int light, int overlay) {
         if (be.getLevel() == null) return;
-        float time = be.getLevel().getGameTime() + partial;
+        // modulo an hour: the full game time as a float moves in quarter ticks after some weeks, the item turned in jerks
+        float time = (be.getLevel().getGameTime() % ObeliskEffects.ANIM_PERIOD) + partial;
         if (be.pillar() >= 0 && be.pillar() < 3) gauge(be, time, pose, buffer);
         if (be.championId() != null) champion(be, time, pose, buffer, light);
         if (!be.item().isEmpty()) {
-            float since = time - be.changedAt();
+            float since = (be.getLevel().getGameTime() - be.changedAt()) + partial;
             float swell = since < 20 ? 1.0f + 0.5f * (1.0f - since / 20.0f) : 1.0f;
             pose.pushPose();
             pose.translate(0.5, 1.35 + Math.sin(time / 12.0) * 0.06, 0.5);

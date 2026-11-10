@@ -23,10 +23,31 @@ public final class LanguageScreen extends KwScreen {
         this.parent = parent;
     }
 
+    private static boolean pending;
+    private static int waited;
+
+    /**
+     * On joining: the question comes once the world is loaded and the player stands in it. Shown
+     * right at the join it sat on top of the loading, which still has seconds of work to do
+     * (recipes, JEI, the first chunks), and the screen looked frozen.
+     */
     public static void showIfNeeded() {
         if (KronwerkeClientConfig.LANGUAGE_CHOSEN.get()) return;
+        pending = true;
+        waited = 0;
+    }
+
+    public static void clientTick() {
+        if (!pending) return;
         Minecraft mc = Minecraft.getInstance();
-        mc.execute(() -> mc.setScreen(new LanguageScreen(mc.screen)));
+        if (mc.player == null || mc.level == null) return;
+        if (mc.screen != null) {
+            waited = 0; // still loading, or another screen: wait until the player sees the world
+            return;
+        }
+        if (++waited < 40) return;
+        pending = false;
+        mc.setScreen(new LanguageScreen(null));
     }
 
     @Override

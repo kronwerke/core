@@ -20,11 +20,16 @@ public final class ClientSetup {
         });
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> LanguageScreen.showIfNeeded());
         ObeliskEffects.register(modBus);
+        // the rank icons' resource pack, always on (see RanksPack)
+        modBus.addListener(RanksPack::onFind);
         TravelOverlay.register();
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> ObeliskEffects.forget());
         // fills the creative tabs bit by bit after joining instead of all at once when the menu opens
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> CreativePrewarm.reset());
-        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientTickEvent.Post e) -> CreativePrewarm.tick());
+        NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientTickEvent.Post e) -> {
+            LanguageScreen.clientTick();
+            CreativePrewarm.tick();
+        });
         // the overworld builds up to 608, so its clouds move up from vanilla's 192
         modBus.addListener((net.neoforged.neoforge.client.event.RegisterDimensionSpecialEffectsEvent e) ->
                 e.register(net.minecraft.world.level.dimension.BuiltinDimensionTypes.OVERWORLD_EFFECTS, new HighCloudEffects()));
