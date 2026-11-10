@@ -130,7 +130,9 @@ public final class AdminScreen extends KwScreen {
                 addRenderableWidget(FlatButton.of(bx, y + 3, bw, "Öffnen", () -> send("goal_open", gr.id())).tip("Hebt den Halt vor dem Event auf"));
                 addRenderableWidget(FlatButton.confirm(bx + bw + 4, y + 3, bw, "Fertig", "Sicher?", FlatButton.Style.NORMAL, () -> send("goal_complete", gr.id())).tip("Schließt die Stufe sofort ab"));
                 addRenderableWidget(FlatButton.confirm(bx + 2 * (bw + 4), y + 3, bw, "Reset", "Sicher?", FlatButton.Style.DANGER, () -> send("goal_reset", gr.id())).tip("Löscht den Fortschritt dieser Stufe"));
-                addRenderableWidget(FlatButton.of(bx + 3 * (bw + 4), y + 3, bw, "Skalieren", () -> send("goal_rescale", gr.id())).tip("Rechnet die Mengen auf die aktuelle Spielerzahl um"));
+                addRenderableWidget(FlatButton.confirm(bx + 3 * (bw + 4), y + 3, bw, "Skalieren", "Anwenden?", FlatButton.Style.NORMAL, () -> send("goal_rescale", gr.id()))
+                        .tip("Rechnet die Mengen auf die aktuelle Spielerzahl um", "Erster Klick zeigt alt und neu, zweiter wendet an")
+                        .onFirst(() -> send("goal_rescale_preview", gr.id())));
             }
             y += ROW + 6;
         }
@@ -141,8 +143,8 @@ public final class AdminScreen extends KwScreen {
         int y = listTop - scroll;
         for (KwNetwork.StreamerView sv : data.streamers()) {
             if (visible(y)) {
-                addRenderableWidget(FlatButton.of(cx + cw - 18 - 4 - 18 - 6, y + 3, 18, "-", () -> sendRaw("admin_slots", sv.name() + "|" + (sv.total() - 1))).tip("Ein Platz weniger"));
-                addRenderableWidget(FlatButton.of(cx + cw - 18 - 6, y + 3, 18, "+", () -> sendRaw("admin_slots", sv.name() + "|" + (sv.total() + 1))).tip("Ein Platz mehr"));
+                addRenderableWidget(FlatButton.of(cx + cw - 18 - 4 - 18 - 6, y + 3, 18, "-", () -> sendRaw("admin_slots", sv.name() + "|-1")).tip("Ein Platz weniger"));
+                addRenderableWidget(FlatButton.of(cx + cw - 18 - 6, y + 3, 18, "+", () -> sendRaw("admin_slots", sv.name() + "|+1")).tip("Ein Platz mehr"));
             }
             y += ROW;
             for (String p : sv.invited()) {

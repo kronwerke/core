@@ -57,8 +57,7 @@ public final class TabList {
         }
         if (player.hasPermissions(2)) return "admin";
         if (!de.kronwerke.core.link.Role.main()) return de.kronwerke.core.link.NetworkSync.streamer(name) ? "streamer" : "member";
-        SlotData.StreamerEntry e = SlotManager.get().entryByName(name);
-        if (e != null && SlotManager.get().allowance(e) > 2) return "streamer";
+        if (SlotManager.get().isStreamer(player.getUUID())) return "streamer";
         return "member";
     }
 

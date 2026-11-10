@@ -51,7 +51,7 @@ public final class MobStages {
         GoalManager g = GoalManager.get();
         if (g == null) return 1;
         int n = 1;
-        for (Goal goal : g.allGoals()) if (goal.stages() != null && !goal.stages().isEmpty() && g.isCompleted(goal)) n++;
+        for (Goal goal : g.allGoals()) if (goal.stages() != null && !goal.stages().isEmpty() && g.isRevealed(goal)) n++;
         return Math.min(n, 5);
     }
 

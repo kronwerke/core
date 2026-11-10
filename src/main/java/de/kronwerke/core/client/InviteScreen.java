@@ -58,7 +58,11 @@ public final class InviteScreen extends KwScreen {
 
     @Override
     protected int panelHeight() {
-        return HEAD + 40 + ROW_H * Math.max(1, data.entries().size()) + 12 + 18 + 8 + 14 + 12;
+        return HEAD + 40 + ROW_H * Math.max(1, data.entries().size()) + 12 + 18 + 8 + 14 + 12 + (confirming() ? ROW_H + 6 : 0);
+    }
+
+    private boolean confirming() {
+        return !data.extra().confirm().isEmpty();
     }
 
     private int listY() {
@@ -75,18 +79,27 @@ public final class InviteScreen extends KwScreen {
         name.setMaxLength(16);
         name.setHint(Component.literal("Minecraft-Name").withStyle(ChatFormatting.DARK_GRAY));
         name.setResponder(s -> invite.active = !s.isBlank() && data.used() < data.total());
-        addRenderableWidget(name);
-        invite = FlatButton.primary(left + w - 12 - 84, fy, 84, "Einladen", () -> send("invite", name.getValue())).icon(new ItemStack(Items.NAME_TAG));
-        invite.tip(data.used() < data.total() ? "Trägt den Namen in deinen nächsten freien Platz ein" : "Alle Plätze sind vergeben");
+        invite = FlatButton.primary(left + w - 12 - 84, fy, 84, "Prüfen", () -> send("invite", name.getValue())).icon(new ItemStack(Items.NAME_TAG));
+        invite.tip(data.used() < data.total() ? "Zeigt das Konto zu dem Namen, eingeladen wird erst nach deinem Ja" : "Alle Plätze sind vergeben");
         invite.active = false;
-        addRenderableWidget(invite);
+        if (data.extra().canInvite()) {
+            addRenderableWidget(name);
+            addRenderableWidget(invite);
+        }
+        if (confirming()) {
+            KwNetwork.Entry c = data.extra().confirm().get(0);
+            fetchSkin(c);
+            int cy = fy + 18 + 8 + 14;
+            addRenderableWidget(FlatButton.primary(left + w - 12 - 84 - 6 - 76, cy + 3, 84, "Ja, einladen", () -> send("invite_confirm", c.id().toString())));
+            addRenderableWidget(FlatButton.of(left + w - 12 - 76, cy + 3, 76, "Abbrechen", () -> send("invite_cancel", "x")));
+        }
         int y = listY();
         for (KwNetwork.Entry e : data.entries()) {
             addRenderableWidget(FlatButton.confirm(left + w - 12 - 76, y + 3, 76, "Entfernen", "Sicher?", FlatButton.Style.DANGER, () -> send("revoke", e.name())).tip("Nimmt " + e.name() + " von der Whitelist", "Der Platz wird wieder frei"));
             y += ROW_H;
             fetchSkin(e);
         }
-        setInitialFocus(name);
+        if (data.extra().canInvite()) setInitialFocus(name);
     }
 
     private void send(String action, String who) {
@@ -153,17 +166,32 @@ public final class InviteScreen extends KwScreen {
             if (in(mouseX, mouseY, left + 14, y, dx + 6, y + ROW_H)) hover(e.name(), e.online() ? "Online" : "Offline");
             y += ROW_H;
         }
-        // the frame of the name field; the field itself has no border of its own
-        Ui.inset(g, left + 12, name.getY() - 5, left + 12 + w - 24 - 90, name.getY() + 13);
-        if (name.isFocused()) g.fill(left + 13, name.getY() + 12, left + 12 + w - 24 - 90 - 1, name.getY() + 13, Ui.GOLD);
+        if (data.extra().canInvite()) {
+            // the frame of the name field; the field itself has no border of its own
+            Ui.inset(g, left + 12, name.getY() - 5, left + 12 + w - 24 - 90, name.getY() + 13);
+            if (name.isFocused()) g.fill(left + 13, name.getY() + 12, left + 12 + w - 24 - 90 - 1, name.getY() + 13, Ui.GOLD);
+        } else {
+            g.drawWordWrap(font, Component.literal("Einladen geht über Discord: /whitelist add im Kronwerke-Discord. Hier siehst du deine Plätze und kannst sie freigeben.")
+                    .withStyle(ChatFormatting.GRAY), left + 12, name.getY() - 4, w - 24, 0xFFFFFF);
+        }
         if (!data.message().isEmpty()) {
-            g.drawWordWrap(font, Component.literal(data.message()).withStyle(data.error() ? ChatFormatting.RED : ChatFormatting.GREEN), left + 12, name.getY() + 19, w - 24, 0xFFFFFF);
+            g.drawWordWrap(font, Component.literal(data.message()).withStyle(data.error() ? ChatFormatting.RED : confirming() ? ChatFormatting.GOLD : ChatFormatting.GREEN),
+                    left + 12, name.getY() + 19, w - 24, 0xFFFFFF);
+        }
+        if (confirming()) {
+            KwNetwork.Entry c = data.extra().confirm().get(0);
+            int cy = name.getY() - 5 + 18 + 8 + 14;
+            Ui.inset(g, left + 10, cy - 2, left + w - 10, cy + ROW_H);
+            PlayerSkin skin = SKINS.get(c.id());
+            if (skin != null) PlayerFaceRenderer.draw(g, skin, left + 15, cy + 3, 16);
+            else g.fill(left + 15, cy + 3, left + 31, cy + 19, 0xFF1a1620);
+            g.drawString(font, Ui.fit(font, c.name(), w - 12 - 84 - 6 - 76 - 44), left + 38, cy + 7, Ui.GOLD, false);
         }
     }
 
     @Override
     public boolean keyPressed(int key, int scan, int mods) {
-        if ((key == 257 || key == 335) && name.isFocused() && invite.active) {
+        if ((key == 257 || key == 335) && data.extra().canInvite() && name.isFocused() && invite.active) {
             send("invite", name.getValue());
             return true;
         }

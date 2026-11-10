@@ -69,9 +69,18 @@ public final class AdminActions {
                     Season.get().pause();
                     KwNetwork.sendAdmin(p, "Zurück in der Vorbereitung. Der Fortschritt bleibt.", false);
                 }
-                case "goal_open", "goal_complete", "goal_reset", "goal_rescale" -> {
+                case "goal_open", "goal_complete", "goal_reset" -> {
                     if (!ID.matcher(arg).matches()) return;
                     command(p, "kw admin goal " + op.substring(5) + " " + arg);
+                }
+                case "goal_rescale_preview" -> {
+                    if (!ID.matcher(arg).matches()) return;
+                    var g = GoalManager.get().goal(arg);
+                    if (g != null) KwNetwork.sendAdmin(p, String.join("\n", de.kronwerke.core.command.KwCommand.rescalePreview(g)), false);
+                }
+                case "goal_rescale" -> {
+                    if (!ID.matcher(arg).matches()) return;
+                    command(p, "kw admin goal rescale " + arg + " confirm");
                 }
                 case "goals_reload" -> command(p, "kw admin goal reload");
                 case "obelisk_here" -> {

@@ -42,8 +42,32 @@ public class ActivityData extends SavedData {
         for (UUID u : new ArrayList<>(open.keySet())) logout(u, now);
     }
 
+    /** A new season: nobody has played in it yet. */
+    public void clear() {
+        sessions.clear();
+        for (UUID u : new ArrayList<>(open.keySet())) open.put(u, System.currentTimeMillis());
+        setDirty();
+    }
+
+    /**
+     * Every few minutes: the open sessions are written up to now and go on from here, so a
+     * crash loses minutes, not every online player's whole session.
+     */
+    public void checkpoint(long now) {
+        if (open.isEmpty()) return;
+        for (Map.Entry<UUID, Long> e : open.entrySet()) {
+            if (now - e.getValue() < 60_000) continue;
+            sessions.computeIfAbsent(e.getKey(), k -> new ArrayList<>()).add(new long[]{e.getValue(), now});
+            e.setValue(now);
+        }
+        prune(now);
+        setDirty();
+    }
+
     private void prune(long now) {
-        long cut = now - KEEP_MS;
+        // kept as long as the scaling looks back, and at least 14 days
+        long keep = Math.max(KEEP_MS, de.kronwerke.core.config.KronwerkeConfig.SCALE_DAYS.get() * 24L * 3600 * 1000);
+        long cut = now - keep;
         sessions.values().forEach(l -> l.removeIf(s -> s[1] < cut));
         sessions.values().removeIf(List::isEmpty);
     }

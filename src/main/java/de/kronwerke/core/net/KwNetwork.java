@@ -1,5 +1,7 @@
 package de.kronwerke.core.net;
 
+import de.kronwerke.core.config.KronwerkeConfig;
+
 import de.kronwerke.core.KronwerkeCore;
 import de.kronwerke.core.slot.SlotData;
 import de.kronwerke.core.slot.SlotManager;
@@ -97,7 +99,20 @@ public final class KwNetwork {
         }
     }
 
-    public record SlotsPayload(int used, int total, List<Entry> entries, boolean open, String message, boolean error) implements CustomPacketPayload {
+    /** canInvite: whether the menu invites in game; confirm: the account a name resolved to, to be confirmed. */
+    public record SlotsExtra(boolean error, boolean canInvite, List<Entry> confirm) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, SlotsExtra> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, SlotsExtra::error,
+                ByteBufCodecs.BOOL, SlotsExtra::canInvite,
+                Entry.CODEC.apply(ByteBufCodecs.list()), SlotsExtra::confirm,
+                SlotsExtra::new);
+    }
+
+    public record SlotsPayload(int used, int total, List<Entry> entries, boolean open, String message, SlotsExtra extra) implements CustomPacketPayload {
+        public boolean error() {
+            return extra.error();
+        }
+
         public static final Type<SlotsPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "slots"));
         public static final StreamCodec<RegistryFriendlyByteBuf, SlotsPayload> CODEC = StreamCodec.composite(
                 ByteBufCodecs.VAR_INT, SlotsPayload::used,
@@ -105,7 +120,7 @@ public final class KwNetwork {
                 Entry.CODEC.apply(ByteBufCodecs.list()), SlotsPayload::entries,
                 ByteBufCodecs.BOOL, SlotsPayload::open,
                 ByteBufCodecs.STRING_UTF8, SlotsPayload::message,
-                ByteBufCodecs.BOOL, SlotsPayload::error,
+                SlotsExtra.CODEC, SlotsPayload::extra,
                 SlotsPayload::new);
 
         @Override
@@ -300,7 +315,8 @@ public final class KwNetwork {
             goals.add(new GoalView(g.title(), g.description() == null ? "" : g.description(), state, percent, active, items));
         }
         boolean admin = p.hasPermissions(2);
-        boolean streamer = admin || de.kronwerke.core.config.KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get();
+        // the whitelist button only for players with places of their own to give
+        boolean streamer = admin || SlotManager.get().ownSlots(p.getUUID()) != null;
         PacketDistributor.sendToPlayer(p, new HubPayload(goals, streamer, admin, message, error));
     }
 
@@ -350,37 +366,69 @@ public final class KwNetwork {
     private static void onAction(ActionPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer p)) return;
+            if (!allowAction(p, false)) return; // a flood of menu packets: dropped
             if (!de.kronwerke.core.link.Role.main()) {
                 p.sendSystemMessage(de.kronwerke.core.Text.t("network.main_only", "Das geht nur in der Hauptwelt.").withStyle(net.minecraft.ChatFormatting.GRAY));
                 return;
             }
             SlotManager sm = SlotManager.get();
-            SlotData.StreamerEntry me = sm.entry(p.getUUID(), p.getGameProfile().getName());
             String name = payload.name().trim();
-            String msg = "";
-            boolean error = false;
             switch (payload.action()) {
                 case "invite" -> {
-                    SlotManager.Result res = sm.invite(me, name);
-                    error = res != SlotManager.Result.OK;
-                    msg = switch (res) {
-                        case OK -> name + " steht auf der Whitelist.";
+                    SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
+                    if (me == null || !(KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || p.hasPermissions(2))) {
+                        send(p, false, de.kronwerke.core.Text.t("slots.discord", "Einladen geht über Discord: /whitelist add im Kronwerke-Discord.").getString(), true);
+                        return;
+                    }
+                    if (!allowAction(p, true)) {
+                        send(p, false, de.kronwerke.core.Text.t("slots.slow", "Langsam, eins nach dem anderen.").getString(), true);
+                        return;
+                    }
+                    // the name is resolved off the server thread; the menu then shows the account
+                    // it belongs to (head and exact name) and invites only after a yes
+                    sm.resolve(name, profile -> {
+                        if (p.hasDisconnected()) return;
+                        if (profile.isEmpty()) {
+                            send(p, false, "Kein Minecraft-Konto mit dem Namen " + name + ". Schreibweise prüfen.", true);
+                            return;
+                        }
+                        confirming.put(p.getUUID(), profile.get());
+                        send(p, false, "Ist das das richtige Konto? " + profile.get().getName()
+                                + " muss danach noch dem Kronwerke-Discord beitreten, sonst ist der Platz wieder weg.", false, profile.get());
+                    });
+                    return;
+                }
+                case "invite_confirm" -> {
+                    SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
+                    com.mojang.authlib.GameProfile profile = confirming.remove(p.getUUID());
+                    if (me == null || profile == null || !profile.getId().toString().equals(name)) return;
+                    SlotManager.Result res = sm.invite(me, profile, false);
+                    send(p, false, switch (res) {
+                        case OK -> profile.getName() + " steht auf der Whitelist.";
                         case NO_SLOTS_LEFT -> "Du hast keinen freien Platz mehr.";
-                        case ALREADY_INVITED -> name + " hat schon einen Platz.";
-                        case ALREADY_WHITELISTED -> name + " ist schon auf der Whitelist.";
-                        case UNKNOWN_PLAYER -> "Kein Minecraft-Konto mit dem Namen " + name + ". Schreibweise prüfen.";
+                        case ALREADY_INVITED -> profile.getName() + " hat schon einen Platz.";
+                        case ALREADY_WHITELISTED -> profile.getName() + " ist schon auf der Whitelist.";
                         default -> "Das hat nicht geklappt.";
-                    };
+                    }, res != SlotManager.Result.OK);
+                    return;
+                }
+                case "invite_cancel" -> {
+                    confirming.remove(p.getUUID());
+                    send(p, false, "", false);
+                    return;
                 }
                 case "revoke" -> {
-                    SlotManager.Result res = sm.revoke(me, name);
-                    error = res != SlotManager.Result.OK;
-                    msg = switch (res) {
+                    SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
+                    if (me == null || !allowAction(p, true)) return;
+                    java.util.UUID id = null;
+                    for (var e : me.invited.entrySet()) if (e.getValue().equalsIgnoreCase(name)) id = e.getKey();
+                    SlotManager.Result res = id == null ? SlotManager.Result.NOT_INVITED_BY_YOU : sm.revoke(me, new com.mojang.authlib.GameProfile(id, me.invited.get(id)));
+                    send(p, false, switch (res) {
                         case OK -> name + " ist von der Whitelist runter, der Platz ist wieder frei.";
                         case NOT_INVITED_BY_YOU -> name + " hat seinen Platz nicht von dir.";
-                        case UNKNOWN_PLAYER -> "Kein Minecraft-Konto mit dem Namen " + name + ".";
                         default -> "Das hat nicht geklappt.";
-                    };
+                    }, res != SlotManager.Result.OK);
+                    return;
                 }
                 case "menu" -> {
                     send(p, true, "", false);
@@ -408,11 +456,13 @@ public final class KwNetwork {
                     if (!p.hasPermissions(2)) return;
                     String[] parts = name.split("\\|");
                     SlotData.StreamerEntry e = sm.entryByName(parts[0]);
-                    if (e == null || parts.length < 2) { sendAdmin(p, "Kein Streamer mit dem Namen " + parts[0] + ".", true); return; }
+                    if (e == null || !e.granted || parts.length < 2) { sendAdmin(p, parts[0] + " hat keinen eigenen Platz.", true); return; }
                     int n;
-                    try { n = Integer.parseInt(parts[1]); } catch (NumberFormatException ex) { sendAdmin(p, "Das ist keine Zahl.", true); return; }
-                    sm.setSlots(e, Math.max(0, n));
-                    sendAdmin(p, e.name + " hat jetzt " + sm.allowance(e) + " Plätze.", false);
+                    try { n = Integer.parseInt(parts[1].replace("+", "")); } catch (NumberFormatException ex) { sendAdmin(p, "Das ist keine Zahl.", true); return; }
+                    // "+1" and "-1" change the base by one (the bonus stays on top), a bare number sets the base
+                    if (parts[1].startsWith("+") || parts[1].startsWith("-")) sm.addSlots(e, n);
+                    else sm.setSlots(e, n);
+                    sendAdmin(p, e.name + " hat jetzt " + sm.allowance(e) + " Plätze" + (e.bonusSlots > 0 ? " (davon " + e.bonusSlots + " Bonus)" : "") + ".", false);
                     return;
                 }
                 case "admin_move" -> {
@@ -420,7 +470,9 @@ public final class KwNetwork {
                     String[] parts = name.split("\\|");
                     SlotData.StreamerEntry to = parts.length < 2 ? null : sm.entryByName(parts[1]);
                     if (to == null) { sendAdmin(p, "Kein Streamer mit dem Namen " + (parts.length < 2 ? "" : parts[1]) + ".", true); return; }
-                    SlotManager.Result res = sm.move(parts[0], to);
+                    java.util.UUID mid = null;
+                    for (SlotData.StreamerEntry se : sm.allStreamers()) for (var en : se.invited.entrySet()) if (en.getValue().equalsIgnoreCase(parts[0])) mid = en.getKey();
+                    SlotManager.Result res = mid == null ? SlotManager.Result.NOT_INVITED_BY_YOU : sm.move(new com.mojang.authlib.GameProfile(mid, parts[0]), to);
                     sendAdmin(p, switch (res) {
                         case OK -> parts[0] + " gehört jetzt zu " + to.name + ".";
                         case NO_SLOTS_LEFT -> to.name + " hat keinen freien Platz.";
@@ -433,29 +485,60 @@ public final class KwNetwork {
                 }
                 case "admin_revoke" -> {
                     if (!p.hasPermissions(2)) return;
-                    java.util.Optional<com.mojang.authlib.GameProfile> profile = sm.lookup(name);
-                    SlotData.StreamerEntry from = profile.map(pr -> sm.inviterOf(pr.getId())).orElse(null);
+                    // the panel lists invited players by the name they were invited with: no lookup
+                    java.util.UUID rid = null;
+                    SlotData.StreamerEntry from = null;
+                    for (SlotData.StreamerEntry se : sm.allStreamers()) for (var en : se.invited.entrySet()) if (en.getValue().equalsIgnoreCase(name)) { rid = en.getKey(); from = se; }
                     if (from == null) { sendAdmin(p, name + " hat von niemandem einen Platz.", true); return; }
-                    SlotManager.Result res = sm.revoke(from, name);
+                    SlotManager.Result res = sm.revoke(from, new com.mojang.authlib.GameProfile(rid, name));
                     sendAdmin(p, res == SlotManager.Result.OK ? name + " ist von der Whitelist runter." : "Das hat nicht geklappt.", res != SlotManager.Result.OK);
                     return;
                 }
                 default -> {
                 }
             }
-            send(p, false, msg, error);
         });
     }
 
-    /** Sends the streamer's slots to their client; open makes the client show the menu. */
+    private static final Map<UUID, long[]> lastAction = new java.util.HashMap<>();
+
+    /**
+     * The menu packets are cheap to send and some of them are not cheap to answer: one slot
+     * action per second per player (invite and revoke), a few per second for the rest.
+     */
+    public static boolean allowAction(ServerPlayer p, boolean slot) {
+        long now = System.currentTimeMillis();
+        long[] t = lastAction.computeIfAbsent(p.getUUID(), k -> new long[2]);
+        int i = slot ? 0 : 1;
+        long gap = slot ? 1000 : 50;
+        if (now - t[i] < gap) return false;
+        t[i] = now;
+        return true;
+    }
+
+    /** Accounts a streamer looked up and has not confirmed yet. */
+    private static final Map<UUID, com.mojang.authlib.GameProfile> confirming = new java.util.HashMap<>();
+
     public static void send(ServerPlayer p, boolean open, String message, boolean error) {
+        send(p, open, message, error, null);
+    }
+
+    /** Sends the streamer's slots to their client; open makes the client show the menu. */
+    public static void send(ServerPlayer p, boolean open, String message, boolean error, com.mojang.authlib.GameProfile confirm) {
         SlotManager sm = SlotManager.get();
-        SlotData.StreamerEntry me = sm.entry(p.getUUID(), p.getGameProfile().getName());
+        SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
+        if (me == null) {
+            if (open) p.sendSystemMessage(de.kronwerke.core.Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord.")
+                    .withStyle(net.minecraft.ChatFormatting.GRAY));
+            return;
+        }
         List<Entry> entries = new ArrayList<>();
         for (Map.Entry<UUID, String> e : me.invited.entrySet()) {
             boolean online = p.getServer().getPlayerList().getPlayer(e.getKey()) != null;
             entries.add(new Entry(e.getKey(), e.getValue(), online));
         }
-        PacketDistributor.sendToPlayer(p, new SlotsPayload(me.used(), sm.allowance(me), entries, open, message, error));
+        boolean canInvite = KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || p.hasPermissions(2);
+        List<Entry> c = confirm == null ? List.of() : List.of(new Entry(confirm.getId(), confirm.getName(), false));
+        PacketDistributor.sendToPlayer(p, new SlotsPayload(me.used(), sm.allowance(me), entries, open, message, new SlotsExtra(error, canInvite, c)));
     }
 }

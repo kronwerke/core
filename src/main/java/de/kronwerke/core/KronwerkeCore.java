@@ -59,6 +59,7 @@ public class KronwerkeCore {
             if (e.getServer().getTickCount() % 100 == 0 && de.kronwerke.core.mobs.MobStages.stageKnown()) {
                 de.kronwerke.core.lock.MachineLocks.tick(e.getServer(), de.kronwerke.core.mobs.MobStages.stage());
             }
+            if (Role.main() && e.getServer().getTickCount() % 1200 == 600) GoalManager.get().minute();
         });
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
@@ -79,6 +80,8 @@ public class KronwerkeCore {
         // last in the tick, after the mods' own networks (Flux) have moved their energy
         NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, de.kronwerke.core.share.Share::onTick);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.portal.Travel::onTick);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, de.kronwerke.core.portal.Travel::onFrozenDamage);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, de.kronwerke.core.portal.Travel::onFrozenPickup);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, de.kronwerke.core.portal.Ignite::onRightClick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onPlace);
@@ -179,8 +182,9 @@ public class KronwerkeCore {
         if (Role.main()) GoalManager.get().onPlayerLeave(event.getEntity());
         de.kronwerke.core.boss.BossScaling.forget(event.getEntity().getUUID());
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
-            NetworkSync.onLeave(sp);
+            // Travel first: it must still see whether this login was refused
             de.kronwerke.core.portal.Travel.onLogout(sp);
+            NetworkSync.onLeave(sp);
         }
     }
 }

@@ -26,6 +26,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<String> PORTAL_TARGET;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> KEEP_ON_MAIN;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DIMENSION_SERVERS;
+    public static final ModConfigSpec.IntValue SCALE_EXPECTED;
     public static final ModConfigSpec.IntValue LOG_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
@@ -185,7 +186,7 @@ public final class KronwerkeConfig {
         b.push("scaling");
         SCALE_BASE_PLAYERS = b.comment("The base amounts in goals.json assume this many active players.")
                 .defineInRange("basePlayers", 30, 1, 1000);
-        SCALE_DAYS = b.comment("Look back this many days when counting active players.")
+        SCALE_DAYS = b.comment("Look back this many days when counting active players (sessions are kept for at least 14 days, or this long).")
                 .defineInRange("days", 7, 1, 60);
         SCALE_MIN_HOURS = b.comment("A player counts as active with at least this many hours in the window.")
                 .defineInRange("minHours", 1.0, 0.0, 1000.0);
@@ -193,6 +194,8 @@ public final class KronwerkeConfig {
                 .defineInRange("minFactor", 0.4, 0.01, 10.0);
         SCALE_MAX = b.comment("Highest factor a goal can be scaled to.")
                 .defineInRange("maxFactor", 1.5, 0.01, 10.0);
+        SCALE_EXPECTED = b.comment("Players the team expects when nobody has played yet (a season start). 0 uses basePlayers. Goals scaled this way are scaled again after the first day.")
+                .defineInRange("expectedPlayers", 0, 0, 1000);
         b.pop();
 
         b.push("privacy");

@@ -303,7 +303,7 @@ public final class NetworkSync {
         JsonArray s = new JsonArray();
         try {
             for (SlotData.StreamerEntry e : SlotManager.get().allStreamers()) {
-                if (SlotManager.get().allowance(e) > 2) s.add(e.name);
+                if (e.granted && e.kind.equals(SlotManager.STREAMER)) s.add(e.name);
             }
         } catch (RuntimeException ignored) {
             // slots not loaded yet
@@ -450,6 +450,14 @@ public final class NetworkSync {
         bus.send(m);
     }
 
+    /** Asks the launcher for a backup of this server now (before a season start, say). */
+    public static void requestBackup(String why) {
+        if (!on()) return;
+        JsonObject m = op("backup");
+        m.addProperty("reason", why);
+        bus.send(m);
+    }
+
     /** Tells the launcher that every player has left (after an evacuate). */
     public static void evacuated() {
         if (on()) bus.send(op("evacuated"));
@@ -464,6 +472,24 @@ public final class NetworkSync {
     private static String str(JsonObject o, String key) {
         JsonElement e = o == null ? null : o.get(key);
         return e == null || e.isJsonNull() ? "" : e.getAsString();
+    }
+
+    /** Whether this login was turned away by refuse(): nothing of it may travel anywhere. */
+    public static boolean refused(UUID id) {
+        return refused.contains(id);
+    }
+
+    /**
+     * The side world's gate on the login screen, before a player entity exists: a direct join
+     * by someone who is not expected never loads a player file, so nothing of it can be sent
+     * home (it used to overwrite the player on main with the side world's old copy).
+     */
+    public static Component refuseLogin(net.minecraft.server.MinecraftServer s, com.mojang.authlib.GameProfile profile) {
+        if (Role.main() || KronwerkeConfig.DIRECT_JOIN.get()) return null;
+        if (s.getPlayerList().isOp(profile)) return null;
+        if (de.kronwerke.core.portal.Travel.expected(profile.getId())) return null;
+        KronwerkeCore.LOGGER.info("{} tried to join {} directly; turned away", profile.getName(), Role.server());
+        return Text.t("network.direct", "Diese Welt erreichst du nur über kronwerke.net.");
     }
 
     /** Players who may only arrive through a move: everyone but operators, on a side world. */

@@ -27,6 +27,10 @@ public class GoalData extends SavedData {
     private final Set<String> activated = new HashSet<>();
     private final Set<String> released = new HashSet<>();
     private final Set<String> completed = new HashSet<>();
+    /** Completed goals whose stages, kits and commands went out (at the rite's reveal). */
+    private final Set<String> revealed = new HashSet<>();
+    /** Goals scaled before anyone played (a season start): scaled again after the first day. */
+    private final Set<String> provisional = new HashSet<>();
     /** goal -> (player -> contributed) */
     private final Map<String, Map<UUID, Long>> contributions = new HashMap<>();
     /** "goal/item" -> (player -> contributed), for the ledger and the pillar rankings */
@@ -137,6 +141,31 @@ public class GoalData extends SavedData {
         setDirty();
     }
 
+    public boolean isRevealed(String goal) {
+        return revealed.contains(goal);
+    }
+
+    public void markRevealed(String goal) {
+        revealed.add(goal);
+        setDirty();
+    }
+
+    public boolean isProvisional(String goal) {
+        return provisional.contains(goal);
+    }
+
+    public void setProvisional(String goal, boolean on) {
+        if (on ? provisional.add(goal) : provisional.remove(goal)) setDirty();
+    }
+
+    /** A target for an item that has none yet (added to the goal file after activation). */
+    public boolean ensureTarget(String goal, String item, long amount) {
+        if (targets.containsKey(key(goal, item))) return false;
+        targets.put(key(goal, item), amount);
+        setDirty();
+        return true;
+    }
+
     public void release(String goal) {
         released.add(goal);
         setDirty();
@@ -154,6 +183,8 @@ public class GoalData extends SavedData {
         activated.remove(goal);
         released.remove(goal);
         completed.remove(goal);
+        revealed.remove(goal);
+        provisional.remove(goal);
         contributions.remove(goal);
         itemContributions.keySet().removeIf(k -> k.startsWith(goal + "/"));
         kits.remove(goal);
@@ -169,6 +200,8 @@ public class GoalData extends SavedData {
         activated.clear();
         released.clear();
         completed.clear();
+        revealed.clear();
+        provisional.clear();
         contributions.clear();
         itemContributions.clear();
         kits.clear();
@@ -208,6 +241,9 @@ public class GoalData extends SavedData {
         getSet(tag, "activated", d.activated);
         getSet(tag, "released", d.released);
         getSet(tag, "completed", d.completed);
+        if (tag.contains("revealed")) getSet(tag, "revealed", d.revealed);
+        else d.revealed.addAll(d.completed); // before 0.27: everything completed went out at once
+        getSet(tag, "provisional", d.provisional);
         CompoundTag contrib = tag.getCompound("contributions");
         for (String goal : contrib.getAllKeys()) {
             CompoundTag per = contrib.getCompound(goal);
@@ -244,6 +280,8 @@ public class GoalData extends SavedData {
         putSet(tag, "activated", activated);
         putSet(tag, "released", released);
         putSet(tag, "completed", completed);
+        putSet(tag, "revealed", revealed);
+        putSet(tag, "provisional", provisional);
         CompoundTag contrib = new CompoundTag();
         contributions.forEach((goal, per) -> {
             CompoundTag t = new CompoundTag();

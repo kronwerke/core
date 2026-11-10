@@ -19,6 +19,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -97,7 +98,8 @@ public final class KwCommand {
                         .executes(KwCommand::adminPanel)
                         .then(Commands.literal("season")
                                 .executes(KwCommand::seasonInfo)
-                                .then(Commands.literal("start").executes(KwCommand::seasonStart))
+                                .then(Commands.literal("start").executes(c -> seasonStart(c, false))
+                                        .then(Commands.literal("confirm").executes(c -> seasonStart(c, true))))
                                 .then(Commands.literal("pause").executes(c -> { de.kronwerke.core.season.Season.get().pause(); ok(c, "Zurück in der Vorbereitung."); return 1; }))
                                 .then(Commands.literal("json").executes(KwCommand::seasonJson)))
                         .then(Commands.literal("gate")
@@ -212,7 +214,8 @@ public final class KwCommand {
                                     ok(c, top.isEmpty() ? "Noch nichts gezählt." : String.join("\n", top));
                                     return 1;
                                 })))
-                        .then(Commands.literal("start-season").executes(KwCommand::seasonStart))
+                        .then(Commands.literal("start-season").executes(c -> seasonStart(c, false))
+                                .then(Commands.literal("confirm").executes(c -> seasonStart(c, true))))
                         .then(Commands.literal("slots")
                                 .then(Commands.argument("streamer", StringArgumentType.word())
                                         .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(KwCommand::adminSlots))))
@@ -227,11 +230,21 @@ public final class KwCommand {
                         .then(BotCommand.goals())
                         .then(BotCommand.roster())
                         .then(Commands.literal("goal")
-                                .then(Commands.literal("reload").executes(c -> { GoalManager.get().reload(); ok(c, "Goals reloaded: " + GoalManager.get().goalCount()); return 1; }))
+                                .then(Commands.literal("reload").executes(c -> {
+                                    List<String> problems = GoalManager.get().reloadChecked();
+                                    if (problems.isEmpty()) {
+                                        ok(c, "Ziele neu geladen: " + GoalManager.get().goalCount());
+                                        return 1;
+                                    }
+                                    for (String pr : problems) c.getSource().sendFailure(Component.literal(pr));
+                                    return 0;
+                                }))
                                 .then(Commands.literal("complete").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "complete"))))
                                 .then(Commands.literal("reset").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "reset"))))
                                 .then(Commands.literal("open").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "open"))))
-                                .then(Commands.literal("rescale").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "rescale"))))
+                                .then(Commands.literal("rescale").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds)
+                                        .executes(c -> goalOp(c, "rescale_preview"))
+                                        .then(Commands.literal("confirm").executes(c -> goalOp(c, "rescale")))))
                                 .then(Commands.literal("progress").then(Commands.argument("goal", StringArgumentType.word())
                                         .then(Commands.argument("item", StringArgumentType.string())
                                                 .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(c -> goalOp(c, "progress")))))))
@@ -243,7 +256,7 @@ public final class KwCommand {
     // ---- help and menu ----
 
     private static int help(CommandContext<CommandSourceStack> c) {
-        boolean streamer = c.getSource().hasPermission(2) || KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get();
+        boolean streamer = c.getSource().hasPermission(2) || (c.getSource().getPlayer() != null && SlotManager.get().ownSlots(c.getSource().getPlayer().getUUID()) != null);
         c.getSource().sendSuccess(() -> Component.literal("Kronwerke").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
         line(c, "/kw goals", "Was der Obelisk gerade braucht und wie weit wir sind");
         line(c, "/kw deposit", "Gibt den Stapel in der Hand am Obelisken ab, /kw deposit all das ganze Inventar");
@@ -347,8 +360,19 @@ public final class KwCommand {
         return 1;
     }
 
-    private static int seasonStart(CommandContext<CommandSourceStack> c) {
-        de.kronwerke.core.season.Season.get().start();
+    /**
+     * A running season is only started over with confirm: it resets every goal, leaderboard,
+     * kit and streak, and one mistyped command must not end a season. The launcher makes a
+     * backup first either way.
+     */
+    private static int seasonStart(CommandContext<CommandSourceStack> c, boolean confirmed) {
+        var s = de.kronwerke.core.season.Season.get();
+        if (s.running() && !confirmed) {
+            fail(c, "Season " + s.number() + " läuft. Ein Neustart setzt alle Ziele, Ranglisten, Startpakete und Serien zurück. "
+                    + "Wenn das wirklich gewollt ist: /kw admin season start confirm");
+            return 0;
+        }
+        s.start();
         ok(c, "Season " + de.kronwerke.core.season.Season.get().number() + " läuft. Alle Ziele, Ranglisten und Startpakete sind zurückgesetzt.");
         return 1;
     }
@@ -421,37 +445,60 @@ public final class KwCommand {
 
     private static int invite(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
-        SlotData.StreamerEntry me = SlotManager.get().entry(p.getUUID(), p.getGameProfile().getName());
-        String target = StringArgumentType.getString(c, "player");
-        SlotManager.Result r = SlotManager.get().invite(me, target);
-        switch (r) {
-            case OK -> ok(c, target + " steht auf der Whitelist. Plätze: " + me.used() + "/" + SlotManager.get().allowance(me));
-            case NO_SLOTS_LEFT -> fail(c, "Du hast keinen freien Platz mehr (" + me.used() + "/" + SlotManager.get().allowance(me) + ").");
-            case ALREADY_INVITED -> fail(c, target + " hat schon einen Platz.");
-            case ALREADY_WHITELISTED -> fail(c, target + " ist schon auf der Whitelist.");
-            case UNKNOWN_PLAYER -> fail(c, "Kein Minecraft-Konto mit dem Namen " + target + ". Schreibweise prüfen.");
-            default -> fail(c, "Das hat nicht geklappt.");
+        SlotData.StreamerEntry me = SlotManager.get().ownSlots(p.getUUID());
+        if (me == null) {
+            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord.").getString());
+            return 0;
         }
-        return r == SlotManager.Result.OK ? 1 : 0;
+        if (!de.kronwerke.core.net.KwNetwork.allowAction(p, true)) {
+            fail(c, Text.t("slots.slow", "Langsam, eins nach dem anderen.").getString());
+            return 0;
+        }
+        String target = StringArgumentType.getString(c, "player");
+        CommandSourceStack src = c.getSource();
+        SlotManager.get().resolve(target, profile -> {
+            SlotManager.Result r = profile.isEmpty() ? SlotManager.Result.UNKNOWN_PLAYER : SlotManager.get().invite(me, profile.get(), false);
+            String used = me.used() + "/" + SlotManager.get().allowance(me);
+            switch (r) {
+                case OK -> src.sendSuccess(() -> Component.literal(profile.get().getName() + " steht auf der Whitelist. Plätze: " + used).withStyle(ChatFormatting.GREEN), false);
+                case NO_SLOTS_LEFT -> src.sendFailure(Component.literal("Du hast keinen freien Platz mehr (" + used + ")."));
+                case ALREADY_INVITED -> src.sendFailure(Component.literal(target + " hat schon einen Platz."));
+                case ALREADY_WHITELISTED -> src.sendFailure(Component.literal(target + " ist schon auf der Whitelist."));
+                case UNKNOWN_PLAYER -> src.sendFailure(Component.literal("Kein Minecraft-Konto mit dem Namen " + target + ". Schreibweise prüfen."));
+                default -> src.sendFailure(Component.literal("Das hat nicht geklappt."));
+            }
+        });
+        return 1;
     }
 
     private static int revoke(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
-        SlotData.StreamerEntry me = SlotManager.get().entry(p.getUUID(), p.getGameProfile().getName());
+        SlotData.StreamerEntry me = SlotManager.get().ownSlots(p.getUUID());
         String target = StringArgumentType.getString(c, "player");
-        SlotManager.Result r = SlotManager.get().revoke(me, target);
-        switch (r) {
-            case OK -> ok(c, target + " ist von der Whitelist runter. Plätze: " + me.used() + "/" + SlotManager.get().allowance(me));
-            case NOT_INVITED_BY_YOU -> fail(c, target + " hat seinen Platz nicht von dir.");
-            case UNKNOWN_PLAYER -> fail(c, "Kein Minecraft-Konto mit dem Namen " + target + ".");
-            default -> fail(c, "Das hat nicht geklappt.");
+        if (me == null) {
+            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord.").getString());
+            return 0;
         }
+        // the players one invited are known by name already: no lookup needed
+        java.util.UUID id = null;
+        for (var e : me.invited.entrySet()) if (e.getValue().equalsIgnoreCase(target)) id = e.getKey();
+        if (id == null) {
+            fail(c, target + " hat seinen Platz nicht von dir.");
+            return 0;
+        }
+        SlotManager.Result r = SlotManager.get().revoke(me, new com.mojang.authlib.GameProfile(id, me.invited.get(id)));
+        if (r == SlotManager.Result.OK) ok(c, target + " ist von der Whitelist runter. Plätze: " + me.used() + "/" + SlotManager.get().allowance(me));
+        else fail(c, "Das hat nicht geklappt.");
         return r == SlotManager.Result.OK ? 1 : 0;
     }
 
     private static int slots(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
         ServerPlayer p = c.getSource().getPlayerOrException();
-        SlotData.StreamerEntry me = SlotManager.get().entry(p.getUUID(), p.getGameProfile().getName());
+        SlotData.StreamerEntry me = SlotManager.get().ownSlots(p.getUUID());
+        if (me == null) {
+            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord.").getString());
+            return 0;
+        }
         c.getSource().sendSuccess(() -> Component.literal("Deine Plätze: ").withStyle(ChatFormatting.GOLD)
                 .append(Component.literal(me.used() + "/" + SlotManager.get().allowance(me)).withStyle(ChatFormatting.WHITE)), false);
         for (String n : me.invited.values()) {
@@ -520,7 +567,7 @@ public final class KwCommand {
             String name = c.getSource().getServer().getProfileCache() == null ? e.getKey().toString()
                     : c.getSource().getServer().getProfileCache().get(e.getKey()).map(pr -> pr.getName()).orElse(e.getKey().toString());
             int r = rank++;
-            c.getSource().sendSuccess(() -> Component.literal(" " + r + ". " + name + "  " + e.getValue()).withStyle(ChatFormatting.GRAY), false);
+            c.getSource().sendSuccess(() -> Component.literal(" " + r + ". " + name + "  " + Text.number(e.getValue()) + " Punkte").withStyle(ChatFormatting.GRAY), false);
         }
         return 1;
     }
@@ -530,11 +577,10 @@ public final class KwCommand {
     private static SlotData.StreamerEntry streamerArg(CommandContext<CommandSourceStack> c) {
         String name = StringArgumentType.getString(c, "streamer");
         SlotData.StreamerEntry e = SlotManager.get().entryByName(name);
-        if (e == null) {
-            var profile = SlotManager.get().lookup(name);
-            if (profile.isPresent()) e = SlotManager.get().entry(profile.get().getId(), profile.get().getName());
+        if (e == null || !e.granted) {
+            fail(c, name + " hat keinen eigenen Platz. Erst /kw admin grant " + name + ".");
+            return null;
         }
-        if (e == null) fail(c, "Unknown player " + name);
         return e;
     }
 
@@ -556,7 +602,7 @@ public final class KwCommand {
 
     private static int adminList(CommandContext<CommandSourceStack> c) {
         for (SlotData.StreamerEntry e : SlotManager.get().allStreamers()) {
-            String tag = e.granted ? " (own place)" : "";
+            String tag = e.granted ? " (" + e.kind + ")" : " (ohne eigenen Platz)";
             c.getSource().sendSuccess(() -> Component.literal(e.name + tag + "  " + e.used() + "/" + SlotManager.get().allowance(e)).withStyle(ChatFormatting.GOLD)
                     .append(Component.literal("  " + String.join(", ", e.invited.values())).withStyle(ChatFormatting.GRAY)), false);
         }
@@ -574,9 +620,15 @@ public final class KwCommand {
             case "complete" -> gm.complete(g);
             case "reset" -> gm.reset(g);
             case "open" -> gm.release(g);
+            case "rescale_preview" -> {
+                for (String line : rescalePreview(g)) c.getSource().sendSuccess(() -> Component.literal(line).withStyle(ChatFormatting.GRAY), false);
+                ok(c, "Mit /kw admin goal rescale " + g.id() + " confirm anwenden.");
+                return 1;
+            }
             case "rescale" -> {
-                double f = gm.activate(g);
-                ok(c, "Goal " + g.id() + " rescaled with factor " + String.format("%.2f", f) + ".");
+                double old = gm.progressData().factor(g.id());
+                double f = gm.rescale(g);
+                ok(c, "Ziel " + g.id() + " neu skaliert: Faktor " + String.format("%.2f", old) + " auf " + String.format("%.2f", f) + ".");
                 return 1;
             }
             case "progress" -> {
@@ -586,6 +638,24 @@ public final class KwCommand {
         }
         ok(c, "Goal " + g.id() + ": " + op + " applied.");
         return 1;
+    }
+
+    /** What a rescale would change: the factor and every item's target, against the progress. */
+    public static List<String> rescalePreview(Goal g) {
+        GoalManager gm = GoalManager.get();
+        double now = gm.progressData().factor(g.id()), next = gm.currentFactor(g);
+        List<String> out = new java.util.ArrayList<>();
+        out.add(g.id() + ": Faktor " + String.format("%.2f", now) + " -> " + String.format("%.2f", next) + " (" + gm.activePlayers() + " aktive Spieler)");
+        gm.targetsFor(g, next).forEach((item, t) -> out.add("  " + Text.item(item).getString() + ": " + gm.progressData().target(g.id(), item) + " -> " + t
+                + ", da sind " + gm.progressData().progress(g.id(), item)));
+        return out;
+    }
+
+    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> goalIds(CommandContext<CommandSourceStack> c,
+                                                                                                               com.mojang.brigadier.suggestion.SuggestionsBuilder b) {
+        List<String> ids = new java.util.ArrayList<>();
+        for (Goal g : GoalManager.get().allGoals()) ids.add(g.id());
+        return net.minecraft.commands.SharedSuggestionProvider.suggest(ids, b);
     }
 
     private static void ok(CommandContext<CommandSourceStack> c, String msg) {

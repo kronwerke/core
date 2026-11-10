@@ -21,6 +21,12 @@ public class SlotData extends SavedData {
 
     /** streamer uuid -> entry */
     private final Map<UUID, StreamerEntry> streamers = new LinkedHashMap<>();
+    /** Players Core itself put on the vanilla whitelist; only these may it take off again. */
+    private final java.util.Set<UUID> whitelisted = new java.util.LinkedHashSet<>();
+
+    public java.util.Set<UUID> whitelisted() {
+        return whitelisted;
+    }
 
     public SlotData() {}
 
@@ -52,6 +58,15 @@ public class SlotData extends SavedData {
         return null;
     }
 
+    /** Removes an entry that holds nothing (no place of its own, no invites). */
+    public boolean removeIfEmpty(UUID id) {
+        StreamerEntry e = streamers.get(id);
+        if (e == null || e.granted || !e.invited.isEmpty()) return false;
+        streamers.remove(id);
+        setDirty();
+        return true;
+    }
+
     /** Finds the streamer that invited a given player, if any. */
     public StreamerEntry findInviter(UUID invited) {
         for (StreamerEntry e : streamers.values()) {
@@ -67,6 +82,7 @@ public class SlotData extends SavedData {
             StreamerEntry e = StreamerEntry.fromNbt(list.getCompound(i));
             data.streamers.put(e.uuid, e);
         }
+        for (Tag t : tag.getList("whitelisted", Tag.TAG_INT_ARRAY)) data.whitelisted.add(net.minecraft.nbt.NbtUtils.loadUUID(t));
         return data;
     }
 
@@ -75,6 +91,9 @@ public class SlotData extends SavedData {
         ListTag list = new ListTag();
         for (StreamerEntry e : streamers.values()) list.add(e.toNbt());
         tag.put("streamers", list);
+        ListTag wl = new ListTag();
+        for (UUID u : whitelisted) wl.add(net.minecraft.nbt.NbtUtils.createUUID(u));
+        tag.put("whitelisted", wl);
         return tag;
     }
 
@@ -86,6 +105,8 @@ public class SlotData extends SavedData {
         public int bonusSlots = 0;
         /** Whitelisted without a streamer's slot (streamers themselves, Season 1 players). */
         public boolean granted = false;
+        /** What the place is: streamer, season1 or team; empty without a place of one's own. */
+        public String kind = "";
         /** invited uuid -> last known name */
         public final Map<UUID, String> invited = new LinkedHashMap<>();
 
@@ -109,6 +130,7 @@ public class SlotData extends SavedData {
             t.putInt("slotOverride", slotOverride);
             t.putInt("bonusSlots", bonusSlots);
             t.putBoolean("granted", granted);
+            t.putString("kind", kind);
             ListTag inv = new ListTag();
             invited.forEach((id, n) -> {
                 CompoundTag it = new CompoundTag();
@@ -125,6 +147,7 @@ public class SlotData extends SavedData {
             e.slotOverride = t.getInt("slotOverride");
             e.bonusSlots = t.getInt("bonusSlots");
             e.granted = t.getBoolean("granted");
+            e.kind = t.getString("kind");
             ListTag inv = t.getList("invited", Tag.TAG_COMPOUND);
             for (int i = 0; i < inv.size(); i++) {
                 CompoundTag it = inv.getCompound(i);

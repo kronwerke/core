@@ -28,7 +28,8 @@ public abstract class StartGateMixin {
     @Inject(method = "canPlayerLogin", at = @At("RETURN"), cancellable = true)
     private void kronwerke$startGate(SocketAddress address, GameProfile profile, CallbackInfoReturnable<Component> cir) {
         if (cir.getReturnValue() != null) return;
-        Component reason = StartGate.refuse(server, profile);
+        Component reason = de.kronwerke.core.link.NetworkSync.refuseLogin(server, profile);
+        if (reason == null) reason = StartGate.refuse(server, profile);
         if (reason != null) cir.setReturnValue(reason);
     }
 }

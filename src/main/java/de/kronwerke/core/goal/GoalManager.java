@@ -57,6 +57,8 @@ public final class GoalManager {
             bossBar = new ServerBossEvent(Component.literal("Kronwerke"), BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.NOTCHED_10);
             bossBar.setVisible(false);
         }
+        // a rite cut short by a restart: what it would have revealed goes out now
+        for (Goal g : goals.values()) if (data().isCompleted(g.id()) && !data().isRevealed(g.id())) reveal(g);
         activatePending();
         refreshBossBar();
     }
@@ -101,9 +103,21 @@ public final class GoalManager {
     }
 
     public void reload() {
+        List<String> problems = reloadChecked();
+        for (String pr : problems) KronwerkeCore.LOGGER.error("goals.json: {}", pr);
+    }
+
+    /**
+     * Reads goals.json into a new set of goals and checks it; only a file without problems
+     * replaces the goals in use. A typo (bad JSON, a goal without id, an item id that does not
+     * parse, a requirement nobody has) used to clear every goal or stop the server. Returns
+     * the problems, for the command that asked.
+     */
+    public List<String> reloadChecked() {
         de.kronwerke.core.mobs.MobStages.reload();
-        goals.clear();
         Path file = goalsFile();
+        List<String> problems = new ArrayList<>();
+        Map<String, Goal> fresh = new LinkedHashMap<>();
         try {
             if (Files.notExists(file)) {
                 Files.createDirectories(file.getParent());
@@ -113,14 +127,79 @@ public final class GoalManager {
             }
             try (Reader r = Files.newBufferedReader(file)) {
                 List<Goal> list = GSON.fromJson(r, new TypeToken<List<Goal>>() {}.getType());
-                if (list != null) for (Goal g : list) goals.put(g.id(), normalize(g));
+                if (list == null) problems.add("the file is empty");
+                else for (Goal g : list) {
+                    if (g == null || g.id() == null || g.id().isBlank()) {
+                        problems.add("a goal without an id");
+                        continue;
+                    }
+                    if (fresh.containsKey(g.id())) problems.add("the id " + g.id() + " is there twice");
+                    fresh.put(g.id(), normalize(g));
+                }
             }
-        } catch (IOException e) {
-            KronwerkeCore.LOGGER.error("Could not read goals file {}", file, e);
+        } catch (IOException | RuntimeException e) {
+            problems.add("cannot be read: " + e.getMessage());
         }
+        if (problems.isEmpty()) problems.addAll(validate(fresh));
+        if (!problems.isEmpty()) {
+            problems.add(0, goals.isEmpty() ? "not loaded, no goals until it is fixed" : "not loaded, the goals in use stay");
+            return problems;
+        }
+        goals.clear();
+        goals.putAll(fresh);
         if (server != null) {
             activatePending();
+            fillNewTargets();
+            for (Goal g : activeGoals()) check(g);
             refreshBossBar();
+        }
+        return problems;
+    }
+
+    /** Everything that would break later: ids, items, weights, requirements, kits. */
+    private static List<String> validate(Map<String, Goal> goals) {
+        List<String> out = new ArrayList<>();
+        for (Goal g : goals.values()) {
+            String at = "goal " + g.id() + ": ";
+            for (String req : g.requires()) if (!goals.containsKey(req)) out.add(at + "requires " + req + ", which is not in the file");
+            if (g.holdAt() != null && (g.holdAt() <= 0 || g.holdAt() > 1)) out.add(at + "holdAt must be above 0 and at most 1");
+            if (g.allItems().isEmpty()) out.add(at + "has no items");
+            java.util.Set<String> seen = new java.util.HashSet<>();
+            for (Goal.Pillar pl : g.pillars()) {
+                if (pl.items() == null) {
+                    out.add(at + "pillar " + pl.id() + " has no item list");
+                    continue;
+                }
+                for (Goal.PillarItem it : pl.items()) {
+                    if (it.item() == null || ResourceLocation.tryParse(it.isTag() ? it.item().substring(1) : it.item()) == null) {
+                        out.add(at + "the item " + it.item() + " is not an id");
+                        continue;
+                    }
+                    if (!seen.add(it.item())) out.add(at + it.item() + " is there twice");
+                    if (it.base() <= 0) out.add(at + it.item() + " needs a base above 0");
+                    if (it.weight() != null && it.weight() < 1) out.add(at + it.item() + " needs a weight of at least 1");
+                    if (!it.isTag() && !BuiltInRegistries.ITEM.containsKey(ResourceLocation.parse(it.item())))
+                        out.add(at + it.item() + " is no item in this pack");
+                }
+            }
+            for (Goal.KitItem k : g.starterKit()) {
+                ResourceLocation rl = k.item() == null ? null : ResourceLocation.tryParse(k.item());
+                if (rl == null || !BuiltInRegistries.ITEM.containsKey(rl)) out.add(at + "the kit item " + k.item() + " is no item in this pack");
+                if (k.count() < 1) out.add(at + "the kit item " + k.item() + " needs a count of at least 1");
+            }
+        }
+        return out;
+    }
+
+    /** Items added to a goal after it became active get a target with the goal's own factor. */
+    private void fillNewTargets() {
+        for (Goal g : goals.values()) {
+            if (!data().isActivated(g.id())) continue;
+            double f = data().factor(g.id());
+            for (Goal.PillarItem it : g.allItems()) {
+                if (data().ensureTarget(g.id(), it.item(), Math.max(1, Math.round(it.base() * (it.scales() && g.scales() ? f : 1.0)))))
+                    KronwerkeCore.LOGGER.info("Goal {}: {} added with target {}", g.id(), it.item(), data().target(g.id(), it.item()));
+            }
         }
     }
 
@@ -163,7 +242,7 @@ public final class GoalManager {
     public boolean isActive(Goal g) {
         if (data().isCompleted(g.id())) return false;
         for (String req : g.requires()) {
-            if (!data().isCompleted(req)) return false;
+            if (!data().isRevealed(req)) return false; // the next goal opens with the reveal
         }
         return true;
     }
@@ -181,23 +260,58 @@ public final class GoalManager {
         }
     }
 
-    /** Fixes the targets of a goal from its base amounts and the current activity factor. */
-    public double activate(Goal g) {
-        double factor = 1.0;
-        if (g.scales()) {
-            int active = activity().activePlayers(System.currentTimeMillis(), KronwerkeConfig.SCALE_DAYS.get(), KronwerkeConfig.SCALE_MIN_HOURS.get());
-            double raw = (double) active / KronwerkeConfig.SCALE_BASE_PLAYERS.get();
-            factor = Math.max(KronwerkeConfig.SCALE_MIN.get(), Math.min(KronwerkeConfig.SCALE_MAX.get(), raw));
-            if (active == 0) factor = 1.0;
-        }
-        Map<String, Long> targets = new HashMap<>();
+    /**
+     * The factor a goal would get now. Active players over the window divided by the base
+     * count, within min and max. Without anyone active yet (a season start) the expected player
+     * count the team entered counts instead, or 1.0, and the goal is marked provisional: it is
+     * scaled again once the season has run a day.
+     */
+    public double currentFactor(Goal g) {
+        if (!g.scales()) return 1.0;
+        int active = activePlayers();
+        int expected = KronwerkeConfig.SCALE_EXPECTED.get();
+        double players = active > 0 ? active : expected > 0 ? expected : KronwerkeConfig.SCALE_BASE_PLAYERS.get();
+        double raw = players / KronwerkeConfig.SCALE_BASE_PLAYERS.get();
+        return Math.max(KronwerkeConfig.SCALE_MIN.get(), Math.min(KronwerkeConfig.SCALE_MAX.get(), raw));
+    }
+
+    /** The targets a goal would get with a factor. */
+    public Map<String, Long> targetsFor(Goal g, double factor) {
+        Map<String, Long> targets = new LinkedHashMap<>();
         for (Goal.PillarItem it : g.allItems()) {
             double f = it.scales() ? factor : 1.0;
             targets.put(it.item(), Math.max(1, Math.round(it.base() * f)));
         }
-        data().activate(g.id(), factor, targets);
-        KronwerkeCore.LOGGER.info("Goal {} activated with factor {}", g.id(), String.format("%.2f", factor));
+        return targets;
+    }
+
+    /** Fixes the targets of a goal from its base amounts and the current activity factor. */
+    public double activate(Goal g) {
+        double factor = currentFactor(g);
+        data().activate(g.id(), factor, targetsFor(g, factor));
+        data().setProvisional(g.id(), g.scales() && activePlayers() == 0);
+        KronwerkeCore.LOGGER.info("Goal {} activated with factor {}{}", g.id(), String.format("%.2f", factor),
+                data().isProvisional(g.id()) ? " (provisional: nobody active yet)" : "");
         return factor;
+    }
+
+    /** Scales an active goal again and completes it if the new targets are already met. */
+    public double rescale(Goal g) {
+        double f = activate(g);
+        check(g);
+        return f;
+    }
+
+    /** Every day: goals scaled before anyone played are scaled again once the season ran a day. */
+    public void rescaleProvisional() {
+        if (server == null || !de.kronwerke.core.season.Season.get().running()) return;
+        if (System.currentTimeMillis() - de.kronwerke.core.season.Season.get().startedAt() < 24L * 3600_000L) return;
+        for (Goal g : activeGoals()) {
+            if (!data().isProvisional(g.id()) || activePlayers() == 0) continue;
+            double old = data().factor(g.id());
+            double f = rescale(g);
+            KronwerkeCore.LOGGER.info("Goal {} scaled after the first day: factor {} -> {}", g.id(), String.format("%.2f", old), String.format("%.2f", f));
+        }
     }
 
     public long total(Goal g) {
@@ -220,7 +334,13 @@ public final class GoalManager {
 
     /** True while the goal sits at its hold point waiting for the event. */
     public boolean isHeld(Goal g) {
-        return g.holdFraction() < 1.0 && !data().isReleased(g.id()) && fraction(g) >= g.holdFraction();
+        return GoalMath.held(total(g), done(g), g.holdFraction(), data().isReleased(g.id()));
+    }
+
+    /** How many of an item one deposit takes now (GoalMath: the item crossing the hold goes in whole). */
+    private long takeFor(Goal g, Goal.PillarItem it, long offered) {
+        long remaining = data().target(g.id(), it.item()) - data().progress(g.id(), it.item());
+        return GoalMath.take(remaining, offered, it.points(), total(g), done(g), g.holdFraction(), data().isReleased(g.id()));
     }
 
     public boolean pillarDone(Goal g, Goal.Pillar p) {
@@ -278,14 +398,8 @@ public final class GoalManager {
             if (isHeld(g)) continue;
             for (Goal.PillarItem it : g.allItems()) {
                 if (!it.matches(stack)) continue;
-                long remaining = data().target(g.id(), it.item()) - data().progress(g.id(), it.item());
-                long take = Math.min(remaining, stack.getCount());
+                long take = takeFor(g, it, stack.getCount());
                 if (take <= 0) continue;
-                if (g.holdFraction() < 1.0 && !data().isReleased(g.id())) {
-                    long allowed = (long) Math.ceil(total(g) * g.holdFraction()) - done(g);
-                    take = Math.min(take, Math.max(0, allowed) / it.points());
-                    if (take <= 0) continue;
-                }
                 return take;
             }
         }
@@ -298,15 +412,8 @@ public final class GoalManager {
             if (isHeld(g)) continue;
             for (Goal.PillarItem it : g.allItems()) {
                 if (!it.matches(stack)) continue;
-                long remaining = data().target(g.id(), it.item()) - data().progress(g.id(), it.item());
-                long take = Math.min(remaining, stack.getCount());
+                long take = takeFor(g, it, stack.getCount());
                 if (take <= 0) continue;
-                if (g.holdFraction() < 1.0 && !data().isReleased(g.id())) {
-                    // do not let a single deposit jump past the hold point
-                    long allowed = (long) Math.ceil(total(g) * g.holdFraction()) - done(g);
-                    take = Math.min(take, Math.max(0, allowed) / it.points());
-                    if (take <= 0) continue;
-                }
                 ItemStack shown = stack.copyWithCount(1);
                 stack.shrink((int) take);
                 long now = data().add(g.id(), it.item(), who, take);
@@ -351,22 +458,40 @@ public final class GoalManager {
         refreshBossBar();
     }
 
+    /**
+     * The goal is full. Only the short message goes out now; what the stage brings (the
+     * goal's commands and titles, the stages, the kits, the next goal) comes at the rite's
+     * reveal, so the rite does not show what the title already told. Without a rite (no
+     * obelisk built) it comes at once.
+     */
     public void complete(Goal g) {
         if (data().isCompleted(g.id())) return;
         data().markCompleted(g.id());
         server.getPlayerList().broadcastSystemMessage(Text.t("goal.complete", "Gemeinschaftsziel geschafft: %s",
                 Component.literal(g.title()).withStyle(ChatFormatting.GOLD)).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD), false);
+        KronwerkeCore.LOGGER.info("Goal {} completed", g.id());
+        if (!de.kronwerke.core.obelisk.Obelisk.get().celebrate(g)) reveal(g);
+        refreshBossBar();
+    }
+
+    public boolean isRevealed(Goal g) {
+        return data().isRevealed(g.id());
+    }
+
+    /** What a completed goal opens: its commands, the stages, the kits and the next goal. Once. */
+    public void reveal(Goal g) {
+        if (!data().isCompleted(g.id()) || data().isRevealed(g.id())) return;
+        data().markRevealed(g.id());
         for (String cmd : g.onComplete()) {
             server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(), cmd);
         }
-        KronwerkeCore.LOGGER.info("Goal {} completed", g.id());
         activatePending();
-        de.kronwerke.core.obelisk.Obelisk.get().celebrate(g);
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             giveStages(p);
             giveKits(p);
         }
         refreshBossBar();
+        KronwerkeCore.LOGGER.info("Goal {} revealed: stages and kits are out", g.id());
     }
 
     // ---- stages ----
@@ -374,7 +499,7 @@ public final class GoalManager {
     /** Grants the Chapters stages of every completed goal the player does not have yet. */
     public void giveStages(ServerPlayer player) {
         for (Goal g : goals.values()) {
-            if (!data().isCompleted(g.id()) || g.stages().isEmpty() || data().hasStages(g.id(), player.getUUID())) continue;
+            if (!data().isRevealed(g.id()) || g.stages().isEmpty() || data().hasStages(g.id(), player.getUUID())) continue;
             for (String stage : g.stages()) {
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(),
                         "chapters add " + player.getGameProfile().getName() + " " + stage);
@@ -410,25 +535,60 @@ public final class GoalManager {
 
     // ---- starter kits ----
 
+    private List<ItemStack> joinKitCache;
+    private List<? extends String> joinKitFrom;
+
+    /**
+     * The join kit from the config, read once per change: "item" or "item*count". A bad entry
+     * is skipped with one warning instead of breaking every login.
+     */
+    private List<ItemStack> joinKit() {
+        List<? extends String> cfg = KronwerkeConfig.JOIN_KIT.get();
+        if (cfg == joinKitFrom && joinKitCache != null) return joinKitCache;
+        List<ItemStack> out = new ArrayList<>();
+        for (String entry : cfg) {
+            String[] parts = entry.split("\\*", 2);
+            ResourceLocation id = ResourceLocation.tryParse(parts[0].trim());
+            Item item = id == null ? null : BuiltInRegistries.ITEM.getOptional(id).orElse(null);
+            int count = 1;
+            try {
+                if (parts.length > 1) count = Integer.parseInt(parts[1].trim());
+            } catch (NumberFormatException e) {
+                count = -1;
+            }
+            if (item == null || count < 1) {
+                KronwerkeCore.LOGGER.warn("join.kit: {} is not item or item*count with a known item; skipped", entry);
+                continue;
+            }
+            out.add(new ItemStack(item, Math.min(count, 64 * 36)));
+        }
+        joinKitCache = out;
+        joinKitFrom = cfg;
+        return out;
+    }
+
     public void giveKits(ServerPlayer player) {
         if (!data().hasKit("join", player.getUUID())) {
-            for (String entry : KronwerkeConfig.JOIN_KIT.get()) {
-                String[] parts = entry.split("\\*", 2);
-                Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.tryParse(parts[0].trim())).orElse(null);
-                if (item == null) continue;
-                int count = parts.length > 1 ? Integer.parseInt(parts[1].trim()) : 1;
-                ItemStack stack = new ItemStack(item, count);
+            List<ItemStack> kit = joinKit();
+            Component names = Component.empty();
+            boolean first = true;
+            for (ItemStack k : kit) {
+                ItemStack stack = k.copy();
+                if (!first) names = names.copy().append(Component.literal(", "));
+                names = names.copy().append(Component.literal(stack.getCount() + " ")).append(stack.getHoverName());
+                first = false;
                 if (!player.getInventory().add(stack)) player.drop(stack, false);
             }
             data().markKit("join", player.getUUID());
-            if (!KronwerkeConfig.JOIN_KIT.get().isEmpty()) {
-                player.sendSystemMessage(Text.t("goal.join_kit", "Willkommen auf Kronwerke. Ein Wegstein für deine Basis liegt in deinem Inventar.").withStyle(ChatFormatting.GREEN));
+            if (!kit.isEmpty()) {
+                player.sendSystemMessage(Text.t("goal.join_kit_items", "Willkommen auf Kronwerke. In deinem Inventar: %s.", names).withStyle(ChatFormatting.GREEN));
             }
         }
         for (Goal g : goals.values()) {
-            if (!data().isCompleted(g.id()) || g.starterKit().isEmpty() || data().hasKit(g.id(), player.getUUID())) continue;
+            if (!data().isRevealed(g.id()) || g.starterKit().isEmpty() || data().hasKit(g.id(), player.getUUID())) continue;
             for (Goal.KitItem k : g.starterKit()) {
-                Item item = BuiltInRegistries.ITEM.getOptional(ResourceLocation.parse(k.item())).orElse(null);
+                ResourceLocation kid = ResourceLocation.tryParse(k.item());
+                Item item = kid == null ? null : BuiltInRegistries.ITEM.getOptional(kid).orElse(null);
                 if (item == null) continue;
                 ItemStack stack = new ItemStack(item, k.count());
                 if (!player.getInventory().add(stack)) player.drop(stack, false);
@@ -490,12 +650,33 @@ public final class GoalManager {
         }
     }
 
+    public void clearActivity() {
+        activity().clear();
+    }
+
+    /** Every minute from the server tick: open sessions written, provisional goals scaled after day one. */
+    public void minute() {
+        if (server == null) return;
+        activity().checkpoint(System.currentTimeMillis());
+        rescaleProvisional();
+    }
+
     public int activePlayers() {
         return activity().activePlayers(System.currentTimeMillis(), KronwerkeConfig.SCALE_DAYS.get(), KronwerkeConfig.SCALE_MIN_HOURS.get());
     }
 
+    /** Every contributor's points for a goal: items times their weight, as the bar counts. */
+    public Map<UUID, Long> points(Goal g) {
+        Map<UUID, Long> sum = new HashMap<>();
+        for (Goal.PillarItem it : g.allItems()) {
+            data().itemContributions(g.id(), it.item()).forEach((u, a) -> sum.merge(u, a * it.points(), Long::sum));
+        }
+        return sum;
+    }
+
+    /** The most diligent hands of a goal, by points (eight brass hearts outweigh a pile of cobblestone). */
     public List<Map.Entry<UUID, Long>> leaderboard(Goal g, int limit) {
-        List<Map.Entry<UUID, Long>> l = new ArrayList<>(data().contributions(g.id()).entrySet());
+        List<Map.Entry<UUID, Long>> l = new ArrayList<>(points(g).entrySet());
         l.sort(Collections.reverseOrder(Map.Entry.comparingByValue()));
         return l.size() > limit ? l.subList(0, limit) : l;
     }
@@ -520,10 +701,11 @@ public final class GoalManager {
 
     /** The player's rank among everyone who gave to the goal, 1 based, or 0 when nothing yet. */
     public int rank(Goal g, UUID player) {
-        long mine = data().contributions(g.id()).getOrDefault(player, 0L);
+        Map<UUID, Long> all = points(g);
+        long mine = all.getOrDefault(player, 0L);
         if (mine <= 0) return 0;
         int rank = 1;
-        for (long v : data().contributions(g.id()).values()) if (v > mine) rank++;
+        for (long v : all.values()) if (v > mine) rank++;
         return rank;
     }
 }

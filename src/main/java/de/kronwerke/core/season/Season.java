@@ -78,8 +78,13 @@ public final class Season extends SavedData {
     /** Resets every goal and opens the season. */
     public void start() {
         GoalManager gm = GoalManager.get();
+        de.kronwerke.core.link.NetworkSync.requestBackup("season start");
+        // the beta's play time says nothing about the season's players: the first goal is
+        // scaled from the expected count and again after the first day (GoalManager.activate)
+        gm.clearActivity();
         gm.resetAll();
         running = true;
+        gate = false; // a pause later must not lock everyone out again
         number++;
         startedAt = System.currentTimeMillis();
         setDirty();
@@ -135,6 +140,7 @@ public final class Season extends SavedData {
     /** Takes the goal stages and kits of earlier seasons from a player who missed the start. */
     public void catchUp(ServerPlayer p) {
         if (seen.getOrDefault(p.getUUID(), 0) == number) return;
+        boolean hadEarlier = seen.containsKey(p.getUUID());
         for (Goal g : GoalManager.get().allGoals()) {
             for (String stage : g.stages()) {
                 server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(),
@@ -143,7 +149,8 @@ public final class Season extends SavedData {
         }
         seen.put(p.getUUID(), number);
         setDirty();
-        if (number > 0) {
+        // only for players who played an earlier season here; a new player has nothing to reset
+        if (number > 1 && hadEarlier) {
             p.sendSystemMessage(Text.t("season.caught_up", "Neue Season: deine Stufen starten wieder bei 1.").withStyle(ChatFormatting.GOLD));
         }
     }

@@ -129,9 +129,10 @@ public final class Obelisk {
     /** Sneaking with an empty hand: what the player has given to the running goal, pillar by pillar, and their rank. */
     private void ledger(ServerPlayer player, Goal g) {
         GoalManager gm = GoalManager.get();
-        long total = gm.progressData().contributions(g.id()).getOrDefault(player.getUUID(), 0L);
+        java.util.Map<java.util.UUID, Long> points = gm.points(g);
+        long total = points.getOrDefault(player.getUUID(), 0L);
         int rank = gm.rank(g, player.getUUID());
-        int hands = gm.progressData().contributions(g.id()).size();
+        int hands = points.size();
         player.sendSystemMessage(Text.t("obelisk.ledger.title", "Deine Gaben an %s", Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
         if (total <= 0) {
             player.sendSystemMessage(Text.t("obelisk.ledger.none", "Noch nichts. Der Obelisk wartet auf deine erste Gabe.").withStyle(ChatFormatting.GRAY));
@@ -149,7 +150,7 @@ public final class Obelisk {
                 }
                 MutableComponent line = Component.literal("  " + pillar.title() + ": ").withStyle(ChatFormatting.LIGHT_PURPLE)
                         .append(Component.literal(Text.number(mine) + " Punkte").withStyle(ChatFormatting.WHITE));
-                if (bestN > 0) line.append(Component.literal(", am meisten " + best + " (" + Text.number(bestN) + ")").withStyle(ChatFormatting.GRAY));
+                if (bestN > 0) line.append(Component.literal(", am meisten " + best + " (" + Text.number(bestN) + " Stück)").withStyle(ChatFormatting.GRAY));
                 player.sendSystemMessage(line);
             }
             player.sendSystemMessage(Text.t("obelisk.ledger.rank", "Platz %s von %s Händen, %s Punkte insgesamt.", rank, hands, Text.number(total)).withStyle(ChatFormatting.GOLD));
@@ -754,11 +755,21 @@ public final class Obelisk {
     }
 
     /** A goal just completed: the rite, and the build grows. */
-    public void celebrate(Goal done) {
-        if (server == null) return;
+    /**
+     * Starts the rite for a completed goal; false when there is no obelisk to hold it. A
+     * goal completed from far away (a remote deposit, an admin) loads the obelisk's chunk
+     * for it, so the rite and the new tier always come.
+     */
+    public boolean celebrate(Goal done) {
+        if (server == null || !data().isSet()) return false;
         ServerLevel level = obeliskLevel();
-        if (level == null || !level.isLoaded(data().pos())) return;
+        if (level == null) return false;
+        if (!level.isLoaded(data().pos())) {
+            level.getChunkSource().addRegionTicket(net.minecraft.server.level.TicketType.PORTAL, new net.minecraft.world.level.ChunkPos(data().pos()), 3, data().pos());
+            level.getChunk(data().pos());
+        }
         ObeliskRite.start(this, level, done, tier());
+        return true;
     }
 
     /** Puts the build at the tier the goals say, without the rite; for the build command and after a reset. */

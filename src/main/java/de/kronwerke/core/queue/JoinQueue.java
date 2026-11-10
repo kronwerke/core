@@ -126,10 +126,9 @@ public final class JoinQueue {
     static boolean bypass(GameProfile p) {
         if (server.getPlayerList().isOp(p)) return true;
         for (String owner : KronwerkeConfig.OWNERS.get()) if (owner.equalsIgnoreCase(p.getName())) return true;
-        SlotData.StreamerEntry e = SlotManager.get().entryByName(p.getName());
-        if (e != null && SlotManager.get().allowance(e) > 2) return true;
+        if (SlotManager.get().isStreamer(p.getId())) return true;
         // coming back from a side world: already one of the network's players
-        return de.kronwerke.core.portal.AwayData.get(server).back(p.getId()) != null;
+        return de.kronwerke.core.portal.AwayData.get(server).where(p.getId()) != null;
     }
 
     public static void onTick(ServerTickEvent.Post e) {

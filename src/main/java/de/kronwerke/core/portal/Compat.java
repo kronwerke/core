@@ -44,11 +44,19 @@ final class Compat {
 
     /** The extra data that goes with the player: backpack contents by uuid. Null when there is none. */
     static JsonObject collect(ServerPlayer p) {
+        return collect(p.saveWithoutId(new CompoundTag()), p.getGameProfile().getName());
+    }
+
+    /**
+     * The same for anything saved as a tag, like a stack thrown into the portal: a backpack
+     * that travels as an item takes its contents along, and the other server's copy of them is
+     * replaced (an empty backpack thrown home used to leave its old contents on main).
+     */
+    static JsonObject collect(CompoundTag self, String what) {
         Object storage = backpackStorage();
         if (storage == null) return null;
         try {
             Method get = storage.getClass().getMethod("getBackpackContents", UUID.class);
-            CompoundTag self = p.saveWithoutId(new CompoundTag());
             Set<UUID> seen = new LinkedHashSet<>();
             List<UUID> todo = new java.util.ArrayList<>();
             find(self, todo);
@@ -67,7 +75,7 @@ final class Compat {
             extra.add("backpacks", packs);
             return extra;
         } catch (ReflectiveOperationException | RuntimeException e) {
-            KronwerkeCore.LOGGER.warn("Backpacks did not travel with {}: {}", p.getGameProfile().getName(), e.toString());
+            KronwerkeCore.LOGGER.warn("Backpacks did not travel with {}: {}", what, e.toString());
             return null;
         }
     }

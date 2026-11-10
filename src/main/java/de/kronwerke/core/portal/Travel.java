@@ -90,6 +90,42 @@ public final class Travel {
 
     record Parked(String from, JsonObject data, long deadline) {}
 
+    /** main: the away state a handoff cleared, until the player is here (for a cancel). */
+    record Undo(String where, AwayData.Back back, long until) {}
+
+    private static final Map<UUID, Undo> undo = new HashMap<>();
+
+    /** Tells the target of a move that did not happen to forget the arrival. */
+    private static void cancelAt(String target, UUID player, String id) {
+        JsonObject c = new JsonObject();
+        c.addProperty("uuid", player.toString());
+        c.addProperty("id", id);
+        NetworkSync.send(target, "player.cancel", c, null);
+    }
+
+    /** A move to here was called off at the source: the player is still there. */
+    private static void cancelled(String from, JsonObject d) {
+        UUID id = UUID.fromString(str(d, "uuid"));
+        if (server.getPlayerList().getPlayer(id) != null) return; // arrived after all
+        Arrival a = expected.get(id);
+        if (a != null && a.from().equals(from)) expected.remove(id);
+        if (Role.main()) {
+            Undo u = undo.remove(id);
+            if (u != null) AwayData.get(server).leave(id, u.where(), u.back() == null ? null : backJson(u.back()));
+        }
+        KronwerkeCore.LOGGER.info("The move of {} from {} was called off", id, from);
+    }
+
+    private static JsonObject backJson(AwayData.Back b) {
+        JsonObject o = new JsonObject();
+        o.addProperty("dim", b.dim());
+        o.addProperty("x", b.x());
+        o.addProperty("y", b.y());
+        o.addProperty("z", b.z());
+        o.addProperty("yaw", b.yaw());
+        return o;
+    }
+
     /** Handoffs waiting for their chunks. */
     private static final List<Parked> parked = new ArrayList<>();
 
@@ -107,6 +143,25 @@ public final class Travel {
             // nobody plays this server's overworld: keep no chunks of it loaded for nothing
             s.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, s);
         }
+    }
+
+    /**
+     * Whether the player is between the snapshot that travels and the transfer: their hands,
+     * inventory and menus are frozen meanwhile (TravelFreezeMixin), they take no damage and
+     * pick nothing up, so nothing they do there can exist twice.
+     */
+    public static boolean frozen(ServerPlayer p) {
+        return busy(p.getUUID());
+    }
+
+    /** A frozen player takes no damage: dying after the snapshot would drop what also travels. */
+    public static void onFrozenDamage(net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent e) {
+        if (e.getEntity() instanceof ServerPlayer p && frozen(p)) e.setCanceled(true);
+    }
+
+    /** A frozen player picks nothing up: it would be lost with the transfer. */
+    public static void onFrozenPickup(net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent.Pre e) {
+        if (e.getPlayer() instanceof ServerPlayer p && frozen(p)) e.setCanPickup(net.neoforged.neoforge.common.util.TriState.FALSE);
     }
 
     /** Whether the player is on the way out already (waiting for the target, or leaving). */
@@ -280,6 +335,7 @@ public final class Travel {
             if (en.getValue().until() < now) {
                 it.remove();
                 Crossing.failed(en.getValue().player(), en.getValue().target(), en.getValue().arrive());
+                cancelAt(en.getValue().target(), en.getValue().player(), en.getKey());
                 ServerPlayer p = server.getPlayerList().getPlayer(en.getValue().player());
                 if (p != null) {
                     send(p, TravelPayload.CANCEL, null);
@@ -288,6 +344,7 @@ public final class Travel {
             }
         }
         expected.values().removeIf(a -> a.until() < now);
+        undo.values().removeIf(u -> u.until() < now);
         arrived.values().removeIf(a -> a.until() < now);
         for (var it = itemSends.entrySet().iterator(); it.hasNext(); ) {
             var en = it.next();
@@ -319,6 +376,10 @@ public final class Travel {
 
     static void depart(ServerPlayer p, NetworkSync.Peer target, JsonObject back, JsonObject arrive) {
         p.stopRiding();
+        // the snapshot is the player's last state here: what the cursor held goes back into
+        // the inventory first, and from now on nothing in the inventory moves (frozen())
+        if (p.containerMenu != p.inventoryMenu) p.closeContainer();
+        p.stopUsingItem();
         CompoundTag tag = p.saveWithoutId(new CompoundTag());
         JsonObject data = new JsonObject();
         data.addProperty("uuid", p.getUUID().toString());
@@ -342,7 +403,11 @@ public final class Travel {
 
     private static void ready(String from, JsonObject d) {
         Departure dep = pending.remove(str(d, "id"));
-        if (dep == null) return;
+        if (dep == null) {
+            // too late: the player stayed here; the target must forget the arrival
+            if (d.has("uuid")) cancelAt(from, UUID.fromString(str(d, "uuid")), str(d, "id"));
+            return;
+        }
         ServerPlayer p = server.getPlayerList().getPlayer(dep.player());
         NetworkSync.Peer target = NetworkSync.peer(dep.target());
         if (p == null || target == null) return;
@@ -376,6 +441,7 @@ public final class Travel {
     public static void onLogout(ServerPlayer p) {
         UUID id = p.getUUID();
         inPortal.remove(id);
+        if (NetworkSync.refused(id)) return; // turned away at the door: they were never here
         if (leaving.remove(id) != null) return;
         if (Role.main() || p instanceof de.kronwerke.core.loadtest.LoadBot) return;
         NetworkSync.Peer home = NetworkSync.portalTarget();
@@ -423,6 +489,7 @@ public final class Travel {
                     case "player.ready" -> ready(from, d);
                     case "player.home", "player.checkpoint" -> home(from, d, topic.equals("player.home"));
                     case "player.claimed" -> expected.remove(UUID.fromString(str(d, "uuid")));
+                    case "player.cancel" -> cancelled(from, d);
                     case "kw.items" -> receiveItems(from, d);
                     default -> {
                         // a newer Core's topic
@@ -454,12 +521,15 @@ public final class Travel {
             return;
         }
         if (Role.main()) {
+            AwayData away = AwayData.get(server);
             AwayData.Back b = Crossing.arrive(server, id, a, tag);
             if (b == null && a != null) b = de.kronwerke.core.share.Share.arrive(a);
-            if (b == null) b = AwayData.get(server).back(id);
+            if (b == null) b = away.back(id);
             place(tag, b == null ? spawn(server) : b);
             keepFromHere(id, tag);
-            AwayData.get(server).home(id);
+            // kept until the player is here, so a cancelled move can put the away state back
+            if (away.where(id) != null) undo.put(id, new Undo(away.where(id), away.back(id), System.currentTimeMillis() + 90_000));
+            away.home(id);
         } else {
             AwayData.Back b = Crossing.arrive(server, id, a, tag);
             if (b == null) b = Dimensions.dimensionServer() ? Crossing.fallback(server, tag) : Hub.arrival(server);
@@ -472,7 +542,9 @@ public final class Travel {
             de.kronwerke.core.share.Share.unpack(id, x);
         }
         expected.put(id, new Arrival(from, System.currentTimeMillis() + 90_000));
-        NetworkSync.send(from, "player.ready", withId(d), null);
+        JsonObject r = withId(d);
+        r.addProperty("uuid", id.toString());
+        NetworkSync.send(from, "player.ready", r, null);
     }
 
     /** main: a player left a side world without a move, or a side world's checkpoint. */
@@ -482,7 +554,12 @@ public final class Travel {
         if (server.getPlayerList().getPlayer(id) != null) return; // already back here: theirs wins
         AwayData away = AwayData.get(server);
         AwayData.Back b = away.back(id);
-        if (away.where(id) == null && !final_) return; // not away: an old checkpoint
+        // only the server main sent the player to may speak for them: anything else is an old
+        // copy (a direct join, a stale side world) and must never overwrite the player here
+        if (!from.equals(away.where(id))) {
+            if (final_) KronwerkeCore.LOGGER.warn("{} sent {} home, but they are not away there; ignored", from, id);
+            return;
+        }
         CompoundTag tag = decode(str(d, "nbt"));
         place(tag, b == null ? spawn(server) : b);
         keepFromHere(id, tag);
@@ -608,6 +685,7 @@ public final class Travel {
     public static void onLogin(ServerPlayer p) {
         UUID id = p.getUUID();
         Arrival a = expected.remove(id);
+        undo.remove(id);
         Crossing.onLogin(p, a != null);
         if (a != null) {
             arrived.put(id, new Arrival(a.from(), System.currentTimeMillis() + 6_000));
@@ -643,6 +721,8 @@ public final class Travel {
         if (!(t instanceof CompoundTag c)) return;
         list.add(encode(c));
         data.add("items", list);
+        JsonObject extra = Compat.collect(c, "a thrown " + stack.getHoverName().getString());
+        if (extra != null) data.add("extra", extra);
         Entity owner = item.getOwner();
         if (owner != null) data.addProperty("thrower", owner.getUUID().toString());
         String id = UUID.randomUUID().toString();
@@ -692,6 +772,7 @@ public final class Travel {
         ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(at.dim())));
         if (level == null) level = server.overworld();
         level.getChunk(BlockPos.containing(at.x(), at.y(), at.z())); // loaded, so the items are kept
+        if (d.get("extra") instanceof JsonObject x) Compat.restore(server, x); // a thrown backpack's contents
         for (JsonElement e : d.getAsJsonArray("items")) {
             ItemStack st = ItemStack.parseOptional(level.registryAccess(), decode(e.getAsString()));
             if (st.isEmpty()) continue;

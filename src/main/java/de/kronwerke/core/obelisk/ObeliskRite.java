@@ -81,6 +81,15 @@ public final class ObeliskRite {
         double cx = core.getX() + 0.5, cz = core.getZ() + 0.5;
         double tipY = core.getY() + 19.3;
 
+        // a warning for everyone near the obelisk: the pull is coming, and how to stay down
+        for (ServerPlayer p : level.players()) {
+            double dx = p.getX() - (core.getX() + 0.5), dz = p.getZ() - (core.getZ() + 0.5);
+            if (dx * dx + dz * dz <= (LIFT_RADIUS + 16) * (LIFT_RADIUS + 16)) {
+                p.sendSystemMessage(Component.literal("Der Obelisk erwacht. Gleich zieht er alle in seiner Nähe in die Luft; wer schleicht, bleibt am Boden.")
+                        .withStyle(ChatFormatting.LIGHT_PURPLE));
+            }
+        }
+
         // 1. stillness: the hum stops, a single low note, and the riser carries into the tear
         s.at(0, () -> {
             level.playSound(null, core.above(10), SoundEvents.BEACON_DEACTIVATE, SoundSource.BLOCKS, 2.0f, 0.6f);
@@ -135,10 +144,7 @@ public final class ObeliskRite {
             int n = newTier;
             title(server, Component.literal("STUFE " + roman(n) + " GESCHAFFT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
                     Component.literal(done.title()).withStyle(ChatFormatting.YELLOW));
-            // the burst in slow motion: the server runs at a quarter speed for twenty of its ticks
-            server.tickRateManager().setTickRate(5f);
         });
-        s.at(T_BURST + 20, () -> server.tickRateManager().setTickRate(20f));
         // the dome: rings of light that run outward along the ground
         for (int t = 0; t < 14; t++) {
             int step = t;
@@ -173,9 +179,10 @@ public final class ObeliskRite {
         }
         s.at(T_ROLL - 5, () -> ob.data().setBuiltTier(newTier));
 
-        // 5. the galaxy: the roll call, the fanfare, fireworks
+        // 5. the galaxy: the reveal (stages, kits, the goal's titles), the roll call, the fanfare, fireworks
         s.at(T_ROLL, () -> {
             GoalManager gm = GoalManager.get();
+            gm.reveal(done);
             for (int i = 0; i < 3 && i < done.pillars().size(); i++) {
                 ObeliskPedestalBlockEntity pe = ob.pedestal(level, i);
                 if (pe == null) continue;
@@ -218,7 +225,6 @@ public final class ObeliskRite {
         });
         s.at(T_END, () -> {
             runningUntil = 0;
-            server.tickRateManager().setTickRate(20f);
             ObeliskStructure.setHidden(level, core, false);
             ObeliskTopBlockEntity t = ob.top(level);
             if (t != null) t.rite(0);
@@ -226,11 +232,16 @@ public final class ObeliskRite {
         });
     }
 
-    /** The players lifted by the pull: everyone within LIFT_RADIUS who is not a spectator. */
+    /**
+     * The players lifted by the pull: everyone within LIFT_RADIUS, except who sneaks (the way
+     * to stay down, the warning says so), has a menu open, is in creative or spectator mode, or
+     * is on the way to another server.
+     */
     private static List<ServerPlayer> lifted(ServerLevel level, BlockPos core) {
         List<ServerPlayer> out = new java.util.ArrayList<>();
         for (ServerPlayer p : level.players()) {
-            if (p.isSpectator()) continue;
+            if (p.isSpectator() || p.isCreative() || p.isShiftKeyDown() || p.containerMenu != p.inventoryMenu) continue;
+            if (de.kronwerke.core.portal.Travel.frozen(p)) continue;
             double dx = p.getX() - (core.getX() + 0.5), dz = p.getZ() - (core.getZ() + 0.5);
             if (dx * dx + dz * dz > LIFT_RADIUS * LIFT_RADIUS || Math.abs(p.getY() - core.getY()) > 48) continue;
             out.add(p);

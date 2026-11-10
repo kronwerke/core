@@ -28,11 +28,14 @@ import java.util.UUID;
  * starts with "OK" or "ERR", so the bot can tell success from failure without parsing
  * prose.
  *
- *   admin invite <streamer> <player>   use one of the streamer's slots for the player
- *   admin revoke <streamer> <player>   free it again
- *   admin grant <player> [slots]       whitelist without a streamer's slot, with slots of their own
- *                                      (the config default when slots is left out)
- *   admin ungrant <player>             take that place back, with every slot the player gave
+ *   admin invite <streamer> <player> [uuid]   use one of the streamer's slots for the player
+ *   admin revoke <streamer> <player> [uuid]   free it again
+ *   admin grant <player> [slots [kind [uuid]]] whitelist without a streamer's slot, with slots of
+ *                                      their own (the config default when slots is left out);
+ *                                      kind is streamer, season1 or team
+ *   admin ungrant <player> [uuid]      take that place back, with every slot the player gave
+ * With the uuid (the bot resolves names itself) Core never asks Mojang, and a renamed account
+ * stays the same player.
  *   admin goals json                   every goal with state, progress and top five
  *   admin roster json                  every streamer and granted player with slots and invited players
  */
@@ -42,13 +45,15 @@ public final class BotCommand {
     static LiteralArgumentBuilder<CommandSourceStack> invite() {
         return Commands.literal("invite")
                 .then(Commands.argument("streamer", StringArgumentType.word())
-                        .then(Commands.argument("player", StringArgumentType.word()).executes(c -> slot(c, true))));
+                        .then(Commands.argument("player", StringArgumentType.word()).executes(c -> slot(c, true))
+                                .then(Commands.argument("uuid", StringArgumentType.word()).executes(c -> slot(c, true)))));
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> revoke() {
         return Commands.literal("revoke")
                 .then(Commands.argument("streamer", StringArgumentType.word())
-                        .then(Commands.argument("player", StringArgumentType.word()).executes(c -> slot(c, false))));
+                        .then(Commands.argument("player", StringArgumentType.word()).executes(c -> slot(c, false))
+                                .then(Commands.argument("uuid", StringArgumentType.word()).executes(c -> slot(c, false)))));
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> grant() {
@@ -56,12 +61,45 @@ public final class BotCommand {
                 .then(Commands.argument("player", StringArgumentType.word())
                         .executes(c -> grant(c, -1))
                         .then(Commands.argument("slots", IntegerArgumentType.integer(0, 64))
-                                .executes(c -> grant(c, IntegerArgumentType.getInteger(c, "slots")))));
+                                .executes(c -> grant(c, IntegerArgumentType.getInteger(c, "slots")))
+                                .then(Commands.argument("kind", StringArgumentType.word())
+                                        .suggests((c, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(java.util.List.of("streamer", "season1", "team"), b))
+                                        .executes(c -> grant(c, IntegerArgumentType.getInteger(c, "slots")))
+                                        .then(Commands.argument("uuid", StringArgumentType.word())
+                                                .executes(c -> grant(c, IntegerArgumentType.getInteger(c, "slots")))))));
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> ungrant() {
         return Commands.literal("ungrant")
-                .then(Commands.argument("player", StringArgumentType.word()).executes(BotCommand::ungrant));
+                .then(Commands.argument("player", StringArgumentType.word()).executes(BotCommand::ungrant)
+                        .then(Commands.argument("uuid", StringArgumentType.word()).executes(BotCommand::ungrant)));
+    }
+
+    /** An optional argument, or null. */
+    private static String opt(CommandContext<CommandSourceStack> c, String name) {
+        try {
+            return StringArgumentType.getString(c, name);
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
+    }
+
+    /**
+     * The player's profile: with the uuid the bot sends along no name lookup happens (and a
+     * renamed account is still the same player); without it, the profile cache as before.
+     */
+    private static java.util.Optional<com.mojang.authlib.GameProfile> player(CommandContext<CommandSourceStack> c) {
+        String name = StringArgumentType.getString(c, "player");
+        String u = opt(c, "uuid");
+        java.util.UUID id = null;
+        if (u != null) {
+            try {
+                id = java.util.UUID.fromString(u);
+            } catch (IllegalArgumentException e) {
+                return java.util.Optional.empty();
+            }
+        }
+        return SlotManager.get().profile(name, id);
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> roster() {
@@ -76,6 +114,7 @@ public final class BotCommand {
             o.addProperty("uuid", e.uuid.toString());
             o.addProperty("name", e.name);
             o.addProperty("granted", e.granted);
+            o.addProperty("kind", e.kind);
             o.addProperty("slots", sm.allowance(e));
             o.addProperty("override", e.slotOverride);
             o.addProperty("bonus", e.bonusSlots);
@@ -111,59 +150,72 @@ public final class BotCommand {
         SlotManager sm = SlotManager.get();
         SlotData.StreamerEntry e = sm.entryByName(streamerName);
         if (e == null) {
-            var profile = sm.lookup(streamerName);
-            if (profile.isEmpty()) {
-                answer(c, "ERR no Minecraft account named " + streamerName + " (the streamer)");
-                return 0;
-            }
-            e = sm.entry(profile.get().getId(), profile.get().getName());
+            answer(c, "ERR " + streamerName + " has no place of their own (grant them first)");
+            return 0;
         }
-        SlotManager.Result r = invite ? sm.invite(e, player) : sm.revoke(e, player);
-        if (!invite && sm.gone(player, r)) {
+        var profile = player(c);
+        if (profile.isEmpty()) {
+            answer(c, "ERR no Minecraft account named " + player);
+            return 0;
+        }
+        SlotManager.Result r = invite ? sm.invite(e, profile.get(), false) : sm.revoke(e, profile.get());
+        if (!invite && sm.gone(profile.get(), r)) {
             // nothing of theirs is left here: the bot may forget them too (it got stuck on ERR before)
             answer(c, "OK " + player + " was not on the whitelist any more, slot freed, now " + e.used() + "/" + sm.allowance(e));
             return 1;
         }
         String used = e.used() + "/" + sm.allowance(e);
         switch (r) {
-            case OK -> answer(c, "OK " + (invite ? "slots used " : "slot freed, now ") + used);
+            case OK -> answer(c, "OK " + (invite ? "slots used " : "slot freed, now ") + used + " uuid " + profile.get().getId());
             case NO_SLOTS_LEFT -> answer(c, "ERR " + e.name + " has no free slots (" + used + ")");
             case ALREADY_INVITED -> answer(c, "ERR " + player + " already has a slot");
             case ALREADY_WHITELISTED -> answer(c, "ERR " + player + " is already on the whitelist");
             case UNKNOWN_PLAYER -> answer(c, "ERR no Minecraft account named " + player);
             case NOT_INVITED_BY_YOU -> answer(c, "ERR " + player + " was not invited by " + e.name);
-            case NOT_GRANTED -> answer(c, "ERR " + player + " has no granted place");
+            case NOT_GRANTED -> answer(c, "ERR " + e.name + " has no place of their own (grant them first)");
         }
         return r == SlotManager.Result.OK ? 1 : 0;
     }
 
     private static int grant(CommandContext<CommandSourceStack> c, int slots) {
         String player = StringArgumentType.getString(c, "player");
+        String kind = opt(c, "kind");
+        if (kind != null && !java.util.List.of(SlotManager.STREAMER, SlotManager.SEASON1, SlotManager.TEAM).contains(kind)) {
+            answer(c, "ERR kind must be streamer, season1 or team");
+            return 0;
+        }
         SlotManager sm = SlotManager.get();
-        SlotManager.Result r = sm.grant(player, slots);
+        var profile = player(c);
+        if (profile.isEmpty()) {
+            answer(c, "ERR no Minecraft account named " + player);
+            return 0;
+        }
+        SlotManager.Result r = sm.grant(profile.get(), slots, kind);
+        SlotData.StreamerEntry e = sm.find(profile.get().getId());
         switch (r) {
-            case OK -> {
-                SlotData.StreamerEntry e = sm.entryByName(player);
-                answer(c, "OK " + e.name + " is whitelisted with " + sm.allowance(e) + " slots of their own");
-            }
-            case UNKNOWN_PLAYER -> answer(c, "ERR no Minecraft account named " + player);
-            case ALREADY_INVITED -> answer(c, "ERR " + player + " already has a slot from " + sm.inviterOf(sm.lookup(player).get().getId()).name);
-            case ALREADY_WHITELISTED -> answer(c, "ERR " + player + " already has a granted place");
+            case OK -> answer(c, "OK " + e.name + " is whitelisted as " + e.kind + " with " + sm.allowance(e) + " slots of their own, uuid " + e.uuid);
+            // the same grant again (the bot's restore after a restart): the numbers follow, nothing else
+            case ALREADY_WHITELISTED -> answer(c, "OK " + e.name + " already had a place, now " + e.kind + " with " + sm.allowance(e) + " slots, uuid " + e.uuid);
+            case ALREADY_INVITED -> answer(c, "ERR " + player + " already has a slot from " + sm.inviterOf(profile.get().getId()).name);
             default -> answer(c, "ERR " + r);
         }
-        return r == SlotManager.Result.OK ? 1 : 0;
+        return r == SlotManager.Result.OK || r == SlotManager.Result.ALREADY_WHITELISTED ? 1 : 0;
     }
 
     private static int ungrant(CommandContext<CommandSourceStack> c) {
         String player = StringArgumentType.getString(c, "player");
-        SlotManager.Result r = SlotManager.get().ungrant(player);
-        if (SlotManager.get().gone(player, r)) {
+        var profile = player(c);
+        if (profile.isEmpty()) {
+            answer(c, "OK " + player + " was not on the whitelist any more");
+            return 1;
+        }
+        SlotManager.Result r = SlotManager.get().ungrant(profile.get());
+        if (SlotManager.get().gone(profile.get(), r)) {
             answer(c, "OK " + player + " was not on the whitelist any more");
             return 1;
         }
         switch (r) {
             case OK -> answer(c, "OK " + player + " is off the whitelist, with every slot they gave");
-            case UNKNOWN_PLAYER -> answer(c, "ERR no Minecraft account named " + player);
             case NOT_GRANTED -> answer(c, "ERR " + player + " has no granted place");
             default -> answer(c, "ERR " + r);
         }
@@ -207,6 +259,7 @@ public final class BotCommand {
                         : cache.get(e.getKey()).map(pr -> pr.getName()).orElse(e.getKey().toString());
                 t.addProperty("name", name);
                 t.addProperty("amount", e.getValue());
+                t.addProperty("points", e.getValue()); // the bar's unit: items times their weight
                 top.add(t);
             }
             o.add("top", top);

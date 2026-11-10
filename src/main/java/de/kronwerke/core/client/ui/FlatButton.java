@@ -29,6 +29,7 @@ public class FlatButton extends AbstractButton {
     private ItemStack icon = ItemStack.EMPTY;
     private List<Component> tip = List.of();
     private long armedUntil;
+    private Runnable onFirst;
 
     public FlatButton(int x, int y, int w, int h, Component label, Style style, Component confirm, Runnable action) {
         super(x, y, w, h, label);
@@ -54,6 +55,12 @@ public class FlatButton extends AbstractButton {
         return this;
     }
 
+    /** Runs on the first click of a confirm button, when it arms (a preview, say). */
+    public FlatButton onFirst(Runnable r) {
+        this.onFirst = r;
+        return this;
+    }
+
     public FlatButton tip(String... lines) {
         this.tip = java.util.Arrays.stream(lines).map(s -> (Component) Component.literal(s)).toList();
         return this;
@@ -70,7 +77,8 @@ public class FlatButton extends AbstractButton {
     @Override
     public void onPress() {
         if (confirm != null && !armed()) {
-            armedUntil = System.currentTimeMillis() + 4000;
+            armedUntil = System.currentTimeMillis() + (onFirst != null ? 15000 : 4000);
+            if (onFirst != null) onFirst.run();
             return;
         }
         armedUntil = 0;

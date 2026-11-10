@@ -62,6 +62,7 @@
     "SpreadAutosaveMixin",
     "StartGateMixin",
     "TntBudgetMixin",
+    "TravelFreezeMixin",
     "WaystoneContextMixin",
     "WaystoneTravelMixin"
   ],

@@ -72,6 +72,14 @@ dependencies {
     compileOnly("dev.ftb.mods:ftb-library-neoforge:${ftb_library_version}") { transitive = false }
     // FTB's packets go through Architectury's networking
     compileOnly("dev.architectury:architectury-neoforge:${architectury_version}") { transitive = false }
+    // the gameplay rules that are plain arithmetic (goals) are tested without a server
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testImplementation "com.google.code.gson:gson:2.10.1"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
 }
 
 var generatedResources = file("src/generated/resources")
