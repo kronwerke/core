@@ -119,6 +119,11 @@ public final class BotCommand {
             e = sm.entry(profile.get().getId(), profile.get().getName());
         }
         SlotManager.Result r = invite ? sm.invite(e, player) : sm.revoke(e, player);
+        if (!invite && sm.gone(player, r)) {
+            // nothing of theirs is left here: the bot may forget them too (it got stuck on ERR before)
+            answer(c, "OK " + player + " was not on the whitelist any more, slot freed, now " + e.used() + "/" + sm.allowance(e));
+            return 1;
+        }
         String used = e.used() + "/" + sm.allowance(e);
         switch (r) {
             case OK -> answer(c, "OK " + (invite ? "slots used " : "slot freed, now ") + used);
@@ -152,6 +157,10 @@ public final class BotCommand {
     private static int ungrant(CommandContext<CommandSourceStack> c) {
         String player = StringArgumentType.getString(c, "player");
         SlotManager.Result r = SlotManager.get().ungrant(player);
+        if (SlotManager.get().gone(player, r)) {
+            answer(c, "OK " + player + " was not on the whitelist any more");
+            return 1;
+        }
         switch (r) {
             case OK -> answer(c, "OK " + player + " is off the whitelist, with every slot they gave");
             case UNKNOWN_PLAYER -> answer(c, "ERR no Minecraft account named " + player);

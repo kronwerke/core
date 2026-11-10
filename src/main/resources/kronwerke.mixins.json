@@ -45,10 +45,13 @@
     "ArsWeatherDirtyMixin",
     "LightPendingMixin",
     "LightUnsavedMixin",
-    "ChunkQuietLightMixin"
+    "ChunkQuietLightMixin",
+    "KeepAliveGraceMixin",
+    "ServerReadTimeoutMixin"
   ],
   "client": [
-    "ChaptersJeiBatchMixin"
+    "ChaptersJeiBatchMixin",
+    "ClientReadTimeoutMixin"
   ],
   "injectors": {
     "defaultRequire": 0

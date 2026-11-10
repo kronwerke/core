@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.24.0
+
+Joining and the whitelist:
+- Slow PCs no longer time out while joining. The server is done with a join long before the client has built its recipe lists, tags, quest book and first chunks, and while the client does that it answers no keep-alive. A connection now gets two minutes to answer in its first three minutes (vanilla: 15 seconds) and 45 seconds after that, and both sides close a silent connection after two minutes instead of 30 seconds. Needs this Core on the client for the client side part.
+- The tab list shows the live server state for everyone, refreshed every two seconds: TPS (measured), tick time and the player's own ping, green, yellow or red. Whoever lags sees whether it is the server or their connection.
+- Removing someone from the whitelist through the bot no longer gets stuck when the server has already forgotten them: a removal of a player with nothing left here counts as done (it answered ERR before, and the bot kept the player forever).
+
 ## 0.23.12
 
 - Loaded chunks really stay unchanged now: the light engine's "already lit" pass over every chunk read from disk flipped its light flag off and on and marked it as changed (22 300 chunks in two minutes of the load test, undoing the clean start from 0.23.5). That pass no longer marks the chunk.

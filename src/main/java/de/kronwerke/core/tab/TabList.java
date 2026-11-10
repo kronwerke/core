@@ -23,7 +23,7 @@ import java.util.Locale;
  * pack the pack ships: owner, admin, streamer and member. The rank is a scoreboard team
  * with the pack's glyph as prefix, so vanilla does the rendering. Streamers are the players
  * with whitelist slots, owners come from the config, admins are the operators. The tab list
- * header carries the season, the footer the running goal.
+ * header carries the season, the footer the running goal and the live TPS, tick time and ping.
  */
 public final class TabList {
     private static final String[] RANKS = {"owner", "admin", "streamer", "member"};
@@ -82,9 +82,37 @@ public final class TabList {
     }
 
     public static void onTick(ServerTickEvent.Post event) {
-        if (server == null || ++ticks < 100) return;
+        if (server == null || ++ticks < 40) return;
         ticks = 0;
+        long now = System.nanoTime();
+        if (windowStart != 0) {
+            double seconds = (now - windowStart) / 1e9;
+            tps = Math.min(20.0, 40 / seconds);
+        }
+        windowStart = now;
         for (ServerPlayer p : server.getPlayerList().getPlayers()) apply(p);
+    }
+
+    /** Ticks per second over the last two seconds, measured, not estimated from tick time. */
+    private static double tps = 20.0;
+    private static long windowStart;
+
+    /**
+     * The live server state for everyone, so a player who lags can see whether it is the server
+     * or their own connection: TPS, how long a tick takes, and their own ping.
+     */
+    private static MutableComponent health(ServerPlayer player) {
+        double mspt = server.getAverageTickTimeNanos() / 1e6;
+        ChatFormatting tpsColour = tps >= 19.5 ? ChatFormatting.GREEN : tps >= 17 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+        ChatFormatting msptColour = mspt <= 40 ? ChatFormatting.GREEN : mspt <= 50 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+        int ping = player.connection.latency();
+        ChatFormatting pingColour = ping <= 80 ? ChatFormatting.GREEN : ping <= 200 ? ChatFormatting.YELLOW : ChatFormatting.RED;
+        return Component.literal("TPS ").withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(String.format(Locale.ROOT, "%.1f", tps)).withStyle(tpsColour))
+                .append(Component.literal("   Tick ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(String.format(Locale.ROOT, "%.0f ms", mspt)).withStyle(msptColour))
+                .append(Component.literal("   Ping ").withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(ping + " ms").withStyle(pingColour));
     }
 
     /** A rank's glyph from the Nautical Ranks pack, for names that are not on a team here. */
@@ -127,6 +155,7 @@ public final class TabList {
             footer.append(Component.literal("\n").append(de.kronwerke.core.Text.t("network.reset_in", "Diese Welt wird zurückgesetzt in %s", left)
                     .withStyle(min < 60 ? ChatFormatting.RED : ChatFormatting.YELLOW)));
         }
+        footer.append(Component.literal("\n")).append(health(player));
         player.connection.send(new ClientboundTabListPacket(header, footer));
     }
 }

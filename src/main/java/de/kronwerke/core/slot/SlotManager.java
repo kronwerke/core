@@ -162,6 +162,30 @@ public final class SlotManager {
         return Result.OK;
     }
 
+    /**
+     * After a failed revoke or ungrant: true when the player has nothing left on this server
+     * (no slot from anyone, no place of their own, not on the whitelist, or no such account), so
+     * a removal asked for by the bot counts as done. Without this the bot kept a player it could
+     * never remove ("elchi_dev" stayed linked after the server had already forgotten them).
+     */
+    public boolean gone(String playerName, Result r) {
+        if (r == Result.OK) return false;
+        if (r == Result.UNKNOWN_PLAYER) return true;
+        if (r != Result.NOT_INVITED_BY_YOU && r != Result.NOT_GRANTED) return false;
+        Optional<GameProfile> profile = lookup(playerName);
+        if (profile.isEmpty()) return true;
+        UUID id = profile.get().getId();
+        if (data().findInviter(id) != null) return false;
+        SlotData.StreamerEntry own = data().find(id);
+        if (own != null && own.granted) return false;
+        UserWhiteList wl = server.getPlayerList().getWhiteList();
+        if (wl.isWhiteListed(profile.get())) {
+            wl.remove(new UserWhiteListEntry(profile.get()));
+            server.kickUnlistedPlayers(server.createCommandSourceStack());
+        }
+        return true;
+    }
+
     public void setSlots(SlotData.StreamerEntry streamer, int slots) {
         streamer.slotOverride = slots;
         data().setDirty();
