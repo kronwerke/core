@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.23.11
+
+Chunk saving, from the 50 player load test:
+- The five minute autosave writes changed chunks a few per tick (2 ms per tick and dimension) instead of all in one tick. With 50 players it froze the server for almost seven seconds every five minutes. Player, level and entity data are still saved right away; save-all, save-all flush and shutdown save every chunk at once as before. `performance.spreadAutosave` and `performance.autosaveMsPerTick` in the config.
+- Light updates only mark a chunk as changed when a block that affects light changed in or next to it, or a neighbour was lit for the first time, within the last minute. The light engine settling borders of loading and unloading chunks marked 13 600 chunks in two minutes against a few hundred real changes; that light follows from what is on disk. `performance.cleanLightUpdates` in the config.
+- Ars Additions no longer marks every chunk a player starts watching as changed by writing "no local weather" into it again (2 700 chunks in two minutes). Chunks with real local weather are handled as before.
+
 ## 0.23.10
 
 Per tick work, from the 50 player load test:

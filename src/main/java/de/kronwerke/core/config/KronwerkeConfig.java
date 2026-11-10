@@ -30,6 +30,9 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
     public static final ModConfigSpec.ConfigValue<String> SEASON_START;
     public static final ModConfigSpec.BooleanValue CLEAN_CHUNK_LOADS;
+    public static final ModConfigSpec.BooleanValue SPREAD_AUTOSAVE;
+    public static final ModConfigSpec.BooleanValue CLEAN_LIGHT_UPDATES;
+    public static final ModConfigSpec.DoubleValue AUTOSAVE_MS_PER_TICK;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
@@ -182,6 +185,12 @@ public final class KronwerkeConfig {
         b.push("performance");
         CLEAN_CHUNK_LOADS = b.comment("Chunks read from disk count as unchanged. Vanilla marks every loaded chunk as changed (through setLightCorrect), so every chunk anyone passed through is written again when it unloads. Real changes still mark it.")
                 .define("cleanChunkLoads", true);
+        CLEAN_LIGHT_UPDATES = b.comment("A light update only marks a chunk as changed when a block that affects light changed or a chunk was lit for the first time nearby (within one chunk, in the last minute). Light the engine recalculates while chunks load and unload follows from what is on disk and is not written again.")
+                .define("cleanLightUpdates", true);
+        SPREAD_AUTOSAVE = b.comment("The five minute autosave writes changed chunks a few per tick over the following ticks instead of all in one tick, which froze the server for seconds with many players. save-all, save-all flush and shutdown still save everything at once.")
+                .define("spreadAutosave", true);
+        AUTOSAVE_MS_PER_TICK = b.comment("With spreadAutosave, how many milliseconds per tick and dimension go to writing chunks. At least one changed chunk is written per tick.")
+                .defineInRange("autosaveMsPerTick", 2.0, 0.1, 50.0);
         b.pop();
 
         b.push("testing");

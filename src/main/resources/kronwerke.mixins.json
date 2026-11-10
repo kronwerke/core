@@ -39,7 +39,12 @@
     "SpawnCountGateMixin",
     "SpawnChunkGateMixin",
     "JourneyMapOverlayMixin",
-    "MowzieLivingTickMixin"
+    "MowzieLivingTickMixin",
+    "AutosaveMarkMixin",
+    "SpreadAutosaveMixin",
+    "ArsWeatherDirtyMixin",
+    "LightPendingMixin",
+    "LightUnsavedMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"
