@@ -33,6 +33,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue SPREAD_AUTOSAVE;
     public static final ModConfigSpec.BooleanValue CLEAN_LIGHT_UPDATES;
     public static final ModConfigSpec.DoubleValue AUTOSAVE_MS_PER_TICK;
+    public static final ModConfigSpec.DoubleValue TNT_MS_PER_TICK;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
@@ -191,6 +192,8 @@ public final class KronwerkeConfig {
                 .define("spreadAutosave", true);
         AUTOSAVE_MS_PER_TICK = b.comment("With spreadAutosave, how many milliseconds per tick and dimension go to writing chunks. At least one changed chunk is written per tick.")
                 .defineInRange("autosaveMsPerTick", 2.0, 0.1, 50.0);
+        TNT_MS_PER_TICK = b.comment("How many milliseconds per tick primed TNT may spend exploding. Once used up, the TNT due in this tick waits a tick and explodes then, so thousands of TNT going off together spread over several seconds instead of hanging the server. Each explosion stays vanilla. At least one TNT explodes per tick; 0 turns this off.")
+                .defineInRange("tntMsPerTick", 25.0, 0.0, 1000.0);
         b.pop();
 
         b.push("testing");

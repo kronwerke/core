@@ -2,6 +2,10 @@
 
 ## 0.24.2
 
+Server:
+- TNT can no longer hang the server. Thousands of TNT going off in the same tick each checked the line of sight to every other TNT around, which kept the server in one tick until the watchdog stopped it (29,000 TNT: 60 seconds, then a crash, and the saved TNT crashed every restart again). Explosions now get 25 ms per tick (`tntMsPerTick`); TNT due after that waits a tick and explodes then. Each explosion stays vanilla, a big blast just takes a few seconds longer.
+- Explosions cast half the rays: each explosion asked twice per entity how much of it it can see (for damage and for knockback), 27 rays each time. The second question now gets the first answer when nothing changed in between, which gives exactly the vanilla result.
+
 Client:
 - The language question comes once the world is loaded and the player stands in it. Shown at the join, it sat on top of seconds of loading work and looked frozen.
 - Items on the obelisk pedestals turn smoothly, and every obelisk effect animates smoothly: animations ran on the full game time as a float, which after some weeks only moves in quarter ticks. They now run on the game time modulo an hour.
