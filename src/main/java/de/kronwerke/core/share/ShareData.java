@@ -35,6 +35,9 @@ public final class ShareData extends SavedData {
         final long seq;
         final JsonObject data;
         long sentAt;
+        /** Placed on the other side, not yet written there: kept until it is (durable). */
+        boolean acked;
+        long ackedAt;
 
         Entry(String peer, String peerEpoch, String run, long seq, String layer, String tag, JsonObject data) {
             this.peer = peer;
@@ -66,6 +69,16 @@ public final class ShareData extends SavedData {
         epoch = Long.toHexString(ThreadLocalRandom.current().nextLong() & 0xffffffffffffL);
         // a new world's epoch must be saved before anyone relies on it
         setDirty();
+    }
+
+    /**
+     * Not written while an autosave still writes chunks: the record of what was given and
+     * taken goes to disk after the chunks holding those things (written then at the round's end),
+     * so a crash in between cannot leave one without the other.
+     */
+    @Override
+    public boolean isDirty() {
+        return super.isDirty() && !de.kronwerke.core.perf.SpreadAutosave.holding();
     }
 
     public static ShareData get(MinecraftServer s) {
@@ -107,6 +120,7 @@ public final class ShareData extends SavedData {
             c.putString("layer", e.layer);
             c.putString("tag", e.tag);
             c.putString("data", e.data.toString());
+            c.putBoolean("acked", e.acked);
             out.add(c);
         }
         tag.put("outbox", out);
@@ -136,8 +150,10 @@ public final class ShareData extends SavedData {
         if (!tag.getString("epoch").isEmpty()) d.epoch = tag.getString("epoch");
         for (Tag t : tag.getList("outbox", Tag.TAG_COMPOUND)) {
             CompoundTag c = (CompoundTag) t;
-            d.outbox.add(new Entry(c.getString("peer"), c.getString("peerEpoch"), c.getString("run"), c.getLong("seq"), c.getString("layer"), c.getString("tag"),
-                    JsonParser.parseString(c.getString("data")).getAsJsonObject()));
+            Entry e = new Entry(c.getString("peer"), c.getString("peerEpoch"), c.getString("run"), c.getLong("seq"), c.getString("layer"), c.getString("tag"),
+                    JsonParser.parseString(c.getString("data")).getAsJsonObject());
+            e.acked = c.getBoolean("acked");
+            d.outbox.add(e);
         }
         for (Tag t : tag.getList("stuck", Tag.TAG_COMPOUND)) {
             CompoundTag c = (CompoundTag) t;

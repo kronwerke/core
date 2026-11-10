@@ -31,6 +31,17 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
     public static final ModConfigSpec.ConfigValue<String> SEASON_START;
+    public static final ModConfigSpec.ConfigValue<String> TIMEZONE;
+    public static final ModConfigSpec.ConfigValue<String> SEASON_NAME;
+
+    /** The season's time zone, Europe/Berlin when the config names none that exists. */
+    public static java.time.ZoneId zone() {
+        try {
+            return java.time.ZoneId.of(SPEC.isLoaded() ? TIMEZONE.get() : "Europe/Berlin");
+        } catch (RuntimeException e) {
+            return java.time.ZoneId.of("Europe/Berlin");
+        }
+    }
     public static final ModConfigSpec.BooleanValue CLEAN_CHUNK_LOADS;
     public static final ModConfigSpec.BooleanValue SPREAD_AUTOSAVE;
     public static final ModConfigSpec.BooleanValue CLEAN_LIGHT_UPDATES;
@@ -43,6 +54,8 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.IntValue GOAL_PAUSE_TICKS;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
+    public static final ModConfigSpec.ConfigValue<String> SPAWN_CENTER;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> FEEDER_BLOCKS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BOSSES;
     public static final ModConfigSpec.DoubleValue BOSS_HEALTH_PER_PLAYER;
@@ -94,6 +107,10 @@ public final class KronwerkeConfig {
         b.pop();
 
         b.push("join");
+        SEASON_NAME = b.comment("The season's name in the tab list and on the closed start gate.")
+                .define("name", "Kronwerke Season 2");
+        TIMEZONE = b.comment("The time zone the season lives in: the start date, the daily offering's day. An IANA name.")
+                .define("timezone", "Europe/Berlin");
         SEASON_START = b.comment("When the season starts, as local time in Europe/Berlin (2027-01-16T18:00). The closed start gate names it; empty says mid January 2027.")
                 .define("seasonStart", "");
         JOIN_KIT = b.comment("Items every player gets once, on the first join, as item or item*count.")
@@ -107,6 +124,13 @@ public final class KronwerkeConfig {
         b.push("spawn");
         SPAWN_RADIUS = b.comment("Half the side of the protected square around the overworld spawn, in blocks. 0 turns the protection off. Operators and creative players build freely; containers next to the obelisk stay allowed for feeders.")
                 .defineInRange("radius", 96, 0, 2048);
+        SPAWN_CENTER = b.comment("The middle of the protected square as x,z. Empty: the world spawn as it was when the protection first ran (kept, so /setworldspawn does not move the protection away from the obelisk).")
+                .define("center", "");
+        FEEDER_BLOCKS = b.comment("What anyone may place in the zone around the obelisk inside the spawn protection: block ids, * for anything. Intakes and what carries items to them.")
+                .defineListAllowEmpty("feederBlocks", java.util.List.of("kronwerke:*", "minecraft:hopper", "create:belt", "create:chute", "create:smart_chute",
+                        "create:*funnel", "create:*tunnel", "create:shaft", "create:cogwheel", "create:large_cogwheel", "create:mechanical_belt",
+                        "mekanism:*logistical_transporter", "pipez:*", "laserio:*", "ae2:*cable*", "ae2:export_bus", "refinedstorage:*cable*",
+                        "refinedstorage:*exporter*", "integrateddynamics:*cable*", "powah:*"), o -> o instanceof String);
         BLAST_PROOF = b.comment("Blocks no explosion removes, anywhere: block ids, or a namespace prefix ending in *. Bedrock, end portal frames, end portals and gateways and reinforced deepslate are always kept.")
                 .defineListAllowEmpty("blastProof", java.util.List.of("cataclysm:altar_of_*", "cataclysm:boss_respawner", "cataclysm:*spawner*"), o -> o instanceof String);
         b.pop();

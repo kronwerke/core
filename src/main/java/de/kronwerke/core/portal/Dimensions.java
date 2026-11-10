@@ -67,6 +67,11 @@ public final class Dimensions {
         return NetworkSync.peerByRole("main");
     }
 
+    /** Whether a launcher role is one of the dimension servers. */
+    public static boolean isDimensionRole(String role) {
+        return table().containsValue(role);
+    }
+
     /** Whether the server can take a player right now. */
     public static boolean up(NetworkSync.Peer p) {
         return p != null && p.bus() && p.running() && !p.host().isEmpty();

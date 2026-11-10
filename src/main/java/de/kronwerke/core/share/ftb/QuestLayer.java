@@ -26,12 +26,71 @@ import java.util.UUID;
  * team mates on main see it too. Progress only ever grows: each side takes the larger progress,
  * the earlier completion and every claimed reward of the other, so a reward claimed on one side
  * cannot be claimed again on the other.
+ * <p>
+ * A reset made on main (/kw admin quests reset) raises the team's generation. Progress of an
+ * older generation from a side world is then dropped instead of merged, and the side world
+ * replaces its copy with main's, so a reset is not undone by the next exchange.
  */
 public final class QuestLayer implements Layer {
     private static final int EVERY = 200;
 
     /** Not main: progress that came with a player, applied once they are in. */
     private final Map<UUID, String> waiting = new HashMap<>();
+    /** Not main: the generation of each team's progress as main last said. */
+    private final Map<UUID, Integer> sideGen = new HashMap<>();
+    private static MinecraftServer srv;
+
+    /** main: the generations, in the world's data. */
+    public static final class Gens extends net.minecraft.world.level.saveddata.SavedData {
+        final Map<UUID, Integer> gen = new HashMap<>();
+
+        static Gens get() {
+            return srv.overworld().getDataStorage().computeIfAbsent(new Factory<>(Gens::new, (t, p) -> {
+                Gens g = new Gens();
+                for (String k : t.getAllKeys()) g.gen.put(UUID.fromString(k), t.getInt(k));
+                return g;
+            }, null), "kronwerke_quest_gen");
+        }
+
+        @Override
+        public net.minecraft.nbt.CompoundTag save(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
+            gen.forEach((k, v) -> tag.putInt(k.toString(), v));
+            return tag;
+        }
+    }
+
+    private static int mainGen(UUID team) {
+        return srv == null ? 0 : Gens.get().gen.getOrDefault(team, 0);
+    }
+
+    /**
+     * main: resets a player's team progress in FTB Quests and raises the generation, so the
+     * side worlds give up their older copies.
+     */
+    public static String reset(MinecraftServer server, ServerPlayer player) {
+        srv = server;
+        TeamData t = teamOf(player);
+        if (t == null) return "Kein Team gefunden.";
+        Gens g = Gens.get();
+        g.gen.merge(t.getTeamId(), 1, Integer::sum);
+        g.setDirty();
+        server.getCommands().performPrefixedCommand(server.createCommandSourceStack().withSuppressedOutput(),
+                "ftbquests change_progress " + player.getGameProfile().getName() + " reset 1");
+        return "Fortschritt von " + player.getGameProfile().getName() + "s Team zurückgesetzt (Generation " + g.gen.get(t.getTeamId()) + ").";
+    }
+
+    /** Puts the other side's progress in place of this team's (a newer generation from main). */
+    private void replace(TeamData into, String snbt) {
+        try {
+            into.deserializeNBT(SNBTCompoundTag.of(TagParser.parseTag(snbt)));
+        } catch (com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            throw new IllegalArgumentException(e);
+        }
+        into.clearCachedProgress();
+        into.markDirty();
+        SyncTeamDataMessage sync = new SyncTeamDataMessage(into);
+        for (ServerPlayer p : into.getOnlineMembers()) dev.architectury.networking.NetworkManager.sendToPlayer(p, sync);
+    }
     private int ticks;
     private long merges;
 
@@ -82,6 +141,7 @@ public final class QuestLayer implements Layer {
 
     @Override
     public void tick(MinecraftServer server) {
+        srv = server;
         ticks++;
         if (!waiting.isEmpty()) {
             for (UUID id : waiting.keySet().toArray(new UUID[0])) {
@@ -89,7 +149,15 @@ public final class QuestLayer implements Layer {
                 if (p == null) continue;
                 TeamData t = teamOf(p);
                 if (t == null) continue;
-                merge(t, waiting.remove(id));
+                String w = waiting.remove(id);
+                int gen = w.startsWith("gen:") ? Integer.parseInt(w.substring(4, w.indexOf('|'))) : 0;
+                String snbt = w.startsWith("gen:") ? w.substring(w.indexOf('|') + 1) : w;
+                if (gen > sideGen.getOrDefault(t.getTeamId(), 0)) {
+                    sideGen.put(t.getTeamId(), gen);
+                    replace(t, snbt);
+                } else {
+                    merge(t, snbt);
+                }
             }
         }
         if (Role.main() || ticks % EVERY != 0) return;
@@ -101,6 +169,7 @@ public final class QuestLayer implements Layer {
             if (t == null) continue;
             JsonObject m = new JsonObject();
             m.addProperty("t", "merge");
+            m.addProperty("gen", sideGen.getOrDefault(t.getTeamId(), 0));
             m.addProperty("uuid", p.getUUID().toString());
             m.addProperty("snbt", t.serializeNBT().toString());
             Share.tell(this, main, m);
@@ -128,9 +197,11 @@ public final class QuestLayer implements Layer {
                 if (!Role.main()) return;
                 TeamData t = teamOf(id);
                 if (t == null) return;
-                merge(t, snbt);
+                int theirs = d.has("gen") ? d.get("gen").getAsInt() : 0;
+                if (theirs >= mainGen(t.getTeamId())) merge(t, snbt); // older than a reset here: dropped
                 JsonObject back = new JsonObject();
                 back.addProperty("t", "team");
+                back.addProperty("gen", mainGen(t.getTeamId()));
                 back.addProperty("uuid", id.toString());
                 back.addProperty("snbt", t.serializeNBT().toString());
                 Share.tell(this, from, back);
@@ -138,7 +209,14 @@ public final class QuestLayer implements Layer {
             case "team" -> {
                 ServerPlayer p = server.getPlayerList().getPlayer(id);
                 TeamData t = p == null ? null : teamOf(p);
-                if (t != null) merge(t, snbt);
+                if (t == null) return;
+                int gen = d.has("gen") ? d.get("gen").getAsInt() : 0;
+                if (gen > sideGen.getOrDefault(t.getTeamId(), 0)) {
+                    sideGen.put(t.getTeamId(), gen);
+                    replace(t, snbt);
+                } else {
+                    merge(t, snbt);
+                }
             }
             default -> {
             }
@@ -153,18 +231,20 @@ public final class QuestLayer implements Layer {
         if (t == null) return null;
         JsonObject o = new JsonObject();
         o.addProperty("snbt", t.serializeNBT().toString());
+        o.addProperty("gen", Role.main() ? mainGen(t.getTeamId()) : sideGen.getOrDefault(t.getTeamId(), 0));
         return o;
     }
 
     @Override
     public void unpack(MinecraftServer server, UUID player, JsonObject data) {
         String snbt = data.get("snbt").getAsString();
+        int gen = data.has("gen") ? data.get("gen").getAsInt() : 0;
         TeamData t = Role.main() ? teamOf(player) : null;
         if (t != null) {
-            merge(t, snbt);
+            if (gen >= mainGen(t.getTeamId())) merge(t, snbt);
         } else {
             // a side world makes the player's team when they log in; their progress waits for that
-            waiting.put(player, snbt);
+            waiting.put(player, "gen:" + gen + "|" + snbt);
         }
     }
 

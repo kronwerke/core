@@ -87,6 +87,17 @@ public final class KwCommand {
                         .executes(KwCommand::menu)
                         .then(Commands.argument("player", StringArgumentType.word()).executes(KwCommand::revoke)))
                 .then(Commands.literal("slots").executes(KwCommand::slots))
+                .then(Commands.literal("bar").executes(c -> {
+                    boolean shown = GoalManager.get().toggleBar(c.getSource().getPlayerOrException());
+                    ok(c, shown ? "Die Leiste des Ziels ist wieder da." : "Die Leiste des Ziels ist ausgeblendet. /kw bar holt sie zurück.");
+                    return 1;
+                }))
+                .then(Commands.literal("undo").executes(c -> {
+                    long back = GoalManager.get().undo(c.getSource().getPlayerOrException());
+                    if (back > 0) ok(c, "Zurückgegeben: " + Text.number(back) + ".");
+                    else fail(c, "Nichts zum Zurückgeben: nur Gaben der letzten zehn Sekunden, und nicht, wenn das Ziel damit voll oder angehalten ist.");
+                    return back > 0 ? 1 : 0;
+                }))
                 .then(Commands.literal("deposit")
                         .executes(c -> deposit(c, false))
                         .then(Commands.literal("all").executes(c -> deposit(c, true))))
@@ -239,15 +250,24 @@ public final class KwCommand {
                                     for (String pr : problems) c.getSource().sendFailure(Component.literal(pr));
                                     return 0;
                                 }))
-                                .then(Commands.literal("complete").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "complete"))))
-                                .then(Commands.literal("reset").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "reset"))))
-                                .then(Commands.literal("open").then(Commands.argument("goal", StringArgumentType.word()).executes(c -> goalOp(c, "open"))))
+                                .then(Commands.literal("complete").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds).executes(c -> goalOp(c, "complete"))))
+                                .then(Commands.literal("reset").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds).executes(c -> goalOp(c, "reset"))))
+                                .then(Commands.literal("open").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds).executes(c -> goalOp(c, "open"))))
                                 .then(Commands.literal("rescale").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds)
                                         .executes(c -> goalOp(c, "rescale_preview"))
                                         .then(Commands.literal("confirm").executes(c -> goalOp(c, "rescale")))))
-                                .then(Commands.literal("progress").then(Commands.argument("goal", StringArgumentType.word())
+                                .then(Commands.literal("progress").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds)
                                         .then(Commands.argument("item", StringArgumentType.string())
                                                 .then(Commands.argument("amount", IntegerArgumentType.integer(0)).executes(c -> goalOp(c, "progress")))))))
+                        .then(Commands.literal("quests").then(Commands.literal("reset").then(Commands.argument("player", net.minecraft.commands.arguments.EntityArgument.player())
+                                .executes(c -> {
+                                    try {
+                                        ok(c, de.kronwerke.core.share.ftb.QuestLayer.reset(c.getSource().getServer(), net.minecraft.commands.arguments.EntityArgument.getPlayer(c, "player")));
+                                    } catch (LinkageError e) {
+                                        fail(c, "FTB Quests ist nicht da.");
+                                    }
+                                    return 1;
+                                }))))
                         .then(Commands.literal("active").executes(c -> { ok(c, "Active players (scaling window): " + GoalManager.get().activePlayers()); return 1; }))
                         .then(ObeliskCommand.build()))
                 .then(TestCommand.build()));
@@ -519,10 +539,12 @@ public final class KwCommand {
             taken = GoalManager.get().deposit(p, hand);
         }
         if (taken == 0) {
-            fail(c, "Nichts in deiner Hand passt zum aktuellen Ziel. /kw goals zeigt, was gebraucht wird.");
+            fail(c, all ? "Nichts in deinem Inventar passt zum aktuellen Ziel (die Hotbar bleibt unberührt). /kw goals zeigt, was gebraucht wird."
+                    : "Nichts in deiner Hand passt zum aktuellen Ziel. /kw goals zeigt, was gebraucht wird.");
             return 0;
         }
-        ok(c, "Abgegeben: " + Text.number(taken) + ".");
+        c.getSource().sendSuccess(() -> Component.literal("Abgegeben: " + Text.number(taken) + ". ").withStyle(ChatFormatting.GREEN)
+                .append(de.kronwerke.core.obelisk.Obelisk.undoComponent()), false);
         return 1;
     }
 
@@ -613,7 +635,7 @@ public final class KwCommand {
         GoalManager gm = GoalManager.get();
         Goal g = gm.goal(StringArgumentType.getString(c, "goal"));
         if (g == null) {
-            fail(c, "Unknown goal.");
+            fail(c, "Kein Ziel mit dieser id. Da sind: " + String.join(", ", java.util.stream.StreamSupport.stream(gm.allGoals().spliterator(), false).map(Goal::id).toList()));
             return 0;
         }
         switch (op) {
@@ -632,11 +654,21 @@ public final class KwCommand {
                 return 1;
             }
             case "progress" -> {
-                gm.progressData().setProgress(g.id(), StringArgumentType.getString(c, "item"), IntegerArgumentType.getInteger(c, "amount"));
+                String item = StringArgumentType.getString(c, "item");
+                if (g.allItems().stream().noneMatch(it -> it.item().equals(item))) {
+                    fail(c, item + " gehört nicht zu " + g.id() + ". Da sind: " + String.join(", ", g.allItems().stream().map(Goal.PillarItem::item).toList()));
+                    return 0;
+                }
+                gm.progressData().setProgress(g.id(), item, IntegerArgumentType.getInteger(c, "amount"));
                 gm.check(g);
             }
         }
-        ok(c, "Goal " + g.id() + ": " + op + " applied.");
+        ok(c, "Ziel " + g.id() + ": " + switch (op) {
+            case "complete" -> "geschafft";
+            case "reset" -> "zurückgesetzt";
+            case "open" -> "Halt aufgehoben";
+            default -> "Stand gesetzt";
+        } + ".");
         return 1;
     }
 

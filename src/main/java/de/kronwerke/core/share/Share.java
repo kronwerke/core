@@ -156,7 +156,8 @@ public final class Share {
     public static boolean busy(Layer l, String peer, String tag) {
         if (data == null) return true;
         for (ShareData.Entry e : data.outbox) {
-            if (e.peer.equals(peer) && e.layer.equals(l.name()) && e.tag.equals(tag)) return true;
+            // placed there already (only waiting to be written there): not on its way any more
+            if (e.peer.equals(peer) && e.layer.equals(l.name()) && e.tag.equals(tag) && !e.acked) return true;
         }
         return false;
     }
@@ -248,8 +249,15 @@ public final class Share {
                     Layer l = layers.get(str(d, "layer"));
                     if (l != null && d.get("d") instanceof JsonObject w) l.onTell(server, from, w);
                 }
-                case "ack" -> answered(from, str(d, "ep"), str(d, "run"), d.get("seq").getAsLong(), d.get("rest") instanceof JsonObject r ? r : null, false);
-                case "gone" -> answered(from, str(d, "was"), str(d, "run"), d.get("seq").getAsLong(), null, true);
+                case "ack" -> answered(from, str(d, "ep"), str(d, "run"), d.get("seq").getAsLong(), d.get("rest") instanceof JsonObject r ? r : null, false,
+                        d.has("dur") && d.get("dur").getAsBoolean());
+                case "durable" -> {
+                    String ep = str(d, "ep"), run = str(d, "run");
+                    java.util.Set<Long> seqs = new java.util.HashSet<>();
+                    for (var el : d.getAsJsonArray("seqs")) seqs.add(el.getAsLong());
+                    if (data.outbox.removeIf(e -> e.peer.equals(from) && e.peerEpoch.equals(ep) && e.run.equals(run) && e.acked && seqs.contains(e.seq))) data.setDirty();
+                }
+                case "gone" -> answered(from, str(d, "was"), str(d, "run"), d.get("seq").getAsLong(), null, true, false);
                 case "nack" -> {
                     long next = d.get("next").getAsLong();
                     String ep = str(d, "ep"), run = str(d, "run");
@@ -340,14 +348,56 @@ public final class Share {
         }
         data.answered(sender, seq, rest);
         a.addProperty("k", "ack");
+        a.addProperty("dur", true); // "durable" follows once this server has written what it placed
         if (rest != null) a.add("rest", rest);
         NetworkSync.send(from, TOPIC, a, null);
+        undurable.add(new String[]{from, ep, run, Long.toString(seq)});
     }
 
-    private static void answered(String from, String peerEpoch, String run, long seq, JsonObject rest, boolean gone) {
+    /** Takes this server answered and has not written yet: from, epoch, run, seq. */
+    private static final List<String[]> undurable = new ArrayList<>();
+    private static final List<String[]> durableNext = new ArrayList<>();
+
+    /** An autosave begins: what was answered so far is written with it. */
+    public static void onSaveStart() {
+        durableNext.addAll(undurable);
+        undurable.clear();
+    }
+
+    /** The autosave's chunks are written: the shared network's record follows, then the senders hear it is safe. */
+    public static void onSaved() {
+        if (server == null || data == null) return;
+        data.setDirty();
+        server.overworld().getDataStorage().save();
+        Map<String, JsonObject> per = new HashMap<>();
+        for (String[] t : durableNext) {
+            JsonObject m = per.computeIfAbsent(t[0] + "|" + t[1] + "|" + t[2], k -> {
+                JsonObject o = msg("durable");
+                o.addProperty("ep", t[1]);
+                o.addProperty("run", t[2]);
+                o.add("seqs", new com.google.gson.JsonArray());
+                return o;
+            });
+            m.getAsJsonArray("seqs").add(Long.parseLong(t[3]));
+        }
+        per.forEach((k, m) -> NetworkSync.send(k.substring(0, k.indexOf('|')), TOPIC, m, null));
+        durableNext.clear();
+    }
+
+    private static void answered(String from, String peerEpoch, String run, long seq, JsonObject rest, boolean gone, boolean durableLater) {
         for (Iterator<ShareData.Entry> it = data.outbox.iterator(); it.hasNext(); ) {
             ShareData.Entry e = it.next();
             if (!e.peer.equals(from) || !e.peerEpoch.equals(peerEpoch) || !e.run.equals(run) || e.seq != seq) continue;
+            if (durableLater) {
+                // placed there: what came back is taken once; the entry waits until it is written there
+                boolean first = !e.acked;
+                e.acked = true;
+                e.ackedAt = System.currentTimeMillis();
+                data.setDirty();
+                if (first && rest != null) back(e.layer, rest);
+                if (first) answeredAt.put(e.layer + "|" + from + "|" + e.tag, System.nanoTime());
+                return;
+            }
             it.remove();
             data.setDirty();
             if (gone) back(e.layer, e.data);
@@ -392,7 +442,9 @@ public final class Share {
 
     private static void resend() {
         long now = System.currentTimeMillis();
-        data.outbox.stream().filter(e -> now - e.sentAt > RESEND_MS && e.peerEpoch.equals(epochs.get(e.peer)))
+        // placed but not yet written there: asked again only after a long while (the other side
+        // may have crashed before its save and lost it; then it takes it again)
+        data.outbox.stream().filter(e -> now - e.sentAt > RESEND_MS && e.peerEpoch.equals(epochs.get(e.peer)) && (!e.acked || now - e.ackedAt > 15 * 60_000L))
                 .sorted(Comparator.comparingLong(e -> e.seq)).forEach(Share::transmit);
     }
 

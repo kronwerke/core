@@ -31,16 +31,24 @@ public abstract class SpreadAutosaveMixin {
 
     @Unique
     private final ArrayDeque<ChunkHolder> kronwerke$toSave = new ArrayDeque<>();
+    @Unique
+    private final it.unimi.dsi.fastutil.longs.LongOpenHashSet kronwerke$queued = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
 
     @Inject(method = "saveAllChunks", at = @At("HEAD"), cancellable = true)
     private void kronwerke$queue(boolean flush, CallbackInfo ci) {
         if (flush) {
             this.kronwerke$toSave.clear(); // everything is saved right now anyway
+            this.kronwerke$queued.clear();
+            SpreadAutosave.draining(this.level, false);
             return;
         }
         if (!SpreadAutosave.autosaving || !KronwerkeConfig.SPREAD_AUTOSAVE.get()) return;
-        this.kronwerke$toSave.clear();
-        this.kronwerke$toSave.addAll(this.visibleChunkMap.values());
+        // a queue that did not drain since the last autosave goes on where it was: chunks late in
+        // the order are not pushed back to the start again (they were only written on unload)
+        for (ChunkHolder h : this.visibleChunkMap.values()) {
+            if (this.kronwerke$queued.add(h.getPos().toLong())) this.kronwerke$toSave.add(h);
+        }
+        if (!this.kronwerke$toSave.isEmpty()) SpreadAutosave.draining(this.level, true);
         KronwerkeCore.LOGGER.debug("Autosave of {} spread out: {} chunks to look at", this.level.dimension().location(), this.kronwerke$toSave.size());
         ci.cancel();
     }
@@ -53,12 +61,14 @@ public abstract class SpreadAutosaveMixin {
         boolean wrote = false;
         ChunkHolder holder;
         while ((holder = this.kronwerke$toSave.poll()) != null) {
+            this.kronwerke$queued.remove(holder.getPos().toLong());
             if (this.visibleChunkMap.get(holder.getPos().toLong()) != holder) continue; // unloaded since, saved on unload
             if (this.saveChunkIfNeeded(holder)) wrote = true;
             if (wrote && System.nanoTime() - start >= budget) break;
         }
         if (this.kronwerke$toSave.isEmpty()) {
             KronwerkeCore.LOGGER.debug("Autosave of {} done", this.level.dimension().location());
+            SpreadAutosave.draining(this.level, false);
         }
     }
 }

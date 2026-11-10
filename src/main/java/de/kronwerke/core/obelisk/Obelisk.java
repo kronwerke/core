@@ -99,13 +99,23 @@ public final class Obelisk {
             return;
         }
         if (player.isShiftKeyDown()) {
+            // everything that fits is a big step: the first sneak click asks, the second gives
+            Long armed = allArmed.get(player.getUUID());
+            if (armed == null || System.currentTimeMillis() - armed > 5000) {
+                allArmed.put(player.getUUID(), System.currentTimeMillis());
+                player.sendSystemMessage(Text.t("obelisk.all_ask", "Alles aus dem Inventar abgeben, was passt? Noch einmal schleichen und klicken. Hotbar und Nebenhand bleiben.")
+                        .withStyle(ChatFormatting.YELLOW));
+                return;
+            }
+            allArmed.remove(player.getUUID());
             taken = gm.depositAll(player);
         } else {
             ItemStack held = player.getMainHandItem();
             taken = gm.deposit(player, held);
         }
         if (taken > 0) {
-            player.sendSystemMessage(Text.t("obelisk.took", "Der Obelisk nimmt %s.", Text.number(taken)).withStyle(ChatFormatting.GREEN));
+            player.sendSystemMessage(Text.t("obelisk.took", "Der Obelisk nimmt %s.", Text.number(taken)).withStyle(ChatFormatting.GREEN)
+                    .append(Component.literal(" ")).append(undoLink()));
             return;
         }
         Goal g = active.get(0);
@@ -113,6 +123,13 @@ public final class Obelisk {
             player.sendSystemMessage(Text.t("obelisk.held", "Der Obelisk wartet auf das Event. Die letzten Teile gehen gemeinsam rein.").withStyle(ChatFormatting.LIGHT_PURPLE));
             return;
         }
+        // the whole list once in a while; a quick second click just says no
+        Long shownAt = listShown.get(player.getUUID());
+        if (shownAt != null && System.currentTimeMillis() - shownAt < 30_000) {
+            player.displayClientMessage(Text.t("obelisk.not_this", "Das braucht der Obelisk gerade nicht.").withStyle(ChatFormatting.GRAY), true);
+            return;
+        }
+        listShown.put(player.getUUID(), System.currentTimeMillis());
         MutableComponent wanted = Component.empty();
         boolean first = true;
         for (Goal.PillarItem it : g.allItems()) {
@@ -124,6 +141,21 @@ public final class Obelisk {
         }
         player.sendSystemMessage(Text.t("obelisk.wants", "Der Obelisk braucht: %s", wanted).withStyle(ChatFormatting.GOLD));
         player.sendSystemMessage(Text.t("obelisk.hint", "Rechtsklick gibt den Stapel in der Hand ab, Schleichen und Rechtsklick alles, was passt. Schleichen mit leerer Hand zeigt deine Gaben.").withStyle(ChatFormatting.GRAY));
+    }
+
+    private final java.util.Map<UUID, Long> allArmed = new java.util.HashMap<>();
+    private final java.util.Map<UUID, Long> listShown = new java.util.HashMap<>();
+
+    public static Component undoComponent() {
+        return undoLink();
+    }
+
+    /** A click in chat that takes the last deposit back, for ten seconds. */
+    static Component undoLink() {
+        return Text.t("obelisk.undo", "[Rückgängig]").withStyle(s -> s.withColor(ChatFormatting.GRAY).withUnderlined(true)
+                .withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.RUN_COMMAND, "/kw undo"))
+                .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT,
+                        Text.t("obelisk.undo_tip", "Gibt dir die Gabe der letzten zehn Sekunden zurück"))));
     }
 
     /** Sneaking with an empty hand: what the player has given to the running goal, pillar by pillar, and their rank. */
@@ -273,10 +305,11 @@ public final class Obelisk {
     /** From the fourth stage the ground around the obelisk lets go a little: players on the plinth weigh half. */
     private void lift(ServerLevel level, BlockPos core) {
         boolean on = tier() >= 4;
-        for (ServerPlayer p : level.players()) {
+        // everyone, in every dimension: who left the plinth by a portal or a waystone keeps no half gravity
+        for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             var attr = p.getAttribute(net.minecraft.world.entity.ai.attributes.Attributes.GRAVITY);
             if (attr == null) continue;
-            boolean near = on && Math.abs(p.getX() - core.getX() - 0.5) < 11 && Math.abs(p.getZ() - core.getZ() - 0.5) < 11
+            boolean near = on && p.level() == level && Math.abs(p.getX() - core.getX() - 0.5) < 11 && Math.abs(p.getZ() - core.getZ() - 0.5) < 11
                     && p.getY() > core.getY() - 3 && p.getY() < core.getY() + 24;
             boolean has = attr.hasModifier(LIFT);
             if (near && !has) {
@@ -311,14 +344,22 @@ public final class Obelisk {
         lift(level, core);
         // a gathering changes the stone's mood at once, not at the next display refresh
         int crowd = crowd(level);
-        if (crowd != lastCrowd) {
+        // at a busy spawn the crowd changes all the time: the state goes out at most every
+        // five seconds, and the chord only when a crowd gathers anew (after a quiet minute)
+        long now = System.currentTimeMillis();
+        if (crowd != lastCrowd && now - lastStateAt > 5000) {
             lastCrowd = crowd;
+            lastStateAt = now;
             ObeliskTopBlockEntity t = top(level);
             if (t != null) broadcastState(level, t);
-            if (crowd >= 3 && crowd > (lastCrowdNoted)) gathering(level, core, crowd);
-            lastCrowdNoted = crowd;
         }
+        if (crowd >= 3 && lastCrowdNoted < 3 && now - lastChordAt > 60_000) {
+            gathering(level, core, crowd);
+            lastChordAt = now;
+        }
+        lastCrowdNoted = crowd;
         whisper(level, core, crowd);
+        if (ambientTicks % 1200 == 0) cleanFeeders(level);
         if (!level.hasNearbyAlivePlayer(core.getX() + 0.5, core.getY() + 10, core.getZ() + 0.5, 48)) return;
         ObeliskTopBlockEntity top = top(level);
         if (top != null && top.rite() > 0) return;
@@ -412,7 +453,16 @@ public final class Obelisk {
         }
     }
 
+    /** Feeder records of blocks that are gone: nothing stays booked to a player for ever. */
+    private void cleanFeeders(ServerLevel level) {
+        ObeliskData d = data();
+        List<BlockPos> gone = new ArrayList<>();
+        for (BlockPos p : d.feeders().keySet()) if (level.isLoaded(p) && level.getBlockState(p).isAir()) gone.add(p);
+        for (BlockPos p : gone) d.removeFeeder(p);
+    }
+
     private int lastCrowdNoted;
+    private long lastStateAt, lastChordAt;
     private int whisperIn = 1200;
 
     /** Three or more around the plinth: the runes answer with a chord, one note per player, and a ring of motes. */
@@ -438,8 +488,9 @@ public final class Obelisk {
         whisperIn -= 20;
         if (whisperIn > 0 || crowd == 0 || slumbering()) return;
         whisperIn = 2400 + level.random.nextInt(2400);
-        long since = level.getGameTime() - data().lastDepositAt();
-        if (data().lastDepositAt() > 0 && since < 12000) return;
+        // lastDepositAt is wall clock time: ten minutes without a gift
+        long since = System.currentTimeMillis() - data().lastDepositAt();
+        if (data().lastDepositAt() > 0 && since < 600_000) return;
         GoalManager gm = GoalManager.get();
         List<Goal> active = gm.activeGoals();
         Goal g = active.isEmpty() ? null : active.get(0);
@@ -611,7 +662,7 @@ public final class Obelisk {
      */
     private void streak(ServerPlayer player) {
         ObeliskData d = data();
-        int day = (int) (java.time.LocalDate.now(java.time.ZoneId.of("Europe/Berlin")).toEpochDay());
+        int day = (int) (java.time.LocalDate.now(KronwerkeConfig.zone()).toEpochDay());
         int lastDay = d.streakDay(player.getUUID());
         if (lastDay == day) return;
         int length = lastDay == day - 1 ? d.streak(player.getUUID()) + 1 : 1;
@@ -632,7 +683,7 @@ public final class Obelisk {
         if (!d.isSet()) return;
         ServerLevel level = obeliskLevel();
         if (level == null) return;
-        int today = (int) (java.time.LocalDate.now(java.time.ZoneId.of("Europe/Berlin")).toEpochDay());
+        int today = (int) (java.time.LocalDate.now(KronwerkeConfig.zone()).toEpochDay());
         for (ServerPlayer p : level.players()) {
             if (d.streak(p.getUUID()) < 7 || d.streakDay(p.getUUID()) < today - 1) continue;
             if (p.blockPosition().distSqr(d.pos()) > 96 * 96) continue;
@@ -814,12 +865,23 @@ public final class Obelisk {
     public String placeBoard(ServerPlayer player, int width, int height) {
         ServerLevel level = player.serverLevel();
         ObeliskData d = data();
-        removeBoard();
+        if (d.isSet() && !level.dimension().location().toString().equals(d.dimension()))
+            return "Die Wand muss in der Welt des Obelisken stehen, sonst bleibt sie leer.";
         net.minecraft.core.Direction look = player.getDirection();
         net.minecraft.core.Direction facing = look.getOpposite();
         net.minecraft.core.Direction right = look.getClockWise();
         BlockPos center = player.blockPosition().relative(look, 4);
         BlockPos anchor = center.relative(right, -(width / 2));
+        // never over what stands there (except an older wall, which comes down first)
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < height; j++) {
+                BlockPos p = anchor.relative(right, i).above(j);
+                var there = level.getBlockState(p);
+                if (!there.isAir() && !there.canBeReplaced() && !there.is(ObeliskBlocks.OBELISK_BOARD.get()))
+                    return "Da steht etwas im Weg (" + p.getX() + " " + p.getY() + " " + p.getZ() + "). Stell dich vor eine freie Fläche.";
+            }
+        }
+        removeBoard();
         var state = ObeliskBlocks.OBELISK_BOARD.get().defaultBlockState().setValue(ObeliskBoardBlock.FACING, facing);
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
@@ -875,12 +937,21 @@ public final class Obelisk {
             for (int slot = 0; slot < h.getSlots(); slot++) {
                 ItemStack peek = h.extractItem(slot, Integer.MAX_VALUE, true);
                 if (peek.isEmpty()) continue;
-                ItemStack copy = peek.copy();
-                long taken = GoalManager.get().deposit(owner, name, copy, false);
+                long want = GoalManager.get().wouldTake(peek);
+                if (want <= 0) continue;
+                // out of the container first, then credited: storage that extracts less than it
+                // simulated (drawers, bins) is credited only for what really came out
+                ItemStack out = h.extractItem(slot, (int) want, false);
+                if (out.isEmpty()) continue;
+                ItemStack rest = out.copy();
+                long taken = GoalManager.get().deposit(owner, name, rest, false);
+                if (!rest.isEmpty()) {
+                    ItemStack back = h.insertItem(slot, rest, false);
+                    if (!back.isEmpty()) net.minecraft.world.Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5, back);
+                }
                 if (taken <= 0) continue;
-                ItemStack out = h.extractItem(slot, (int) taken, false);
-                moved += out.getCount();
-                delivered.merge(out.getHoverName().getString(), (long) out.getCount(), Long::sum);
+                moved += taken;
+                delivered.merge(out.getHoverName().getString(), taken, Long::sum);
             }
             announce(name, delivered);
         }

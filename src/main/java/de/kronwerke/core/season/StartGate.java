@@ -36,7 +36,7 @@ public final class StartGate {
         if (s.beta() && de.kronwerke.core.slot.SlotManager.get().hasOwnPlace(profile.getId())) return null;
         String[] when = when(KronwerkeConfig.SEASON_START.get().trim());
         return Component.empty()
-                .append(Text.t("gate.title", "Kronwerke Season 2").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                .append(Component.literal(KronwerkeConfig.SEASON_NAME.get()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
                 .append("\n\n")
                 .append(Text.t("gate.start", "Startet " + when[0] + ".", when[0], when[1]).withStyle(ChatFormatting.WHITE))
                 .append("\n")
@@ -44,17 +44,19 @@ public final class StartGate {
     }
 
     private static final DateTimeFormatter DE = DateTimeFormatter.ofPattern("'am' EEEE, d. MMMM yyyy, 'um' H 'Uhr'", Locale.GERMAN);
-    private static final DateTimeFormatter EN = DateTimeFormatter.ofPattern("'on' EEEE, d MMMM yyyy, 'at' h a 'CET'", Locale.ENGLISH);
+    private static final DateTimeFormatter EN = DateTimeFormatter.ofPattern("'on' EEEE, d MMMM yyyy, 'at' h a", Locale.ENGLISH);
 
-    /** The start in German and in English, for the two lang files. */
+    /** The start in German and in English, for the two lang files; English with the zone's short name of that day (CET or CEST). */
     static String[] when(String iso) {
         try {
             LocalDateTime t = LocalDateTime.parse(iso);
             String de = DE.format(t);
             if (t.getMinute() != 0) de = de.replace(" Uhr", ":" + String.format("%02d", t.getMinute()) + " Uhr");
-            return new String[]{de, EN.format(t).replace("AM", "am").replace("PM", "pm")};
+            String zone = DateTimeFormatter.ofPattern("zzz", Locale.ENGLISH).format(t.atZone(KronwerkeConfig.zone()));
+            return new String[]{de, EN.format(t).replace("AM", "am").replace("PM", "pm") + " " + zone};
         } catch (DateTimeParseException e) {
-            return new String[]{"Mitte Januar 2027", "in mid January 2027"};
+            // no date set: say so instead of guessing one
+            return new String[]{"bald", "soon"};
         }
     }
 }

@@ -64,7 +64,7 @@ public class ObeliskIntakeBlockEntity extends BlockEntity {
         public ItemStack insertItem(int slot, ItemStack stack, boolean simulate) {
             if (stack.isEmpty() || owner == null || !connected() || level == null || level.isClientSide()) return stack;
             GoalManager gm = GoalManager.get();
-            long take = simulate ? gm.wouldTake(stack) : gm.deposit(owner, Component.literal(ownerName), stack.copy(), true);
+            long take = simulate ? gm.wouldTake(stack) : gm.deposit(owner, Component.literal(ownerName), stack.copy(), true, true);
             if (take <= 0) return stack;
             ItemStack rest = stack.copy();
             rest.shrink((int) take);

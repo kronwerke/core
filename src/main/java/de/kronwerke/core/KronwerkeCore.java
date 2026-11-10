@@ -60,6 +60,7 @@ public class KronwerkeCore {
                 de.kronwerke.core.lock.MachineLocks.tick(e.getServer(), de.kronwerke.core.mobs.MobStages.stage());
             }
             if (Role.main() && e.getServer().getTickCount() % 1200 == 600) GoalManager.get().minute();
+            if (Role.main() && e.getServer().getTickCount() % 20 == 7) GoalManager.get().flushBatches();
         });
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
@@ -100,12 +101,17 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onMobGriefing);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onSpawn);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onDamage);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onAttack);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteract);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteractPlain);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onRightClick);
 
         if (ModList.get().isLoaded("chapters")) {
             // after Chapters, which refuses the pickup of every locked item
             NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, LockedItems::onPickup);
             NeoForge.EVENT_BUS.addListener(LockedItems::onTick);
+            NeoForge.EVENT_BUS.addListener(LockedItems::onAttack);
+            de.kronwerke.core.lock.LockedAccessories.register();
             NeoForge.EVENT_BUS.addListener(de.kronwerke.core.lock.LockedDimensions::onTravel);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickItem.class, LockedItems::onInteract);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickBlock.class, LockedItems::onInteract);
@@ -183,6 +189,7 @@ public class KronwerkeCore {
         de.kronwerke.core.boss.BossScaling.forget(event.getEntity().getUUID());
         if (event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp) {
             // Travel first: it must still see whether this login was refused
+            if (de.kronwerke.core.portal.Travel.leavingTo(sp.getUUID()) == null) de.kronwerke.core.queue.JoinQueue.onLeave(sp.getUUID());
             de.kronwerke.core.portal.Travel.onLogout(sp);
             NetworkSync.onLeave(sp);
         }

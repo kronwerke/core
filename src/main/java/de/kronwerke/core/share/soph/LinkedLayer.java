@@ -62,7 +62,7 @@ import java.util.UUID;
  */
 public final class LinkedLayer implements Layer {
     private static final long SEC = 1_000_000_000L;
-    private static final long WAIT_OPEN = 60 * SEC, AUTO_IDLE = 120 * SEC, HOME_IDLE = 60 * SEC, MIRROR_EVERY = 10 * SEC;
+    private static final long WAIT_OPEN = 60 * SEC, AUTO_IDLE = 120 * SEC, HOME_IDLE = 60 * SEC, MIRROR_EVERY = 2 * SEC; // short: a lost side world restores from a copy this old at most
 
     private static LinkedLayer instance;
     private static boolean listening;

@@ -131,6 +131,14 @@ public class GoalData extends SavedData {
         return now;
     }
 
+    /** Takes back a deposit (an undo within seconds): progress and the giver's counts. */
+    public void subtract(String goal, String item, UUID player, long amount) {
+        progress.put(key(goal, item), Math.max(0, progress(goal, item) - amount));
+        contributions(goal).computeIfPresent(player, (u, v) -> v - amount <= 0 ? null : v - amount);
+        itemContributions(goal, item).computeIfPresent(player, (u, v) -> v - amount <= 0 ? null : v - amount);
+        setDirty();
+    }
+
     public void setProgress(String goal, String item, long amount) {
         progress.put(key(goal, item), amount);
         setDirty();

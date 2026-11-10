@@ -526,7 +526,7 @@ public final class Travel {
             if (b == null && a != null) b = de.kronwerke.core.share.Share.arrive(a);
             if (b == null) b = away.back(id);
             place(tag, b == null ? spawn(server) : b);
-            keepFromHere(id, tag);
+            keepFromHere(id, tag, from);
             // kept until the player is here, so a cancelled move can put the away state back
             if (away.where(id) != null) undo.put(id, new Undo(away.where(id), away.back(id), System.currentTimeMillis() + 90_000));
             away.home(id);
@@ -534,6 +534,8 @@ public final class Travel {
             AwayData.Back b = Crossing.arrive(server, id, a, tag);
             if (b == null) b = Dimensions.dimensionServer() ? Crossing.fallback(server, tag) : Hub.arrival(server);
             place(tag, b);
+            // the mining world's overworld is not main's: a bed on main means nothing there
+            if (!Dimensions.dimensionServer()) for (String k : SPAWN_TAGS) tag.remove(k);
         }
         writePlayer(id, tag);
         writeProgress(id, d);
@@ -562,7 +564,7 @@ public final class Travel {
         }
         CompoundTag tag = decode(str(d, "nbt"));
         place(tag, b == null ? spawn(server) : b);
-        keepFromHere(id, tag);
+        keepFromHere(id, tag, from);
         writePlayer(id, tag);
         writeProgress(id, d);
         if (d.get("extra") instanceof JsonObject x) {
@@ -580,19 +582,58 @@ public final class Travel {
      * (network.keepOnMain, by tag name wherever it sits): the waystones a player activated
      * point at main's world, and a side world must not change them.
      */
-    private static void keepFromHere(UUID id, CompoundTag incoming) {
+    private static final List<String> SPAWN_TAGS = List.of("SpawnX", "SpawnY", "SpawnZ", "SpawnAngle", "SpawnDimension", "SpawnForced");
+
+    private static void keepFromHere(UUID id, CompoundTag incoming, String from) {
         Path f = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).resolve(id + ".dat");
-        if (!Files.exists(f)) return;
+        // a bed in the mining world is a bed in its overworld, not in main's: main keeps its own
+        // respawn point (and none if it had none). The Nether and End servers share main's
+        // dimensions, their anchors are real and travel on.
+        NetworkSync.Peer peer = NetworkSync.peer(from);
+        boolean sameWorld = peer != null && Dimensions.isDimensionRole(peer.role());
+        CompoundTag old = null;
         try {
-            CompoundTag old = NbtIo.readCompressed(f, NbtAccounter.unlimitedHeap());
+            if (Files.exists(f)) old = NbtIo.readCompressed(f, NbtAccounter.unlimitedHeap());
+        } catch (IOException | RuntimeException e) {
+            KronwerkeCore.LOGGER.warn("Could not read main's file of {}: {}", id, e.toString());
+        }
+        if (!sameWorld) {
+            for (String k : SPAWN_TAGS) {
+                incoming.remove(k);
+                if (old != null && old.contains(k)) incoming.put(k, old.get(k).copy());
+            }
+        }
+        if (old == null) return;
+        try {
             for (String key : de.kronwerke.core.config.KronwerkeConfig.KEEP_ON_MAIN.get()) {
                 List<String> path = new ArrayList<>();
                 Tag t = findKey(old, key, path);
-                if (t != null) putAt(incoming, path, t.copy());
+                if (t == null) continue;
+                List<String> inPath = new ArrayList<>();
+                Tag theirs = findKey(incoming, key, inPath);
+                // main's own part wins, but lists are joined: the waystones a player found in
+                // the mining world stay known there instead of being forgotten at every return
+                putAt(incoming, path, theirs == null ? t.copy() : merged(t.copy(), theirs));
             }
-        } catch (IOException | RuntimeException e) {
+        } catch (RuntimeException e) {
             KronwerkeCore.LOGGER.warn("Could not keep main's part of {}: {}", id, e.toString());
         }
+    }
+
+    /** Main's tag with every list in it joined with the same list from the other side. */
+    private static Tag merged(Tag mine, Tag theirs) {
+        if (mine instanceof CompoundTag m && theirs instanceof CompoundTag t) {
+            for (String k : m.getAllKeys()) if (t.contains(k)) m.put(k, merged(m.get(k), t.get(k)));
+            for (String k : t.getAllKeys()) if (!m.contains(k) && t.get(k) instanceof ListTag) m.put(k, t.get(k).copy());
+            return m;
+        }
+        if (mine instanceof ListTag m && theirs instanceof ListTag t && (m.isEmpty() || t.isEmpty() || m.getElementType() == t.getElementType())) {
+            Set<String> seen = new HashSet<>();
+            for (Tag e : m) seen.add(e.toString());
+            for (Tag e : t) if (seen.add(e.toString())) m.add(e.copy());
+            return m;
+        }
+        return mine;
     }
 
     private static Tag findKey(CompoundTag c, String key, List<String> path) {

@@ -62,6 +62,11 @@ public final class LockedItems {
         ItemStack stack = list.get(slot);
         if (!isLocked(player, stack)) return;
         list.set(slot, ItemStack.EMPTY);
+        putBack(player, stack);
+    }
+
+    /** A locked item taken out of a slot where it would work: into the inventory, or dropped. */
+    static void putBack(ServerPlayer player, ItemStack stack) {
         ItemStack rest = stow(player.getInventory(), stack);
         boolean dropped = !rest.isEmpty();
         if (dropped) {
@@ -126,12 +131,25 @@ public final class LockedItems {
     public static void onTick(PlayerTickEvent.Post event) {
         if (event.getEntity() instanceof ServerPlayer player && player.tickCount % 5 == 0) {
             audit(player);
+            if (player.tickCount % 20 == 0 && !player.isSpectator() && CHAPTERS) LockedAccessories.audit(player);
+        }
+    }
+
+    /** Attacking with a locked weapon in hand: the audit moves it within a tick, the hit does not land. */
+    public static void onAttack(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player && !(player instanceof net.neoforged.neoforge.common.util.FakePlayer)
+                && isLocked(player, player.getMainHandItem())) {
+            event.setCanceled(true);
+            audit(player);
         }
     }
 
     /** Using, placing or hitting with a locked item in hand. */
     public static void onInteract(PlayerInteractEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        // machines with a fake player (deployers, placers): their owner's stages are not theirs,
+        // and a machine must never stay locked out after the stage opened for everyone
+        if (player instanceof net.neoforged.neoforge.common.util.FakePlayer) return;
         if (!(event instanceof ICancellableEvent cancellable)) return;
         if (isLocked(player, player.getItemInHand(event.getHand()))) {
             cancellable.setCanceled(true);

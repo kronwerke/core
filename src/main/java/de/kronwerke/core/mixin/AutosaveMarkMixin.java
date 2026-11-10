@@ -16,10 +16,12 @@ public abstract class AutosaveMarkMixin {
     @WrapOperation(method = "tickServer", at = @At(value = "INVOKE", target = "Lnet/minecraft/server/MinecraftServer;saveEverything(ZZZ)Z"))
     private boolean kronwerke$markAutosave(MinecraftServer server, boolean suppressLog, boolean flush, boolean forced, Operation<Boolean> original) {
         SpreadAutosave.autosaving = true;
+        SpreadAutosave.begin();
         try {
             return original.call(server, suppressLog, flush, forced);
         } finally {
             SpreadAutosave.autosaving = false;
+            SpreadAutosave.afterSave();
         }
     }
 }

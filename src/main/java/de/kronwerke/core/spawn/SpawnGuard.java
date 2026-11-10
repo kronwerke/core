@@ -41,9 +41,81 @@ public final class SpawnGuard {
 
     public static boolean inside(Level level, BlockPos pos) {
         if (!(level instanceof ServerLevel sl) || sl.dimension() != Level.OVERWORLD || radius() <= 0) return false;
-        BlockPos spawn = sl.getSharedSpawnPos();
-        int dx = pos.getX() - spawn.getX(), dz = pos.getZ() - spawn.getZ();
+        int[] c = center(sl);
+        int dx = pos.getX() - c[0], dz = pos.getZ() - c[1];
         return Math.max(Math.abs(dx), Math.abs(dz)) <= radius();
+    }
+
+    private static int[] center;
+    private static String centerFrom;
+
+    /**
+     * The middle of the protection: the configured x,z, or the world spawn as it was the first
+     * time (kept in the world's data), so /setworldspawn cannot move it away from the obelisk.
+     */
+    static int[] center(ServerLevel level) {
+        String cfg = KronwerkeConfig.SPAWN_CENTER.get().trim();
+        if (center != null && cfg.equals(centerFrom)) return center;
+        int[] c = null;
+        if (!cfg.isEmpty()) {
+            String[] p = cfg.split(",");
+            try {
+                c = new int[]{Integer.parseInt(p[0].trim()), Integer.parseInt(p[1].trim())};
+            } catch (RuntimeException e) {
+                de.kronwerke.core.KronwerkeCore.LOGGER.warn("spawn.center {} is not x,z; the kept spawn counts", cfg);
+            }
+        }
+        if (c == null) c = Anchor.get(level);
+        center = c;
+        centerFrom = cfg;
+        return c;
+    }
+
+    /** The first world spawn the protection saw. */
+    public static final class Anchor extends net.minecraft.world.level.saveddata.SavedData {
+        static final String NAME = "kronwerke_spawnguard";
+        int x, z;
+        boolean set;
+
+        static int[] get(ServerLevel level) {
+            Anchor a = level.getServer().overworld().getDataStorage().computeIfAbsent(
+                    new Factory<>(Anchor::new, (t, p) -> {
+                        Anchor n = new Anchor();
+                        n.x = t.getInt("x");
+                        n.z = t.getInt("z");
+                        n.set = t.getBoolean("set");
+                        return n;
+                    }, null), NAME);
+            if (!a.set) {
+                BlockPos s = level.getServer().overworld().getSharedSpawnPos();
+                a.x = s.getX();
+                a.z = s.getZ();
+                a.set = true;
+                a.setDirty();
+            }
+            return new int[]{a.x, a.z};
+        }
+
+        @Override
+        public net.minecraft.nbt.CompoundTag save(net.minecraft.nbt.CompoundTag tag, net.minecraft.core.HolderLookup.Provider provider) {
+            tag.putInt("x", x);
+            tag.putInt("z", z);
+            tag.putBoolean("set", set);
+            return tag;
+        }
+    }
+
+    /** Whether a block may go into the zone around the obelisk: intakes and what feeds them. */
+    private static boolean feederBlock(BlockState state) {
+        String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
+        for (String p : KronwerkeConfig.FEEDER_BLOCKS.get()) if (matches(id, p)) return true;
+        return false;
+    }
+
+    /** Things at spawn that belong to everybody: frames, paintings, armour stands, animals, villagers, pets. */
+    private static boolean sheltered(Entity e) {
+        if (e instanceof net.minecraft.world.entity.decoration.HangingEntity || e instanceof net.minecraft.world.entity.decoration.ArmorStand) return true;
+        return e instanceof net.minecraft.world.entity.Mob m && m.getType().getCategory() != MobCategory.MONSTER && !(m instanceof net.minecraft.world.entity.monster.Enemy);
     }
 
     private static boolean mayBuild(Entity entity) {
@@ -60,7 +132,16 @@ public final class SpawnGuard {
 
     private static void tell(Entity entity) {
         if (entity instanceof ServerPlayer p) {
-            p.displayClientMessage(Text.t("spawn.protected", "Der Spawn gehört allen. Hier wird nicht gebaut.").withStyle(ChatFormatting.RED), true);
+            int[] c = center(p.serverLevel());
+            int out = radius() + 1 - Math.max(Math.abs(p.getBlockX() - c[0]), Math.abs(p.getBlockZ() - c[1]));
+            p.displayClientMessage(Text.t("spawn.protected_where", "Der Spawn gehört allen. Bauen geht %s Blöcke weiter draußen (Schutzzone %s Blöcke um die Mitte).",
+                    Math.max(1, out), radius()).withStyle(ChatFormatting.RED), true);
+        }
+    }
+
+    private static void tellObelisk(Entity entity) {
+        if (entity instanceof ServerPlayer p) {
+            p.displayClientMessage(Text.t("spawn.obelisk_zone", "Am Obelisken gehen nur Einlässe, Trichter, Rohre und Bänder.").withStyle(ChatFormatting.RED), true);
         }
     }
 
@@ -80,7 +161,12 @@ public final class SpawnGuard {
         if (!(event.getLevel() instanceof ServerLevel level) || !inside(level, event.getPos()) || mayBuild(event.getEntity())) return;
         // the zone around the obelisk is open for intakes, hoppers, pipes and belts; every block there remembers who placed it
         if (nearObelisk(level, event.getPos()) && event.getEntity() instanceof ServerPlayer sp) {
-            Obelisk.get().data().addFeeder(event.getPos(), sp.getUUID());
+            if (feederBlock(event.getPlacedBlock())) {
+                Obelisk.get().data().addFeeder(event.getPos(), sp.getUUID());
+                return;
+            }
+            event.setCanceled(true);
+            tellObelisk(sp);
             return;
         }
         event.setCanceled(true);
@@ -102,6 +188,28 @@ public final class SpawnGuard {
     public static void onExplosion(ExplosionEvent.Detonate event) {
         if (!(event.getLevel() instanceof ServerLevel level)) return;
         event.getAffectedBlocks().removeIf(p -> inside(level, p) || keeps(level.getBlockState(p)));
+        event.getAffectedEntities().removeIf(e -> sheltered(e) && inside(level, e.blockPosition()));
+    }
+
+    /** Hitting what belongs to everybody at spawn (a frame, a stand, an animal, a pet). */
+    public static void onAttack(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
+        Entity target = event.getTarget();
+        if (!sheltered(target) || !inside(target.level(), target.blockPosition()) || mayBuild(event.getEntity())) return;
+        event.setCanceled(true);
+        tell(event.getEntity());
+    }
+
+    /** Taking from or turning a frame, dressing a stand at spawn. */
+    public static void onEntityInteract(PlayerInteractEvent.EntityInteractSpecific event) {
+        Entity target = event.getTarget();
+        if (!(target instanceof net.minecraft.world.entity.decoration.ArmorStand) || !inside(target.level(), target.blockPosition()) || mayBuild(event.getEntity())) return;
+        event.setCanceled(true);
+    }
+
+    public static void onEntityInteractPlain(PlayerInteractEvent.EntityInteract event) {
+        Entity target = event.getTarget();
+        if (!(target instanceof net.minecraft.world.entity.decoration.ItemFrame) || !inside(target.level(), target.blockPosition()) || mayBuild(event.getEntity())) return;
+        event.setCanceled(true);
     }
 
     /** A pattern is an id, or an id with * standing for anything. */
@@ -143,11 +251,27 @@ public final class SpawnGuard {
         }
     }
 
+    /**
+     * At spawn nobody hurts a player but a monster or the world itself (falling, lava): not
+     * another player, their wolf, their arrow or their TNT. Animals, villagers and pets there
+     * take no damage from players or what players set off.
+     */
     public static void onDamage(LivingIncomingDamageEvent event) {
-        if (!(event.getEntity() instanceof Player victim) || !(event.getSource().getEntity() instanceof Player attacker)) return;
-        if (attacker == victim) return;
-        if (inside(victim.level(), victim.blockPosition()) || inside(attacker.level(), attacker.blockPosition())) {
-            event.setCanceled(true);
+        var src = event.getSource();
+        if (src.is(net.minecraft.tags.DamageTypeTags.BYPASSES_INVULNERABILITY)) return;
+        Entity cause = src.getEntity(), direct = src.getDirectEntity();
+        if (event.getEntity() instanceof Player victim) {
+            if (cause == victim && direct == victim) return;
+            boolean byMonster = cause instanceof net.minecraft.world.entity.monster.Enemy || (cause == null && direct instanceof net.minecraft.world.entity.monster.Enemy);
+            if (byMonster || (cause == null && direct == null)) return;
+            if (inside(victim.level(), victim.blockPosition()) || (cause != null && inside(cause.level(), cause.blockPosition()))) {
+                event.setCanceled(true);
+            }
+            return;
+        }
+        if (sheltered(event.getEntity()) && inside(event.getEntity().level(), event.getEntity().blockPosition())
+                && (cause instanceof Player || src.is(net.minecraft.tags.DamageTypeTags.IS_EXPLOSION) || direct instanceof net.minecraft.world.entity.projectile.Projectile)) {
+            if (!(cause instanceof Player p && mayBuild(p))) event.setCanceled(true);
         }
     }
 
@@ -158,7 +282,7 @@ public final class SpawnGuard {
         if (state.hasBlockEntity() || state.getBlock().defaultBlockState().hasBlockEntity()) return; // containers, waystones, the obelisk's neighbours
         if (event.getItemStack().isEmpty()) return; // doors, buttons, levers
         if (event.getItemStack().getItem() instanceof net.minecraft.world.item.BlockItem) return; // handled by onPlace
-        if (nearObelisk(level, event.getPos())) return;
+        // buckets, fire and the like: not at spawn, and not next to the obelisk either
         event.setUseItem(net.neoforged.neoforge.common.util.TriState.FALSE);
     }
 }

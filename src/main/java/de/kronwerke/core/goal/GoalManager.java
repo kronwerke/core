@@ -44,7 +44,11 @@ public final class GoalManager {
 
     private MinecraftServer server;
     private final Map<String, Goal> goals = new LinkedHashMap<>();
-    private ServerBossEvent bossBar;
+    /** One bar per running goal (goals can run side by side). */
+    private final Map<String, ServerBossEvent> bars = new LinkedHashMap<>();
+    private boolean barsOn;
+    /** Players who hid the goal bar with /kw bar. */
+    private final java.util.Set<UUID> barHidden = new java.util.HashSet<>();
 
     public static GoalManager get() {
         return INSTANCE;
@@ -54,8 +58,7 @@ public final class GoalManager {
         this.server = server;
         reload();
         if (KronwerkeConfig.SHOW_GOAL_BOSSBAR.get()) {
-            bossBar = new ServerBossEvent(Component.literal("Kronwerke"), BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.NOTCHED_10);
-            bossBar.setVisible(false);
+            barsOn = true;
         }
         // a rite cut short by a restart: what it would have revealed goes out now
         for (Goal g : goals.values()) if (data().isCompleted(g.id()) && !data().isRevealed(g.id())) reveal(g);
@@ -64,7 +67,7 @@ public final class GoalManager {
     }
 
     public void shutdown() {
-        if (bossBar != null) bossBar.removeAllPlayers();
+        for (ServerBossEvent b : bars.values()) b.removeAllPlayers();
         if (server != null) activity().closeAll(System.currentTimeMillis());
     }
 
@@ -407,6 +410,20 @@ public final class GoalManager {
     }
 
     public long deposit(UUID who, Component name, ItemStack stack, boolean announce) {
+        return deposit(who, name, stack, announce, false);
+    }
+
+    /** Feedback for inserts that come stack after stack (an intake fed by a belt or a pipe). */
+    private record Batch(Goal goal, Goal.PillarItem item, ItemStack shown, UUID who, Component name, long amount, long since) {}
+
+    private final Map<String, Batch> batches = new LinkedHashMap<>();
+
+    /**
+     * Credits at once; with batch the feedback (pedestals, the flying gift, the notes, the
+     * chat line) is gathered per giver and item and goes out once every few seconds, so a
+     * pipe that pushes 300 stacks makes one line, not 300.
+     */
+    public long deposit(UUID who, Component name, ItemStack stack, boolean announce, boolean batch) {
         if (stack.isEmpty()) return 0;
         for (Goal g : activeGoals()) {
             if (isHeld(g)) continue;
@@ -418,11 +435,13 @@ public final class GoalManager {
                 stack.shrink((int) take);
                 long now = data().add(g.id(), it.item(), who, take);
                 remember(g.id(), name, it.item(), take);
-                de.kronwerke.core.obelisk.Obelisk.get().onDeposit(g, it, shown, who, take);
-                if (announce && KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
-                    server.getPlayerList().broadcastSystemMessage(Text.t("goal.deposit", "%s gibt %s %s ab (%s/%s)", name,
-                            Component.literal(Text.number(take)).withStyle(ChatFormatting.WHITE), Text.item(it.item()),
-                            Text.number(now), Text.number(data().target(g.id(), it.item()))).withStyle(ChatFormatting.GRAY), false);
+                if (!batch) rememberGiven(who, g, it, shown, take);
+                if (batch) {
+                    String key = who + "|" + g.id() + "|" + it.item();
+                    Batch b = batches.get(key);
+                    batches.put(key, new Batch(g, it, shown, who, name, (b == null ? 0 : b.amount()) + take, b == null ? System.currentTimeMillis() : b.since()));
+                } else {
+                    feedback(g, it, shown, who, name, take, announce);
                 }
                 if (isHeld(g)) announceHold(g);
                 if (done(g) >= total(g)) complete(g);
@@ -433,15 +452,78 @@ public final class GoalManager {
         return 0;
     }
 
-    /** Deposits everything matching from the player's inventory. Returns total taken. */
+    private void feedback(Goal g, Goal.PillarItem it, ItemStack shown, UUID who, Component name, long take, boolean announce) {
+        de.kronwerke.core.obelisk.Obelisk.get().onDeposit(g, it, shown, who, take);
+        if (announce && KronwerkeConfig.BROADCAST_DEPOSITS.get() && take >= KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) {
+            server.getPlayerList().broadcastSystemMessage(Text.t("goal.deposit", "%s gibt %s %s ab (%s/%s)", name,
+                    Component.literal(Text.number(take)).withStyle(ChatFormatting.WHITE), Text.item(it.item()),
+                    Text.number(data().progress(g.id(), it.item())), Text.number(data().target(g.id(), it.item()))).withStyle(ChatFormatting.GRAY), false);
+        }
+    }
+
+    /** Every second: batches older than three seconds give their feedback, once. */
+    public void flushBatches() {
+        if (batches.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        for (var it = batches.values().iterator(); it.hasNext(); ) {
+            Batch b = it.next();
+            if (now - b.since() < 3000) continue;
+            it.remove();
+            feedback(b.goal(), b.item(), b.shown(), b.who(), b.name(), b.amount(), true);
+        }
+    }
+
+    /**
+     * Deposits everything matching from the backpack part of the inventory. The hotbar, the
+     * offhand and the armour stay: what a player holds ready is not given away by a sneak.
+     */
     public long depositAll(ServerPlayer player) {
         long total = 0;
-        for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+        for (int i = 9; i < 36; i++) {
             ItemStack s = player.getInventory().getItem(i);
             if (s.isEmpty()) continue;
             total += deposit(player, s);
         }
         return total;
+    }
+
+    /** A player's deposits of the last seconds, which /kw undo takes back. */
+    private record Given(String goal, String item, ItemStack stack, long amount, long at) {}
+
+    private final Map<UUID, List<Given>> lastGiven = new HashMap<>();
+    private static final long UNDO_MS = 10_000;
+
+    private void rememberGiven(UUID who, Goal g, Goal.PillarItem it, ItemStack shown, long amount) {
+        long now = System.currentTimeMillis();
+        List<Given> l = lastGiven.computeIfAbsent(who, k -> new ArrayList<>());
+        l.removeIf(x -> now - x.at() > UNDO_MS);
+        l.add(new Given(g.id(), it.item(), shown.copyWithCount(1), amount, now));
+    }
+
+    /**
+     * Gives back what the player deposited in the last ten seconds, as long as the goal has not
+     * completed or reached its hold with it. Returns the number of items given back.
+     */
+    public long undo(ServerPlayer player) {
+        List<Given> l = lastGiven.remove(player.getUUID());
+        if (l == null) return 0;
+        long now = System.currentTimeMillis(), back = 0;
+        for (Given x : l) {
+            if (now - x.at() > UNDO_MS) continue;
+            Goal g = goals.get(x.goal());
+            if (g == null || data().isCompleted(g.id()) || isHeld(g)) continue;
+            data().subtract(x.goal(), x.item(), player.getUUID(), x.amount());
+            long left = x.amount();
+            while (left > 0) {
+                int n = (int) Math.min(left, x.stack().getMaxStackSize());
+                ItemStack s = x.stack().copyWithCount(n);
+                if (!player.getInventory().add(s)) player.drop(s, false);
+                left -= n;
+            }
+            back += x.amount();
+        }
+        if (back > 0) refreshBossBar();
+        return back;
     }
 
     private void announceHold(Goal g) {
@@ -601,43 +683,67 @@ public final class GoalManager {
     // ---- boss bar and players ----
 
     public void refreshBossBar() {
-        if (bossBar == null || server == null) return;
+        if (!barsOn || server == null) return;
         List<Goal> active = activeGoals();
-        if (active.isEmpty()) {
-            bossBar.setVisible(false);
-            return;
+        java.util.Set<String> want = new java.util.HashSet<>();
+        for (Goal g : active) want.add(g.id());
+        for (var it = bars.entrySet().iterator(); it.hasNext(); ) {
+            var en = it.next();
+            if (!want.contains(en.getKey())) {
+                en.getValue().removeAllPlayers();
+                it.remove();
+            }
         }
-        Goal g = active.get(0);
-        double f = fraction(g);
         boolean asleep = de.kronwerke.core.obelisk.Obelisk.get().slumbering();
-        String state = isHeld(g) ? "  wartet auf das Event" : asleep ? "  der Obelisk schläft" : String.format("  %d%%", Math.round(f * 100));
-        bossBar.setName(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)
-                .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : asleep ? ChatFormatting.GRAY : ChatFormatting.WHITE)));
-        bossBar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
-        bossBar.setProgress((float) Math.min(1.0, f));
-        bossBar.setVisible(true);
+        for (Goal g : active) {
+            ServerBossEvent bar = bars.computeIfAbsent(g.id(), k -> {
+                ServerBossEvent b = new ServerBossEvent(Component.literal(g.title()), BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.NOTCHED_10);
+                for (ServerPlayer p : server.getPlayerList().getPlayers()) if (!barHidden.contains(p.getUUID())) b.addPlayer(p);
+                return b;
+            });
+            double f = fraction(g);
+            String state = isHeld(g) ? "  wartet auf das Event" : asleep ? "  der Obelisk schläft" : String.format("  %d%%", Math.round(f * 100));
+            bar.setName(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)
+                    .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : asleep ? ChatFormatting.GRAY : ChatFormatting.WHITE)));
+            bar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
+            bar.setProgress((float) Math.min(1.0, f));
+            bar.setVisible(true);
+        }
         scopeBossBar();
+    }
+
+    /** /kw bar: a player hides the goal bar, or shows it again. True when it is shown now. */
+    public boolean toggleBar(ServerPlayer p) {
+        boolean show = barHidden.remove(p.getUUID());
+        if (!show) barHidden.add(p.getUUID());
+        for (ServerBossEvent b : bars.values()) {
+            if (show) b.addPlayer(p);
+            else b.removePlayer(p);
+        }
+        return show;
     }
 
     /** With a boss bar radius set, only players near the obelisk carry the bar. */
     private void scopeBossBar() {
         int radius = KronwerkeConfig.BOSS_BAR_RADIUS.get();
-        if (radius <= 0 || bossBar == null) return;
+        if (radius <= 0 || bars.isEmpty()) return;
         var ob = de.kronwerke.core.obelisk.Obelisk.get();
         var d = ob.data();
         for (ServerPlayer sp : server.getPlayerList().getPlayers()) {
-            boolean near = d.isSet() && sp.level().dimension().location().toString().equals(d.dimension())
+            boolean near = !barHidden.contains(sp.getUUID()) && d.isSet() && sp.level().dimension().location().toString().equals(d.dimension())
                     && sp.blockPosition().distSqr(d.pos()) <= (long) radius * radius;
-            boolean has = bossBar.getPlayers().contains(sp);
-            if (near && !has) bossBar.addPlayer(sp);
-            else if (!near && has) bossBar.removePlayer(sp);
+            for (ServerBossEvent bar : bars.values()) {
+                boolean has = bar.getPlayers().contains(sp);
+                if (near && !has) bar.addPlayer(sp);
+                else if (!near && has) bar.removePlayer(sp);
+            }
         }
     }
 
     public void onPlayerJoin(Player player) {
         if (player instanceof ServerPlayer sp) {
             activity().login(sp.getUUID(), System.currentTimeMillis());
-            if (bossBar != null) bossBar.addPlayer(sp);
+            if (!barHidden.contains(sp.getUUID())) for (ServerBossEvent b : bars.values()) b.addPlayer(sp);
             giveStages(sp);
             giveKits(sp);
         }
@@ -646,7 +752,7 @@ public final class GoalManager {
     public void onPlayerLeave(Player player) {
         if (player instanceof ServerPlayer sp) {
             activity().logout(sp.getUUID(), System.currentTimeMillis());
-            if (bossBar != null) bossBar.removePlayer(sp);
+            for (ServerBossEvent b : bars.values()) b.removePlayer(sp);
         }
     }
 

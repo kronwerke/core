@@ -127,6 +127,9 @@ public final class ObeliskTiers {
     public static boolean place(ServerLevel level, ObeliskData data, Placement p) {
         BlockState there = level.getBlockState(p.pos());
         if (!p.replace() && !there.isAir() && !there.canBeReplaced()) return false;
+        // the pavement never takes what players built in the feeder zone: their hoppers, pipes
+        // and belts (anything with a block entity, anything a player placed there) stay
+        if (p.replace() && (there.hasBlockEntity() || data.feeder(p.pos()) != null)) return false;
         if (there.is(p.state().getBlock())) return false;
         data.addExtra(p.pos(), there);
         level.setBlock(p.pos(), p.state(), Block.UPDATE_ALL);
@@ -135,8 +138,11 @@ public final class ObeliskTiers {
 
     /** Puts back what stood where the tiers built. */
     public static void clear(ServerLevel level, ObeliskData data) {
+        java.util.Map<BlockPos, BlockState> built = new java.util.HashMap<>();
+        for (Placement p : upTo(data.pos(), MAX)) built.put(p.pos(), p.state());
         data.extras().forEach((p, before) -> {
-            if (level.isLoaded(p)) level.setBlock(p, before, Block.UPDATE_ALL);
+            // only where the tier's block still stands: what was built there since stays
+            if (level.isLoaded(p) && level.getBlockState(p).equals(built.get(p))) level.setBlock(p, before, Block.UPDATE_ALL);
         });
         data.clearExtras();
     }

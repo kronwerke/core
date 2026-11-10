@@ -59,13 +59,15 @@ public class ObeliskIntakeBlock extends BaseEntityBlock {
     @Override
     public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
         super.setPlacedBy(level, pos, state, placer, stack);
-        if (level.isClientSide() || !(placer instanceof Player p)) return;
+        // a machine's fake player owns nothing: the first real player to click it takes it
+        if (level.isClientSide() || !(placer instanceof Player p) || p instanceof net.neoforged.neoforge.common.util.FakePlayer) return;
         if (level.getBlockEntity(pos) instanceof ObeliskIntakeBlockEntity be) {
             be.setOwner(p.getUUID(), p.getGameProfile().getName());
             if (be.connected()) {
                 p.sendSystemMessage(Text.t("obelisk.intake", "Dein Zubringer steht. Alles, was hier reinkommt, zählt für dich.").withStyle(ChatFormatting.GREEN));
             } else {
-                p.sendSystemMessage(Text.t("obelisk.intake_far", "Der Zubringer ist zu weit vom Obelisken weg. Er muss direkt daneben stehen.").withStyle(ChatFormatting.RED));
+                p.sendSystemMessage(Text.t("obelisk.intake_far_r", "Der Zubringer ist zu weit vom Obelisken weg. Er muss höchstens %s Blöcke vom Obelisken entfernt stehen.",
+                        de.kronwerke.core.config.KronwerkeConfig.FEEDER_RADIUS.get()).withStyle(ChatFormatting.RED));
             }
         }
     }
@@ -74,9 +76,18 @@ public class ObeliskIntakeBlock extends BaseEntityBlock {
     protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
         if (level.isClientSide()) return InteractionResult.SUCCESS;
         if (level.getBlockEntity(pos) instanceof ObeliskIntakeBlockEntity be) {
+            if (be.owner() == null && !(player instanceof net.neoforged.neoforge.common.util.FakePlayer)) {
+                // set by a structure, a command or a machine: whoever clicks it first owns it
+                be.setOwner(player.getUUID(), player.getGameProfile().getName());
+                player.sendSystemMessage(Text.t("obelisk.intake_claimed", "Der Zubringer hatte keinen Besitzer, jetzt gehört er dir. Alles, was hier reinkommt, zählt für dich.")
+                        .withStyle(ChatFormatting.GREEN));
+                return InteractionResult.CONSUME;
+            }
+            var gm = de.kronwerke.core.goal.GoalManager.get();
+            boolean held = gm.activeGoals().stream().anyMatch(gm::isHeld);
             String who = be.ownerName().isEmpty() ? "niemandem" : be.ownerName();
-            player.sendSystemMessage(Text.t("obelisk.intake_info", "Zubringer von %s, %s.", who,
-                    be.connected() ? "mit dem Obelisken verbunden" : "nicht verbunden: zu weit weg").withStyle(ChatFormatting.GRAY));
+            String state2 = !be.connected() ? "nicht verbunden: zu weit weg" : held ? "verbunden, aber das Ziel wartet gerade auf das Event" : "mit dem Obelisken verbunden";
+            player.sendSystemMessage(Text.t("obelisk.intake_info", "Zubringer von %s, %s.", who, state2).withStyle(ChatFormatting.GRAY));
         }
         return InteractionResult.CONSUME;
     }

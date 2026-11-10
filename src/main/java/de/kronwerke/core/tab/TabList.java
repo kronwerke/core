@@ -134,7 +134,7 @@ public final class TabList {
     }
 
     private static void sendHeader(ServerPlayer player) {
-        MutableComponent header = Component.literal("Kronwerke Season 2").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+        MutableComponent header = Component.literal(de.kronwerke.core.config.KronwerkeConfig.SEASON_NAME.get()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
                 .append(Component.literal("\n" + KronwerkeConfig.TAB_LINE.get()).withStyle(ChatFormatting.GRAY));
         MutableComponent footer = Component.empty();
         String goal = goalLine();

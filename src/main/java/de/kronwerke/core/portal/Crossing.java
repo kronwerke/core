@@ -227,7 +227,8 @@ public final class Crossing {
 
     /** What a dimension server adds when a player logs out: where to put them when they come back. */
     static void resume(ServerPlayer p, JsonObject data) {
-        if (!Dimensions.dimensionServer() || !Dimensions.here(p.level().dimension()) || p.isDeadOrDying()) return;
+        // every side world: logging out deep in a mine or in the Nether, the next login goes back there
+        if (Role.main() || !Dimensions.here(p.level().dimension()) || p.isDeadOrDying()) return;
         data.add("resume", exact(p.level().dimension(), p.position(), p.getYRot()));
     }
 
@@ -241,8 +242,16 @@ public final class Crossing {
         if (a == null) return null;
         if (a.has("exact")) {
             ResourceKey<Level> dim = key(Travel.str(a, "dim"));
-            if (s.getLevel(dim) == null) return null;
-            return new AwayData.Back(dim.location().toString(), a.get("x").getAsDouble(), a.get("y").getAsDouble(), a.get("z").getAsDouble(), a.get("yaw").getAsFloat());
+            ServerLevel level = s.getLevel(dim);
+            if (level == null) return null;
+            AwayData.Back b = new AwayData.Back(dim.location().toString(), a.get("x").getAsDouble(), a.get("y").getAsDouble(), a.get("z").getAsDouble(), a.get("yaw").getAsFloat());
+            // a place from before a reset of the mining world may be inside rock now: then the hub
+            if (!Role.main() && !Dimensions.dimensionServer()) {
+                BlockPos at = BlockPos.containing(b.x(), b.y(), b.z());
+                level.getChunk(at);
+                if (!level.getBlockState(at).getCollisionShape(level, at).isEmpty() || !level.getBlockState(at.above()).getCollisionShape(level, at.above()).isEmpty()) return null;
+            }
+            return b;
         }
         String kind = Travel.str(a, "kind");
         if (kind.equals("end")) return endPlatform(s);

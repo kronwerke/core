@@ -47,6 +47,12 @@ public final class JoinQueue {
     private static final Deque<Waiting> waiting = new ArrayDeque<>();
     /** Let in and still between the end of the queue and the login, with when. */
     private static final Map<UUID, Long> admitted = new HashMap<>();
+    /** Who left lately (a crash, a timeout, a quick restart of the game): back in without waiting for three minutes. */
+    private static final Map<UUID, Long> leftAt = new HashMap<>();
+
+    public static void onLeave(UUID id) {
+        if (on()) leftAt.put(id, System.currentTimeMillis());
+    }
     private static MinecraftServer server;
     private static int ticks;
 
@@ -124,6 +130,8 @@ public final class JoinQueue {
 
     /** Who never waits: operators, owners, streamers, and players the network already counts. */
     static boolean bypass(GameProfile p) {
+        Long left = leftAt.get(p.getId());
+        if (left != null && System.currentTimeMillis() - left < 180_000) return true;
         if (server.getPlayerList().isOp(p)) return true;
         for (String owner : KronwerkeConfig.OWNERS.get()) if (owner.equalsIgnoreCase(p.getName())) return true;
         if (SlotManager.get().isStreamer(p.getId())) return true;
@@ -136,6 +144,7 @@ public final class JoinQueue {
         ticks++;
         long now = System.currentTimeMillis();
         admitted.entrySet().removeIf(en -> now - en.getValue() > 120_000 || server.getPlayerList().getPlayer(en.getKey()) != null);
+        leftAt.values().removeIf(t -> now - t > 180_000);
         if (waiting.isEmpty()) return;
         boolean moved = false;
         for (Iterator<Waiting> it = waiting.iterator(); it.hasNext(); ) {
