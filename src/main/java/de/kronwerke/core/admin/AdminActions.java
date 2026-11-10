@@ -115,6 +115,43 @@ public final class AdminActions {
                     command(p, "execute in minecraft:overworld run tp " + arg + " " + (s.getX() + 0.5) + " " + s.getY() + " " + (s.getZ() + 0.5));
                 }
                 case "refresh" -> KwNetwork.sendAdmin(p, "", false);
+                // the server tab
+                case "gate_on", "gate_off" -> command(p, "kw admin gate " + op.substring(5));
+                case "beta_on", "beta_off" -> command(p, "kw admin gate beta " + op.substring(5));
+                case "gate_allow", "gate_deny" -> {
+                    if (!NAME.matcher(arg).matches()) return;
+                    command(p, "kw admin gate " + op.substring(5) + " " + arg);
+                }
+                case "queue_limit" -> {
+                    if (!arg.matches("[0-9]{1,3}")) return;
+                    command(p, "kw admin queue limit " + arg);
+                }
+                case "locks_on", "locks_off" -> command(p, "kw admin locks " + op.substring(6));
+                // the team tab
+                case "grant" -> {
+                    String[] g = arg.split(";");
+                    if (g.length != 2 || !NAME.matcher(g[0]).matches()) return;
+                    String slots = switch (g[1]) {
+                        case "season1" -> "2";
+                        case "team" -> "0";
+                        default -> Integer.toString(de.kronwerke.core.config.KronwerkeConfig.DEFAULT_SLOTS.get());
+                    };
+                    if (!java.util.List.of("streamer", "season1", "team").contains(g[1])) return;
+                    command(p, "kw admin grant " + g[0] + " " + slots + " " + g[1]);
+                }
+                case "ungrant" -> {
+                    if (!NAME.matcher(arg).matches()) return;
+                    command(p, "kw admin ungrant " + arg);
+                }
+                case "bonus" -> {
+                    String[] g = arg.split(";");
+                    if (g.length != 2 || !NAME.matcher(g[0]).matches() || !g[1].matches("-?[0-9]{1,2}")) return;
+                    command(p, "kw admin bonus " + g[0] + " " + g[1]);
+                }
+                case "kick" -> {
+                    if (!NAME.matcher(arg).matches()) return;
+                    command(p, "kick " + arg + " Vom Team vom Server genommen.");
+                }
                 default -> {
                 }
             }

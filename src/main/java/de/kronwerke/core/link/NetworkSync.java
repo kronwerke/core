@@ -448,6 +448,11 @@ public final class NetworkSync {
         return peers.get(name);
     }
 
+    /** Every other server of the network the launcher told about. */
+    public static List<Peer> peerList() {
+        return new ArrayList<>(peers.values());
+    }
+
     /** The first server on the bus with this launcher role, or null. */
     public static Peer peerByRole(String role) {
         for (Peer p : peers.values()) if (p.role().equals(role)) return p;

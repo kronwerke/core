@@ -225,14 +225,41 @@ public final class KwNetwork {
         }
     }
 
-    public record StreamerView(String name, int used, int total, boolean granted, List<String> invited) {
+    /** kind: streamer, season1, team, or empty for an entry without a place of its own. */
+    public record StreamerView(String name, int used, int total, String kind, List<String> invited) {
         public static final StreamCodec<RegistryFriendlyByteBuf, StreamerView> CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, StreamerView::name,
                 ByteBufCodecs.VAR_INT, StreamerView::used,
                 ByteBufCodecs.VAR_INT, StreamerView::total,
-                ByteBufCodecs.BOOL, StreamerView::granted,
+                ByteBufCodecs.STRING_UTF8, StreamerView::kind,
                 ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), StreamerView::invited,
                 StreamerView::new);
+
+        public boolean granted() {
+            return !kind.isEmpty();
+        }
+    }
+
+    /** The server tab: the start gate, the queue, the machine locks, the scaling, the network. */
+    public record ServerView(boolean gateOn, boolean beta, String gateList, boolean queueOn, String queue, int queueLimit,
+                             boolean locksOn, String locks, String scaling, String network) {
+        static void write(RegistryFriendlyByteBuf b, ServerView v) {
+            b.writeBoolean(v.gateOn);
+            b.writeBoolean(v.beta);
+            b.writeUtf(v.gateList);
+            b.writeBoolean(v.queueOn);
+            b.writeUtf(v.queue);
+            b.writeVarInt(v.queueLimit);
+            b.writeBoolean(v.locksOn);
+            b.writeUtf(v.locks);
+            b.writeUtf(v.scaling);
+            b.writeUtf(v.network);
+        }
+
+        static ServerView read(RegistryFriendlyByteBuf b) {
+            return new ServerView(b.readBoolean(), b.readBoolean(), b.readUtf(), b.readBoolean(), b.readUtf(), b.readVarInt(),
+                    b.readBoolean(), b.readUtf(), b.readUtf(), b.readUtf());
+        }
     }
 
     public record GoalRow(String id, String title, String state, int percent) {
@@ -248,16 +275,18 @@ public final class KwNetwork {
         }
     }
 
-    public record PlayerRow(String name, String where, boolean bypass, boolean creative) {
+    /** place: how the player is on the whitelist ("Platz von X", "Streamer", "Team", "von Hand"). */
+    public record PlayerRow(String name, String where, boolean bypass, boolean creative, String place) {
         static void write(RegistryFriendlyByteBuf b, PlayerRow p) {
             b.writeUtf(p.name);
             b.writeUtf(p.where);
             b.writeBoolean(p.bypass);
             b.writeBoolean(p.creative);
+            b.writeUtf(p.place);
         }
 
         static PlayerRow read(RegistryFriendlyByteBuf b) {
-            return new PlayerRow(b.readUtf(), b.readUtf(), b.readBoolean(), b.readBoolean());
+            return new PlayerRow(b.readUtf(), b.readUtf(), b.readBoolean(), b.readBoolean(), b.readUtf());
         }
     }
 
@@ -267,7 +296,7 @@ public final class KwNetwork {
      */
     public record AdminPayload(int tab, boolean seasonRunning, int seasonNumber, List<GoalRow> goals,
                                List<StreamerView> streamers, List<PlayerRow> players, String obelisk,
-                               boolean testWorldBuilt, String message, boolean error) implements CustomPacketPayload {
+                               boolean testWorldBuilt, String message, boolean error, ServerView server) implements CustomPacketPayload {
         public static final Type<AdminPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "admin"));
         public static final StreamCodec<RegistryFriendlyByteBuf, AdminPayload> CODEC = StreamCodec.of((b, a) -> {
             b.writeVarInt(a.tab);
@@ -281,6 +310,7 @@ public final class KwNetwork {
             b.writeBoolean(a.testWorldBuilt);
             b.writeUtf(a.message);
             b.writeBoolean(a.error);
+            ServerView.write(b, a.server);
         }, b -> {
             int tab = b.readVarInt();
             boolean running = b.readBoolean();
@@ -290,7 +320,11 @@ public final class KwNetwork {
             List<StreamerView> streamers = new ArrayList<>();
             for (int i = 0; i < n; i++) streamers.add(StreamerView.CODEC.decode(b));
             List<PlayerRow> players = b.readList(bb -> PlayerRow.read((RegistryFriendlyByteBuf) bb));
-            return new AdminPayload(tab, running, number, goals, streamers, players, b.readUtf(), b.readBoolean(), b.readUtf(), b.readBoolean());
+            String obelisk = b.readUtf();
+            boolean built = b.readBoolean();
+            String message = b.readUtf();
+            boolean error = b.readBoolean();
+            return new AdminPayload(tab, running, number, goals, streamers, players, obelisk, built, message, error, ServerView.read(b));
         });
 
         @Override
@@ -388,9 +422,16 @@ public final class KwNetwork {
         SlotManager sm = SlotManager.get();
         List<StreamerView> list = new ArrayList<>();
         for (SlotData.StreamerEntry e : sm.allStreamers()) {
-            list.add(new StreamerView(e.name, e.used(), sm.allowance(e), e.granted, new ArrayList<>(e.invited.values())));
+            if (!e.granted && e.invited.isEmpty()) continue;
+            list.add(new StreamerView(e.name, e.used(), sm.allowance(e), e.granted ? e.kind : "", new ArrayList<>(e.invited.values())));
         }
-        list.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        // streamers first, then Season 1 and team, then entries without a place of their own
+        list.sort(java.util.Comparator.comparingInt((StreamerView v) -> switch (v.kind()) {
+            case "streamer" -> 0;
+            case "season1" -> 1;
+            case "team" -> 2;
+            default -> 3;
+        }).thenComparing(StreamerView::name, String.CASE_INSENSITIVE_ORDER));
         de.kronwerke.core.goal.GoalManager gm = de.kronwerke.core.goal.GoalManager.get();
         de.kronwerke.core.goal.GoalData d = gm.progressData();
         List<GoalRow> goals = new ArrayList<>();
@@ -398,12 +439,19 @@ public final class KwNetwork {
             boolean done = d.isCompleted(g.id());
             boolean active = gm.isActive(g);
             String state = done ? "geschafft" : active ? (gm.isHeld(g) ? "wartet" : "läuft") : "gesperrt";
+            if (active) state += String.format(", Faktor %.2f%s", d.factor(g.id()), d.isProvisional(g.id()) ? " (vorläufig)" : "");
             goals.add(new GoalRow(g.id(), g.title(), state, done ? 100 : active ? (int) Math.floor(gm.fraction(g) * 100) : 0));
         }
         List<PlayerRow> players = new ArrayList<>();
         for (ServerPlayer o : p.getServer().getPlayerList().getPlayers()) {
             String where = o.level().dimension().location().getPath().replace('_', ' ');
-            players.add(new PlayerRow(o.getGameProfile().getName(), where, d.hasBypass(o.getUUID()), o.isCreative()));
+            SlotData.StreamerEntry own = sm.find(o.getUUID()), from = sm.inviterOf(o.getUUID());
+            String place = own != null && own.granted ? switch (own.kind) {
+                case "streamer" -> "Streamer";
+                case "season1" -> "Season 1";
+                default -> "Team";
+            } : from != null ? "Platz von " + from.name : o.hasPermissions(2) ? "Team" : "von Hand";
+            players.add(new PlayerRow(o.getGameProfile().getName(), where, d.hasBypass(o.getUUID()), o.isCreative(), place));
         }
         players.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
         de.kronwerke.core.obelisk.ObeliskData od = de.kronwerke.core.obelisk.Obelisk.get().data();
@@ -412,7 +460,18 @@ public final class KwNetwork {
         var tw = de.kronwerke.core.world.TestWorld.level(p.getServer());
         boolean built = tw != null && de.kronwerke.core.world.TestWorld.built(tw);
         de.kronwerke.core.season.Season season = de.kronwerke.core.season.Season.get();
-        PacketDistributor.sendToPlayer(p, new AdminPayload(tab, season.running(), season.number(), goals, list, players, obelisk, built, message, error));
+        StringBuilder net = new StringBuilder();
+        for (var peer : de.kronwerke.core.link.NetworkSync.peerList()) {
+            if (net.length() > 0) net.append(", ");
+            net.append(peer.label().isEmpty() ? peer.name() : peer.label()).append(peer.running() ? "" : " (aus)");
+        }
+        ServerView sv = new ServerView(season.gateOn(), season.beta(), String.join(", ", season.gateList()),
+                de.kronwerke.core.queue.JoinQueue.on(), de.kronwerke.core.queue.JoinQueue.status(), de.kronwerke.core.queue.JoinQueue.limit(),
+                de.kronwerke.core.lock.MachineLocks.on(),
+                de.kronwerke.core.lock.MachineLocks.on() ? "Stufe " + de.kronwerke.core.lock.MachineLocks.appliedStage() + " offen, " + de.kronwerke.core.lock.MachineLocks.heldCount() + " Rezepte zurückgehalten" : "aus",
+                gm.activePlayers() + " aktive Spieler (Fenster " + de.kronwerke.core.config.KronwerkeConfig.SCALE_DAYS.get() + " Tage)",
+                net.length() == 0 ? "allein" : net.toString());
+        PacketDistributor.sendToPlayer(p, new AdminPayload(tab, season.running(), season.number(), goals, list, players, obelisk, built, message, error, sv));
     }
 
     private static void onSlots(SlotsPayload payload, IPayloadContext ctx) {

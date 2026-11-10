@@ -25,10 +25,11 @@ import java.util.List;
  * the bottom. Buttons that cannot be undone need a second click.
  */
 public final class AdminScreen extends KwScreen {
-    private static final String[] TABS = {"Übersicht", "Ziele", "Team", "Obelisk", "Spieler"};
-    private static final String[] TAB_TIPS = {"Season, Testwelt, du selbst", "Die fünf Stufen steuern", "Streamer und ihre Plätze", "Bauen und die Rangliste", "Wer gerade online ist"};
+    private static final String[] TABS = {"Übersicht", "Ziele", "Team", "Obelisk", "Spieler", "Server"};
+    private static final String[] TAB_TIPS = {"Season, Testwelt, du selbst", "Die Stufen steuern", "Streamer, Season 1 und ihre Plätze", "Bauen und die Rangliste",
+            "Wer gerade online ist", "Startsperre, Warteschlange, Sperren, Netzwerk"};
     private static final ItemStack[] ICONS = {new ItemStack(Items.CLOCK), new ItemStack(Items.BEACON),
-            new ItemStack(Items.PLAYER_HEAD), new ItemStack(Items.AMETHYST_CLUSTER), new ItemStack(Items.COMPASS)};
+            new ItemStack(Items.PLAYER_HEAD), new ItemStack(Items.AMETHYST_CLUSTER), new ItemStack(Items.COMPASS), new ItemStack(Items.REPEATER)};
     private static final int SIDE = 104, FOOT = 30, ROW = 24;
 
     private static int tab;
@@ -89,6 +90,7 @@ public final class AdminScreen extends KwScreen {
             case 1 -> initGoals();
             case 2 -> initTeam();
             case 3 -> initObelisk();
+            case 5 -> initServer();
             default -> initPlayers();
         }
         addRenderableWidget(FlatButton.of(left + w - 12 - 90, top + h - FOOT + 6, 90, "Aktualisieren", () -> send("refresh", "")).icon(new ItemStack(Items.RECOVERY_COMPASS)).tip("Holt den Stand neu vom Server"));
@@ -139,12 +141,25 @@ public final class AdminScreen extends KwScreen {
         contentH = data.goals().size() * (ROW + 6);
     }
 
+    /** The team list as the field filters it: a name typed there narrows the list. */
+    private List<KwNetwork.StreamerView> teamShown() {
+        String f = targetText.trim().toLowerCase(java.util.Locale.ROOT);
+        if (f.isEmpty()) return data.streamers();
+        List<KwNetwork.StreamerView> out = new ArrayList<>();
+        for (KwNetwork.StreamerView sv : data.streamers()) {
+            if (sv.name().toLowerCase(java.util.Locale.ROOT).contains(f) || sv.invited().stream().anyMatch(n -> n.toLowerCase(java.util.Locale.ROOT).contains(f))) out.add(sv);
+        }
+        return out;
+    }
+
     private void initTeam() {
         int y = listTop - scroll;
-        for (KwNetwork.StreamerView sv : data.streamers()) {
+        for (KwNetwork.StreamerView sv : teamShown()) {
             if (visible(y)) {
-                addRenderableWidget(FlatButton.of(cx + cw - 18 - 4 - 18 - 6, y + 3, 18, "-", () -> sendRaw("admin_slots", sv.name() + "|-1")).tip("Ein Platz weniger"));
-                addRenderableWidget(FlatButton.of(cx + cw - 18 - 6, y + 3, 18, "+", () -> sendRaw("admin_slots", sv.name() + "|+1")).tip("Ein Platz mehr"));
+                if (sv.granted()) {
+                    addRenderableWidget(FlatButton.of(cx + cw - 18 - 4 - 18 - 6, y + 3, 18, "-", () -> sendRaw("admin_slots", sv.name() + "|-1")).tip("Ein Platz weniger"));
+                    addRenderableWidget(FlatButton.of(cx + cw - 18 - 6, y + 3, 18, "+", () -> sendRaw("admin_slots", sv.name() + "|+1")).tip("Ein Platz mehr"));
+                }
             }
             y += ROW;
             for (String p : sv.invited()) {
@@ -159,10 +174,23 @@ public final class AdminScreen extends KwScreen {
         target = new EditBox(font, cx + 4, top + h - FOOT + 11, 152, 10, Component.literal("Streamer"));
         target.setBordered(false);
         target.setTextColor(Ui.TEXT);
-        target.setHint(Component.literal("Verschieben zu Streamer").withStyle(ChatFormatting.DARK_GRAY));
+        target.setHint(Component.literal("Name: suchen, Ziel, freischalten").withStyle(ChatFormatting.DARK_GRAY));
         target.setValue(targetText);
         target.setMaxLength(16);
+        target.setResponder(s -> {
+            if (!s.equals(targetText)) {
+                targetText = s;
+                scroll = 0;
+                rebuildWidgets();
+            }
+        });
         addRenderableWidget(target);
+        int fx = cx + 166, fy = top + h - FOOT + 6;
+        addRenderableWidget(FlatButton.of(fx, fy, 58, "Streamer", () -> send("grant", targetText.trim() + ";streamer")).tip("Gibt dem Namen im Feld einen Streamer-Platz", "mit den üblichen Plätzen"));
+        addRenderableWidget(FlatButton.of(fx + 62, fy, 58, "Season 1", () -> send("grant", targetText.trim() + ";season1")).tip("Platz als Season-1-Spieler, mit 2 Plätzen"));
+        addRenderableWidget(FlatButton.of(fx + 124, fy, 30, "+B", () -> send("bonus", targetText.trim() + ";1")).tip("Ein Bonusplatz für den Namen im Feld"));
+        addRenderableWidget(FlatButton.confirm(fx + 158, fy, 64, "Entziehen", "Sicher?", FlatButton.Style.DANGER, () -> send("ungrant", targetText.trim()))
+                .tip("Nimmt den eigenen Platz weg", "und jeden Platz, den die Person vergeben hat"));
     }
 
     private void initObelisk() {
@@ -175,10 +203,11 @@ public final class AdminScreen extends KwScreen {
 
     private void initPlayers() {
         int y = listTop - scroll;
-        int bw = 56;
+        int bw = 48;
         for (KwNetwork.PlayerRow pr : data.players()) {
             if (visible(y)) {
-                int bx = cx + cw - 4 * (bw + 4) + 4 - 6;
+                int bx = cx + cw - 5 * (bw + 4) + 4 - 6;
+                addRenderableWidget(FlatButton.confirm(bx + 4 * (bw + 4), y + 3, bw, "Kick", "Sicher?", FlatButton.Style.DANGER, () -> send("kick", pr.name())).tip("Wirft " + pr.name() + " vom Server"));
                 addRenderableWidget(FlatButton.of(bx, y + 3, bw, "TP", () -> send("tp", pr.name())).tip("Teleportiert dich zu " + pr.name()));
                 addRenderableWidget(FlatButton.of(bx + bw + 4, y + 3, bw, pr.bypass() ? "Bypass aus" : "Bypass", () -> send("bypass", pr.name())).tip("Stufen-Sperren für diesen Spieler"));
                 addRenderableWidget(FlatButton.of(bx + 2 * (bw + 4), y + 3, bw, pr.creative() ? "Überleben" : "Kreativ", () -> send("mode", pr.name())).tip("Spielmodus wechseln"));
@@ -197,6 +226,17 @@ public final class AdminScreen extends KwScreen {
 
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
+        if (tab == 2 && target != null && mx >= cx && mx < cx + cw - 60 && my >= listTop && my < listBottom) {
+            // a click on a name picks it for the field below: moving, granting, taking back
+            int y = listTop - scroll;
+            for (KwNetwork.StreamerView sv : teamShown()) {
+                if (my >= y && my < y + ROW) {
+                    target.setValue(sv.name());
+                    return true;
+                }
+                y += ROW * (1 + sv.invited().size());
+            }
+        }
         if (mx >= left + 6 && mx < left + SIDE && my >= top + HEAD + 6) {
             int i = (int) ((my - top - HEAD - 6) / 26);
             if (i >= 0 && i < TABS.length && i != tab) {
@@ -249,6 +289,7 @@ public final class AdminScreen extends KwScreen {
             case 1 -> drawGoals(g, mouseX, mouseY);
             case 2 -> drawTeam(g);
             case 3 -> drawObelisk(g);
+            case 5 -> drawServer(g);
             default -> drawPlayers(g, mouseX, mouseY);
         }
         Ui.rule(g, cx, top + h - FOOT, left + w - 8);
@@ -257,7 +298,7 @@ public final class AdminScreen extends KwScreen {
             if (target.isFocused()) g.fill(cx + 1, top + h - FOOT + 23, cx + 159, top + h - FOOT + 24, Ui.GOLD);
         }
         if (!data.message().isEmpty()) {
-            int msgX = tab == 2 ? cx + 166 : cx;
+            int msgX = tab == 2 ? cx + 166 + 226 : cx;
             int msgW = left + w - 12 - 90 - 8 - msgX;
             g.drawString(font, Ui.fit(font, data.message(), msgW), msgX, top + h - FOOT + 11, data.error() ? 0xFFff6b6b : 0xFF7fd88a, false);
         }
@@ -325,15 +366,22 @@ public final class AdminScreen extends KwScreen {
             slots += sv.total();
             used += sv.used();
         }
-        heading(g, "Team", data.streamers().size() + " Streamer, " + used + " von " + slots + " Plätzen vergeben");
+        long streamers = data.streamers().stream().filter(v -> v.kind().equals("streamer")).count();
+        heading(g, "Team", streamers + " Streamer, " + used + " von " + slots + " Plätzen vergeben");
         g.enableScissor(cx, listTop, cx + cw, listBottom);
         int y = listTop - scroll;
-        for (KwNetwork.StreamerView sv : data.streamers()) {
+        for (KwNetwork.StreamerView sv : teamShown()) {
             Ui.inset(g, cx, y + 1, cx + cw, y + ROW - 1);
             face(g, sv.name(), cx + 4, y + 4, 16);
             String count = sv.used() + " / " + sv.total();
             int countX = cx + cw - 46 - 8 - font.width(count);
-            g.drawString(font, Ui.fit(font, sv.name() + (sv.granted() ? "" : "  (eingeladen)"), countX - cx - 30), cx + 24, y + 8, Ui.PURPLE, false);
+            String kind = switch (sv.kind()) {
+                case "streamer" -> "";
+                case "season1" -> "  (Season 1)";
+                case "team" -> "  (Team)";
+                default -> "  (ohne eigenen Platz)";
+            };
+            g.drawString(font, Ui.fit(font, sv.name() + kind, countX - cx - 30), cx + 24, y + 8, sv.granted() ? Ui.PURPLE : Ui.DIM, false);
             g.drawString(font, count, countX, y + 8, Ui.TEXT, false);
             y += ROW;
             for (String p : sv.invited()) {
@@ -343,7 +391,7 @@ public final class AdminScreen extends KwScreen {
                 y += ROW;
             }
         }
-        if (data.streamers().isEmpty()) g.drawString(font, "Noch keine Streamer. /kw admin streamer add <Name> <Plätze>", cx, listTop + 4, Ui.MUTED, false);
+        if (data.streamers().isEmpty()) g.drawString(font, "Noch niemand mit eigenem Platz. Name unten eintragen, dann Streamer oder Season 1.", cx, listTop + 4, Ui.MUTED, false);
         g.disableScissor();
     }
 
@@ -357,17 +405,69 @@ public final class AdminScreen extends KwScreen {
         wrapped(g, "Die Wand zeigt die fleißigsten Hände pro Ziel, eingraviert in Stein. Sie entsteht vor dir, in Blickrichtung.", cx, y + 12, cw, Ui.MUTED);
     }
 
+    private EditBox gateName, limit;
+
+    private void initServer() {
+        var s = data.server();
+        int y = y0() + 12;
+        addRenderableWidget(FlatButton.of(cx + cw - 172, y - 3, 84, s.gateOn() ? "Sperre aus" : "Sperre an", () -> send(s.gateOn() ? "gate_off" : "gate_on", ""))
+                .tip("Die Startsperre: bis zum Start nur Ops und die Liste"));
+        addRenderableWidget(FlatButton.of(cx + cw - 84, y - 3, 84, s.beta() ? "Beta aus" : "Beta an", () -> send(s.beta() ? "beta_off" : "beta_on", ""))
+                .tip("In der Beta kommen alle mit eigenem Platz durch"));
+        gateName = new EditBox(font, cx + 4, y + 30, 120, 10, Component.literal("Name"));
+        gateName.setBordered(false);
+        gateName.setTextColor(Ui.TEXT);
+        gateName.setMaxLength(16);
+        gateName.setHint(Component.literal("Name für die Liste").withStyle(ChatFormatting.DARK_GRAY));
+        addRenderableWidget(gateName);
+        addRenderableWidget(FlatButton.of(cx + 134, y + 25, 70, "Auf die Liste", () -> send("gate_allow", gateName.getValue().trim())));
+        addRenderableWidget(FlatButton.of(cx + 208, y + 25, 70, "Von der Liste", () -> send("gate_deny", gateName.getValue().trim())));
+        y = y0() + 70;
+        limit = new EditBox(font, cx + cw - 120, y + 2, 30, 10, Component.literal("Limit"));
+        limit.setBordered(false);
+        limit.setTextColor(Ui.TEXT);
+        limit.setMaxLength(3);
+        limit.setValue(Integer.toString(s.queueLimit()));
+        addRenderableWidget(limit);
+        addRenderableWidget(FlatButton.of(cx + cw - 84, y - 3, 84, "Limit setzen", () -> send("queue_limit", limit.getValue().trim())).tip("Spieler im Netzwerk, ab dann wird gewartet"));
+        y = y0() + 108;
+        addRenderableWidget(FlatButton.confirm(cx + cw - 84, y - 3, 84, s.locksOn() ? "Sperren aus" : "Sperren an", "Rezepte neu laden?", FlatButton.Style.NORMAL,
+                () -> send(s.locksOn() ? "locks_off" : "locks_on", "")).tip("Maschinen stellen spätere Stufen nicht her", "Umschalten lädt alle Rezepte neu"));
+    }
+
+    private void drawServer(GuiGraphics g) {
+        var s = data.server();
+        heading(g, "Server", "Was sonst nur Befehle können");
+        int y = y0();
+        section(g, "Startsperre", y);
+        g.drawString(font, Ui.fit(font, (s.gateOn() ? "An" : "Aus") + (s.beta() ? ", Beta" : "") + ". Liste: " + (s.gateList().isEmpty() ? "leer" : s.gateList()), cw - 180),
+                cx, y + 12, Ui.MUTED, false);
+        Ui.inset(g, cx, y + 25, cx + 128, y + 43);
+        y = y0() + 58;
+        section(g, "Warteschlange", y);
+        g.drawString(font, Ui.fit(font, s.queue(), cw - 130), cx, y + 14, Ui.MUTED, false);
+        Ui.inset(g, cx + cw - 124, y + 9, cx + cw - 90, y + 27);
+        y = y0() + 96;
+        section(g, "Maschinensperren", y);
+        g.drawString(font, Ui.fit(font, s.locks(), cw - 100), cx, y + 14, Ui.MUTED, false);
+        y = y0() + 134;
+        section(g, "Skalierung und Netzwerk", y);
+        g.drawString(font, Ui.fit(font, s.scaling(), cw), cx, y + 12, Ui.MUTED, false);
+        g.drawString(font, Ui.fit(font, "Server: " + s.network(), cw), cx, y + 24, Ui.MUTED, false);
+    }
+
     private void drawPlayers(GuiGraphics g, int mouseX, int mouseY) {
         heading(g, "Spieler", data.players().size() + " online");
         g.enableScissor(cx, listTop, cx + cw, listBottom);
         int y = listTop - scroll;
-        int textW = cw - 4 * 60 - 6;
+        int textW = cw - 5 * 52 - 6;
         for (KwNetwork.PlayerRow pr : data.players()) {
             Ui.inset(g, cx, y + 1, cx + cw, y + ROW - 1);
             face(g, pr.name(), cx + 4, y + 4, 16);
             g.drawString(font, Ui.fit(font, pr.name(), textW - 26), cx + 24, y + 4, Ui.TEXT, false);
             List<String> tags = new ArrayList<>();
             tags.add(pr.where());
+            tags.add(pr.place());
             if (pr.bypass()) tags.add("Bypass");
             if (pr.creative()) tags.add("Kreativ");
             g.drawString(font, Ui.fit(font, String.join(", ", tags), textW - 26), cx + 24, y + 13, Ui.MUTED, false);
