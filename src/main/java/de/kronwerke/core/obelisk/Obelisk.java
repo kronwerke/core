@@ -165,24 +165,24 @@ public final class Obelisk {
         long total = points.getOrDefault(player.getUUID(), 0L);
         int rank = gm.rank(g, player.getUUID());
         int hands = points.size();
-        player.sendSystemMessage(Text.t("obelisk.ledger.title", "Deine Gaben an %s", Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
+        player.sendSystemMessage(Text.t("obelisk.ledger.title", "Deine Gaben an %s", g.name().withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD));
         if (total <= 0) {
             player.sendSystemMessage(Text.t("obelisk.ledger.none", "Noch nichts. Der Obelisk wartet auf deine erste Gabe.").withStyle(ChatFormatting.GRAY));
         } else {
             for (Goal.Pillar pillar : g.pillars()) {
                 long mine = gm.contributed(g, pillar, player.getUUID());
-                String best = "";
+                Component best = Component.empty();
                 long bestN = 0;
                 for (Goal.PillarItem it : pillar.items()) {
                     long n = gm.progressData().contributed(g.id(), it.item(), player.getUUID());
                     if (n > bestN) {
                         bestN = n;
-                        best = Text.item(it.item()).getString();
+                        best = Text.item(it.item());
                     }
                 }
-                MutableComponent line = Component.literal("  " + pillar.title() + ": ").withStyle(ChatFormatting.LIGHT_PURPLE)
-                        .append(Component.literal(Text.number(mine) + " Punkte").withStyle(ChatFormatting.WHITE));
-                if (bestN > 0) line.append(Component.literal(", am meisten " + best + " (" + Text.number(bestN) + " Stück)").withStyle(ChatFormatting.GRAY));
+                MutableComponent line = Component.literal("  ").append(pillar.name(g.id())).append(": ").withStyle(ChatFormatting.LIGHT_PURPLE)
+                        .append(Text.t("obelisk.ledger.points", "%s Punkte", Text.number(mine)).withStyle(ChatFormatting.WHITE));
+                if (bestN > 0) line.append(Text.t("obelisk.ledger.most", ", am meisten %s (%s Stück)", best.copy().withStyle(ChatFormatting.GRAY), Text.number(bestN)).withStyle(ChatFormatting.GRAY));
                 player.sendSystemMessage(line);
             }
             player.sendSystemMessage(Text.t("obelisk.ledger.rank", "Platz %s von %s Händen, %s Punkte insgesamt.", rank, hands, Text.number(total)).withStyle(ChatFormatting.GOLD));
@@ -510,7 +510,7 @@ public final class Obelisk {
             level.sendParticles(KwParticles.RUNE.get(), core.getX() + 0.5 + Math.cos(a) * 1.8, core.getY() + 13 - i * 0.6, core.getZ() + 0.5 + Math.sin(a) * 1.8, 1, 0, -0.03, 0, 0);
         }
         level.playSound(null, core.above(8), net.minecraft.sounds.SoundEvents.AMETHYST_BLOCK_RESONATE, net.minecraft.sounds.SoundSource.BLOCKS, 0.6f, 0.5f);
-        Component line = Text.t("obelisk.whisper", "Der Stein flüstert: %s fehlt am meisten.", Component.literal(lowest.title())).withStyle(ChatFormatting.DARK_AQUA, ChatFormatting.ITALIC);
+        Component line = Text.t("obelisk.whisper", "Der Stein flüstert: %s fehlt am meisten.", lowest.name(g.id())).withStyle(ChatFormatting.DARK_AQUA, ChatFormatting.ITALIC);
         for (ServerPlayer p : level.players()) {
             if (p.distanceToSqr(core.getX() + 0.5, core.getY() + 1, core.getZ() + 0.5) <= 24 * 24) p.displayClientMessage(line, true);
         }
@@ -793,7 +793,7 @@ public final class Obelisk {
         if (server == null) return;
         ServerLevel level = obeliskLevel();
         ObeliskRite.title(server, Text.t("obelisk.awakens", "Der Obelisk erwacht").withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD),
-                Text.t("obelisk.awakens_sub", "%s nimmt die letzten Gaben an", Component.literal(g.title())).withStyle(ChatFormatting.GRAY));
+                Text.t("obelisk.awakens_sub", "%s nimmt die letzten Gaben an", g.name()).withStyle(ChatFormatting.GRAY));
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             p.playNotifySound(net.minecraft.sounds.SoundEvents.BEACON_ACTIVATE, net.minecraft.sounds.SoundSource.MASTER, 0.8f, 0.7f);
         }
@@ -951,7 +951,7 @@ public final class Obelisk {
                 }
                 if (taken <= 0) continue;
                 moved += taken;
-                delivered.merge(out.getHoverName().getString(), taken, Long::sum);
+                delivered.merge(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(out.getItem()).toString(), taken, Long::sum);
             }
             announce(name, delivered);
         }
@@ -965,7 +965,7 @@ public final class Obelisk {
             if (n < KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) return;
             server.getPlayerList().broadcastSystemMessage(Text.t("obelisk.feeder_delivered", "Zubringer von %s liefert %s %s",
                     name.copy().withStyle(ChatFormatting.WHITE), Component.literal(Text.number(n)).withStyle(ChatFormatting.WHITE),
-                    Component.literal(item).withStyle(ChatFormatting.AQUA)).withStyle(ChatFormatting.GRAY), false);
+                    Text.item(item)).withStyle(ChatFormatting.GRAY), false);
         });
     }
 

@@ -122,15 +122,15 @@ public final class TabList {
         return Component.literal(GLYPHS[3] + " ").withStyle(ChatFormatting.WHITE);
     }
 
-    /** The running goal as one line ("title|state"), or empty. main only; side worlds get it from main. */
+    /** The running goal as one line ("id|title|state", state "held" or a percentage), or empty. main only; side worlds get it from main. */
     public static String goalLine() {
         if (!de.kronwerke.core.link.Role.main()) return de.kronwerke.core.link.NetworkSync.goalLine();
         List<Goal> active = GoalManager.get().activeGoals();
         if (active.isEmpty()) return "";
         Goal g = active.get(0);
         double f = GoalManager.get().fraction(g);
-        String state = GoalManager.get().isHeld(g) ? "wartet auf das Event" : String.format(Locale.ROOT, "%d%%", Math.round(f * 100));
-        return g.title() + "|" + state;
+        String state = GoalManager.get().isHeld(g) ? "held" : String.format(Locale.ROOT, "%d%%", Math.round(f * 100));
+        return g.id() + "|" + g.title() + "|" + state;
     }
 
     private static void sendHeader(ServerPlayer player) {
@@ -138,14 +138,16 @@ public final class TabList {
                 .append(Component.literal("\n" + KronwerkeConfig.TAB_LINE.get()).withStyle(ChatFormatting.GRAY));
         MutableComponent footer = Component.empty();
         String goal = goalLine();
-        int bar = goal.indexOf('|');
-        if (bar > 0) {
-            footer.append(Component.literal(goal.substring(0, bar)).withStyle(ChatFormatting.GOLD))
-                    .append(Component.literal("  " + goal.substring(bar + 1)).withStyle(ChatFormatting.WHITE))
+        String[] parts = goal.split("\\|", 3);
+        if (parts.length == 3) {
+            Component state = parts[2].equals("held") ? de.kronwerke.core.Text.t("goal.state.held", "wartet auf das Event") : Component.literal(parts[2]);
+            footer.append(de.kronwerke.core.Text.t("goal." + parts[0] + ".title", parts[1]).withStyle(ChatFormatting.GOLD))
+                    .append(Component.literal("  ").append(state).withStyle(ChatFormatting.WHITE))
                     .append(Component.literal("\n"));
         }
         int here = server.getPlayerList().getPlayerCount(), elsewhere = de.kronwerke.core.link.NetworkSync.remoteCount();
-        footer.append(Component.literal((here + elsewhere) + " online" + (elsewhere > 0 ? ", " + here + " hier" : "")).withStyle(ChatFormatting.GRAY))
+        footer.append((elsewhere > 0 ? de.kronwerke.core.Text.t("tab.online_here", "%s online, %s hier", here + elsewhere, here)
+                        : de.kronwerke.core.Text.t("tab.online", "%s online", here)).withStyle(ChatFormatting.GRAY))
                 .append(Component.literal(de.kronwerke.core.link.Role.main() ? "   /kw goals   /kw deposit" : "").withStyle(ChatFormatting.DARK_GRAY));
         long reset = de.kronwerke.core.link.NetworkSync.resetAt();
         if (!de.kronwerke.core.link.Role.main() && reset > System.currentTimeMillis()) {

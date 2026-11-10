@@ -297,7 +297,7 @@ public final class AdminScreen extends KwScreen {
             Ui.inset(g, cx, top + h - FOOT + 6, cx + 160, top + h - FOOT + 24);
             if (target.isFocused()) g.fill(cx + 1, top + h - FOOT + 23, cx + 159, top + h - FOOT + 24, Ui.GOLD);
         }
-        if (!data.message().isEmpty()) {
+        if (!data.message().getString().isEmpty()) {
             int msgX = tab == 2 ? cx + 166 + 226 : cx;
             int msgW = left + w - 12 - 90 - 8 - msgX;
             g.drawString(font, Ui.fit(font, data.message(), msgW), msgX, top + h - FOOT + 11, data.error() ? 0xFFff6b6b : 0xFF7fd88a, false);

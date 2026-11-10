@@ -7,6 +7,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.chat.Component;
+import de.kronwerke.core.Text;
 import net.minecraft.network.protocol.game.ClientboundSetSubtitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitleTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetTitlesAnimationPacket;
@@ -85,7 +86,7 @@ public final class ObeliskRite {
         for (ServerPlayer p : level.players()) {
             double dx = p.getX() - (core.getX() + 0.5), dz = p.getZ() - (core.getZ() + 0.5);
             if (dx * dx + dz * dz <= (LIFT_RADIUS + 16) * (LIFT_RADIUS + 16)) {
-                p.sendSystemMessage(Component.literal("Der Obelisk erwacht. Gleich zieht er alle in seiner Nähe in die Luft; wer schleicht, bleibt am Boden.")
+                p.sendSystemMessage(Text.t("rite.warning", "Der Obelisk erwacht. Gleich zieht er alle in seiner Nähe in die Luft; wer schleicht, bleibt am Boden.")
                         .withStyle(ChatFormatting.LIGHT_PURPLE));
             }
         }
@@ -142,8 +143,8 @@ public final class ObeliskRite {
             ObeliskStructure.setHidden(level, core, true);
             fling(level, core);
             int n = newTier;
-            title(server, Component.literal("STUFE " + roman(n) + " GESCHAFFT").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
-                    Component.literal(done.title()).withStyle(ChatFormatting.YELLOW));
+            title(server, Text.t("rite.done", "STUFE %s GESCHAFFT", roman(n)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD),
+                    done.name().withStyle(ChatFormatting.YELLOW));
         });
         // the dome: rings of light that run outward along the ground
         for (int t = 0; t < 14; t++) {
@@ -212,12 +213,12 @@ public final class ObeliskRite {
             Goal next = null;
             for (Goal g : GoalManager.get().activeGoals()) next = g;
             Component line = next == null
-                    ? Component.literal("Alle Stufen sind geschafft. Der Obelisk ruht in Gold.").withStyle(ChatFormatting.GOLD)
-                    : Component.literal("Stufe " + roman(newTier + 1) + " beginnt: " + next.title()).withStyle(ChatFormatting.GOLD);
+                    ? Text.t("rite.all_done", "Alle Stufen sind geschafft. Der Obelisk ruht in Gold.").withStyle(ChatFormatting.GOLD)
+                    : Text.t("rite.next", "Stufe %s beginnt: %s", roman(newTier + 1), next.name()).withStyle(ChatFormatting.GOLD);
             for (ServerPlayer p : server.getPlayerList().getPlayers()) p.displayClientMessage(line, true);
             level.playSound(null, core.above(10), SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.5f, 1.2f);
             if (next != null && !next.description().isEmpty()) {
-                Component desc = Component.literal(next.description()).withStyle(ChatFormatting.GRAY);
+                Component desc = next.text().withStyle(ChatFormatting.GRAY);
                 s.at(60, () -> {
                     for (ServerPlayer p : server.getPlayerList().getPlayers()) p.displayClientMessage(desc, true);
                 });

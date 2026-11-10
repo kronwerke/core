@@ -77,10 +77,10 @@ public final class InviteScreen extends KwScreen {
         name.setBordered(false);
         name.setTextColor(Ui.TEXT);
         name.setMaxLength(16);
-        name.setHint(Component.literal("Minecraft-Name").withStyle(ChatFormatting.DARK_GRAY));
+        name.setHint(Component.literal(tr("invite.hint", "Minecraft-Name")).withStyle(ChatFormatting.DARK_GRAY));
         name.setResponder(s -> invite.active = !s.isBlank() && data.used() < data.total());
-        invite = FlatButton.primary(left + w - 12 - 84, fy, 84, "Prüfen", () -> send("invite", name.getValue())).icon(new ItemStack(Items.NAME_TAG));
-        invite.tip(data.used() < data.total() ? "Zeigt das Konto zu dem Namen, eingeladen wird erst nach deinem Ja" : "Alle Plätze sind vergeben");
+        invite = FlatButton.primary(left + w - 12 - 84, fy, 84, tr("invite.check", "Prüfen"), () -> send("invite", name.getValue())).icon(new ItemStack(Items.NAME_TAG));
+        invite.tip(data.used() < data.total() ? tr("invite.check_tip", "Zeigt das Konto zu dem Namen, eingeladen wird erst nach deinem Ja") : tr("invite.all_taken", "Alle Plätze sind vergeben"));
         invite.active = false;
         if (data.extra().canInvite()) {
             addRenderableWidget(name);
@@ -90,12 +90,12 @@ public final class InviteScreen extends KwScreen {
             KwNetwork.Entry c = data.extra().confirm().get(0);
             fetchSkin(c);
             int cy = fy + 18 + 8 + 14;
-            addRenderableWidget(FlatButton.primary(left + w - 12 - 84 - 6 - 76, cy + 3, 84, "Ja, einladen", () -> send("invite_confirm", c.id().toString())));
-            addRenderableWidget(FlatButton.of(left + w - 12 - 76, cy + 3, 76, "Abbrechen", () -> send("invite_cancel", "x")));
+            addRenderableWidget(FlatButton.primary(left + w - 12 - 84 - 6 - 76, cy + 3, 84, tr("invite.yes", "Ja, einladen"), () -> send("invite_confirm", c.id().toString())));
+            addRenderableWidget(FlatButton.of(left + w - 12 - 76, cy + 3, 76, tr("invite.cancel", "Abbrechen"), () -> send("invite_cancel", "x")));
         }
         int y = listY();
         for (KwNetwork.Entry e : data.entries()) {
-            addRenderableWidget(FlatButton.confirm(left + w - 12 - 76, y + 3, 76, "Entfernen", "Sicher?", FlatButton.Style.DANGER, () -> send("revoke", e.name())).tip("Nimmt " + e.name() + " von der Whitelist", "Der Platz wird wieder frei"));
+            addRenderableWidget(FlatButton.confirm(left + w - 12 - 76, y + 3, 76, tr("invite.remove", "Entfernen"), tr("invite.sure", "Sicher?"), FlatButton.Style.DANGER, () -> send("revoke", e.name())).tip(tr("invite.remove_tip", "Nimmt %s von der Whitelist", e.name()), tr("invite.remove_tip2", "Der Platz wird wieder frei")));
             y += ROW_H;
             fetchSkin(e);
         }
@@ -130,9 +130,10 @@ public final class InviteScreen extends KwScreen {
 
     @Override
     protected void drawContent(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        g.drawString(font, "Deine Plätze", left + 12, top + HEAD + 8, Ui.MUTED, false);
+        String yours = tr("invite.yours", "Deine Plätze");
+        g.drawString(font, yours, left + 12, top + HEAD + 8, Ui.MUTED, false);
         // the slots as a row of small frames, filled ones in brass
-        int sx = left + 12 + font.width("Deine Plätze") + 10;
+        int sx = left + 12 + font.width(yours) + 10;
         int step = data.total() <= 0 ? 10 : Math.min(12, (left + w - 12 - sx) / Math.max(1, data.total()));
         if (step >= 5) {
             for (int i = 0; i < data.total(); i++) {
@@ -140,16 +141,16 @@ public final class InviteScreen extends KwScreen {
                 boolean used = i < data.used();
                 g.fill(x, top + HEAD + 7, x + step - 3, top + HEAD + 16, used ? Ui.GOLD : 0xFF2a2435);
                 if (used) g.fill(x + 1, top + HEAD + 8, x + step - 4, top + HEAD + 9, Ui.GOLD_LIGHT);
-                if (in(mouseX, mouseY, x, top + HEAD + 7, x + step - 3, top + HEAD + 16)) hover(used ? "Platz " + (i + 1) + ", vergeben" : "Platz " + (i + 1) + ", frei");
+                if (in(mouseX, mouseY, x, top + HEAD + 7, x + step - 3, top + HEAD + 16)) hover(used ? tr("invite.slot_used", "Platz %s, vergeben", i + 1) : tr("invite.slot_free", "Platz %s, frei", i + 1));
             }
         }
-        g.drawString(font, data.used() + " von " + data.total() + " Plätzen vergeben", left + 12, top + HEAD + 20, Ui.MUTED, false);
+        g.drawString(font, tr("invite.count", "%s von %s Plätzen vergeben", data.used(), data.total()), left + 12, top + HEAD + 20, Ui.MUTED, false);
         Ui.ornament(g, left + 12, top + HEAD + 33, left + w - 12);
         int y = listY();
         int rows = Math.max(1, data.entries().size());
         Ui.inset(g, left + 10, y - 2, left + w - 10, y + ROW_H * rows + 2);
         if (data.entries().isEmpty()) {
-            g.drawWordWrap(font, Component.literal("Noch niemand eingetragen. Name unten eingeben, Einladen, fertig.").withStyle(ChatFormatting.DARK_GRAY), left + 14, y + 7, w - 28, 0xFFFFFF);
+            g.drawWordWrap(font, Component.literal(data.extra().canInvite() ? tr("invite.empty", "Noch niemand eingetragen. Name unten eingeben, Prüfen, Ja, fertig.") : tr("invite.empty_discord", "Noch niemand eingetragen.")).withStyle(ChatFormatting.DARK_GRAY), left + 14, y + 7, w - 28, 0xFFFFFF);
         }
         for (KwNetwork.Entry e : data.entries()) {
             PlayerSkin skin = SKINS.get(e.id());
@@ -163,7 +164,7 @@ public final class InviteScreen extends KwScreen {
             g.drawString(font, shown, left + 38, y + 7, Ui.TEXT, false);
             int dx = left + 38 + font.width(shown) + 6;
             g.fill(dx, y + 9, dx + 5, y + 14, e.online() ? 0xFF55ff55 : Ui.DIM);
-            if (in(mouseX, mouseY, left + 14, y, dx + 6, y + ROW_H)) hover(e.name(), e.online() ? "Online" : "Offline");
+            if (in(mouseX, mouseY, left + 14, y, dx + 6, y + ROW_H)) hover(e.name(), e.online() ? tr("invite.online", "Online") : tr("invite.offline", "Offline"));
             y += ROW_H;
         }
         if (data.extra().canInvite()) {
@@ -171,11 +172,11 @@ public final class InviteScreen extends KwScreen {
             Ui.inset(g, left + 12, name.getY() - 5, left + 12 + w - 24 - 90, name.getY() + 13);
             if (name.isFocused()) g.fill(left + 13, name.getY() + 12, left + 12 + w - 24 - 90 - 1, name.getY() + 13, Ui.GOLD);
         } else {
-            g.drawWordWrap(font, Component.literal("Einladen geht über Discord: /whitelist add im Kronwerke-Discord. Hier siehst du deine Plätze und kannst sie freigeben.")
+            g.drawWordWrap(font, Component.literal(tr("invite.discord", "Einladen geht über Discord: /whitelist add im Kronwerke-Discord. Hier siehst du deine Plätze und kannst sie freigeben."))
                     .withStyle(ChatFormatting.GRAY), left + 12, name.getY() - 4, w - 24, 0xFFFFFF);
         }
-        if (!data.message().isEmpty()) {
-            g.drawWordWrap(font, Component.literal(data.message()).withStyle(data.error() ? ChatFormatting.RED : confirming() ? ChatFormatting.GOLD : ChatFormatting.GREEN),
+        if (!data.message().getString().isEmpty()) {
+            g.drawWordWrap(font, data.message().copy().withStyle(data.error() ? ChatFormatting.RED : confirming() ? ChatFormatting.GOLD : ChatFormatting.GREEN),
                     left + 12, name.getY() + 19, w - 24, 0xFFFFFF);
         }
         if (confirming()) {

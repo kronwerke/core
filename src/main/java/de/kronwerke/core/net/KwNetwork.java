@@ -6,6 +6,8 @@ import de.kronwerke.core.KronwerkeCore;
 import de.kronwerke.core.slot.SlotData;
 import de.kronwerke.core.slot.SlotManager;
 import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
@@ -108,7 +110,7 @@ public final class KwNetwork {
                 SlotsExtra::new);
     }
 
-    public record SlotsPayload(int used, int total, List<Entry> entries, boolean open, String message, SlotsExtra extra) implements CustomPacketPayload {
+    public record SlotsPayload(int used, int total, List<Entry> entries, boolean open, Component message, SlotsExtra extra) implements CustomPacketPayload {
         public boolean error() {
             return extra.error();
         }
@@ -119,7 +121,7 @@ public final class KwNetwork {
                 ByteBufCodecs.VAR_INT, SlotsPayload::total,
                 Entry.CODEC.apply(ByteBufCodecs.list()), SlotsPayload::entries,
                 ByteBufCodecs.BOOL, SlotsPayload::open,
-                ByteBufCodecs.STRING_UTF8, SlotsPayload::message,
+                ComponentSerialization.TRUSTED_STREAM_CODEC, SlotsPayload::message,
                 SlotsExtra.CODEC, SlotsPayload::extra,
                 SlotsPayload::new);
 
@@ -155,13 +157,17 @@ public final class KwNetwork {
     /**
      * active: the goal runs; estimate: its items are the base amounts of a goal that has not
      * opened yet (the real ones depend on the players then); top: a finished goal's most
-     * diligent hands as "name|points".
+     * diligent hands as "name|points"; id: the goal id, for the pack's translations of its
+     * title, description and pillars ("pillarId|title"); event: when the held goal's event is.
      */
-    public record GoalMore(boolean active, boolean estimate, List<String> top) {
+    public record GoalMore(boolean active, boolean estimate, List<String> top, String id, List<String> pillars, String event) {
         public static final StreamCodec<RegistryFriendlyByteBuf, GoalMore> CODEC = StreamCodec.composite(
                 ByteBufCodecs.BOOL, GoalMore::active,
                 ByteBufCodecs.BOOL, GoalMore::estimate,
                 ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), GoalMore::top,
+                ByteBufCodecs.STRING_UTF8, GoalMore::id,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), GoalMore::pillars,
+                ByteBufCodecs.STRING_UTF8, GoalMore::event,
                 GoalMore::new);
     }
 
@@ -180,7 +186,7 @@ public final class KwNetwork {
         }
     }
 
-    /** One item of a pillar: id is the item id or #tag the client draws the icon from; weight is its points per piece. */
+    /** One item of a pillar (by pillar id): id is the item id or #tag the client draws the icon and name from; weight is its points per piece. */
     public record ItemView(String pillar, String id, String name, long have, long need, long weight) {
         public static final StreamCodec<RegistryFriendlyByteBuf, ItemView> CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, ItemView::pillar,
@@ -208,13 +214,13 @@ public final class KwNetwork {
     }
 
     /** The /kw hub: goals, what the player may do, and a line about the last action. */
-    public record HubPayload(List<GoalView> goals, boolean streamer, boolean admin, String message, boolean error, HubMine mine) implements CustomPacketPayload {
+    public record HubPayload(List<GoalView> goals, boolean streamer, boolean admin, Component message, boolean error, HubMine mine) implements CustomPacketPayload {
         public static final Type<HubPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "hub"));
         public static final StreamCodec<RegistryFriendlyByteBuf, HubPayload> CODEC = StreamCodec.composite(
                 GoalView.CODEC.apply(ByteBufCodecs.list()), HubPayload::goals,
                 ByteBufCodecs.BOOL, HubPayload::streamer,
                 ByteBufCodecs.BOOL, HubPayload::admin,
-                ByteBufCodecs.STRING_UTF8, HubPayload::message,
+                ComponentSerialization.TRUSTED_STREAM_CODEC, HubPayload::message,
                 ByteBufCodecs.BOOL, HubPayload::error,
                 HubMine.CODEC, HubPayload::mine,
                 HubPayload::new);
@@ -296,7 +302,7 @@ public final class KwNetwork {
      */
     public record AdminPayload(int tab, boolean seasonRunning, int seasonNumber, List<GoalRow> goals,
                                List<StreamerView> streamers, List<PlayerRow> players, String obelisk,
-                               boolean testWorldBuilt, String message, boolean error, ServerView server) implements CustomPacketPayload {
+                               boolean testWorldBuilt, Component message, boolean error, ServerView server) implements CustomPacketPayload {
         public static final Type<AdminPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "admin"));
         public static final StreamCodec<RegistryFriendlyByteBuf, AdminPayload> CODEC = StreamCodec.of((b, a) -> {
             b.writeVarInt(a.tab);
@@ -308,7 +314,7 @@ public final class KwNetwork {
             b.writeCollection(a.players, (bb, p) -> PlayerRow.write((RegistryFriendlyByteBuf) bb, p));
             b.writeUtf(a.obelisk);
             b.writeBoolean(a.testWorldBuilt);
-            b.writeUtf(a.message);
+            ComponentSerialization.TRUSTED_STREAM_CODEC.encode(b, a.message);
             b.writeBoolean(a.error);
             ServerView.write(b, a.server);
         }, b -> {
@@ -322,7 +328,7 @@ public final class KwNetwork {
             List<PlayerRow> players = b.readList(bb -> PlayerRow.read((RegistryFriendlyByteBuf) bb));
             String obelisk = b.readUtf();
             boolean built = b.readBoolean();
-            String message = b.readUtf();
+            Component message = ComponentSerialization.TRUSTED_STREAM_CODEC.decode(b);
             boolean error = b.readBoolean();
             return new AdminPayload(tab, running, number, goals, streamers, players, obelisk, built, message, error, ServerView.read(b));
         });
@@ -364,6 +370,10 @@ public final class KwNetwork {
     }
 
     public static void sendHub(ServerPlayer p, String message, boolean error) {
+        sendHub(p, Component.literal(message), error);
+    }
+
+    public static void sendHub(ServerPlayer p, Component message, boolean error) {
         de.kronwerke.core.goal.GoalManager gm = de.kronwerke.core.goal.GoalManager.get();
         de.kronwerke.core.goal.GoalData d = gm.progressData();
         List<GoalView> goals = new ArrayList<>();
@@ -382,7 +392,7 @@ public final class KwNetwork {
                 for (de.kronwerke.core.goal.Goal.Pillar pillar : g.pillars()) {
                     for (de.kronwerke.core.goal.Goal.PillarItem it : pillar.items()) {
                         long need = active ? d.target(g.id(), it.item()) : it.base();
-                        items.add(new ItemView(pillar.title(), it.item(), de.kronwerke.core.Text.item(it.item()).getString(),
+                        items.add(new ItemView(pillar.id(), it.item(), de.kronwerke.core.Text.item(it.item()).getString(),
                                 active ? d.progress(g.id(), it.item()) : 0, need, it.points()));
                     }
                 }
@@ -393,8 +403,10 @@ public final class KwNetwork {
                 for (var e : gm.leaderboard(g, 5)) top.add(de.kronwerke.core.obelisk.Obelisk.get().nameOf(e.getKey()) + "|" + e.getValue());
             }
             String desc = g.description() == null ? "" : g.description();
-            if (active && gm.isHeld(g) && !gm.eventText(g).isEmpty()) desc = "Das Event " + gm.eventText(g) + ". " + desc;
-            goals.add(new GoalView(g.title(), desc, state, percent, new GoalMore(active, estimate, top), items));
+            List<String> pillars = new ArrayList<>();
+            for (de.kronwerke.core.goal.Goal.Pillar pl : g.pillars()) pillars.add(pl.id() + "|" + (pl.title() == null ? pl.id() : pl.title()));
+            String event = active && gm.isHeld(g) ? gm.eventText(g) : "";
+            goals.add(new GoalView(g.title(), desc, state, percent, new GoalMore(active, estimate, top, g.id(), pillars, event), items));
         }
         long mine = 0;
         int rank = 0, hands = 0;
@@ -413,11 +425,20 @@ public final class KwNetwork {
     }
 
     public static void sendAdmin(ServerPlayer p, String message, boolean error) {
+        sendAdmin(p, -1, Component.literal(message), error);
+    }
+
+    /** A command's own reply, a component, so it shows in the reader's language where it has one. */
+    public static void sendAdmin(ServerPlayer p, Component message, boolean error) {
         sendAdmin(p, -1, message, error);
     }
 
-    /** tab -1 keeps whatever tab the client shows. */
     public static void sendAdmin(ServerPlayer p, int tab, String message, boolean error) {
+        sendAdmin(p, tab, Component.literal(message), error);
+    }
+
+    /** tab -1 keeps whatever tab the client shows. */
+    public static void sendAdmin(ServerPlayer p, int tab, Component message, boolean error) {
         if (!p.hasPermissions(2)) return;
         SlotManager sm = SlotManager.get();
         List<StreamerView> list = new ArrayList<>();
@@ -494,11 +515,11 @@ public final class KwNetwork {
                 case "invite" -> {
                     SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
                     if (me == null || !(KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || p.hasPermissions(2))) {
-                        send(p, false, de.kronwerke.core.Text.t("slots.discord", "Einladen geht über Discord: /whitelist add im Kronwerke-Discord.").getString(), true);
+                        send(p, false, de.kronwerke.core.Text.t("slots.discord", "Einladen geht über Discord: /whitelist add im Kronwerke-Discord."), true);
                         return;
                     }
                     if (!allowAction(p, true)) {
-                        send(p, false, de.kronwerke.core.Text.t("slots.slow", "Langsam, eins nach dem anderen.").getString(), true);
+                        send(p, false, de.kronwerke.core.Text.t("slots.slow", "Langsam, eins nach dem anderen."), true);
                         return;
                     }
                     // the name is resolved off the server thread; the menu then shows the account
@@ -506,12 +527,12 @@ public final class KwNetwork {
                     sm.resolve(name, profile -> {
                         if (p.hasDisconnected()) return;
                         if (profile.isEmpty()) {
-                            send(p, false, "Kein Minecraft-Konto mit dem Namen " + name + ". Schreibweise prüfen.", true);
+                            send(p, false, de.kronwerke.core.Text.t("slots.unknown", "Kein Minecraft-Konto mit dem Namen %s. Schreibweise prüfen.", name), true);
                             return;
                         }
                         confirming.put(p.getUUID(), profile.get());
-                        send(p, false, "Ist das das richtige Konto? " + profile.get().getName()
-                                + " muss danach noch dem Kronwerke-Discord beitreten, sonst ist der Platz wieder weg.", false, profile.get());
+                        send(p, false, de.kronwerke.core.Text.t("slots.confirm", "Ist das das richtige Konto? %s muss danach noch dem Kronwerke-Discord beitreten, sonst ist der Platz wieder weg.",
+                                profile.get().getName()), false, profile.get());
                     });
                     return;
                 }
@@ -521,11 +542,11 @@ public final class KwNetwork {
                     if (me == null || profile == null || !profile.getId().toString().equals(name)) return;
                     SlotManager.Result res = sm.invite(me, profile, false);
                     send(p, false, switch (res) {
-                        case OK -> profile.getName() + " steht auf der Whitelist.";
-                        case NO_SLOTS_LEFT -> "Du hast keinen freien Platz mehr.";
-                        case ALREADY_INVITED -> profile.getName() + " hat schon einen Platz.";
-                        case ALREADY_WHITELISTED -> profile.getName() + " ist schon auf der Whitelist.";
-                        default -> "Das hat nicht geklappt.";
+                        case OK -> de.kronwerke.core.Text.t("slots.invited_menu", "%s steht auf der Whitelist.", profile.getName());
+                        case NO_SLOTS_LEFT -> de.kronwerke.core.Text.t("slots.full", "Du hast keinen freien Platz mehr.");
+                        case ALREADY_INVITED -> de.kronwerke.core.Text.t("slots.has_place", "%s hat schon einen Platz.", profile.getName());
+                        case ALREADY_WHITELISTED -> de.kronwerke.core.Text.t("slots.whitelisted", "%s ist schon auf der Whitelist.", profile.getName());
+                        default -> de.kronwerke.core.Text.t("failed", "Das hat nicht geklappt.");
                     }, res != SlotManager.Result.OK);
                     return;
                 }
@@ -541,9 +562,9 @@ public final class KwNetwork {
                     for (var e : me.invited.entrySet()) if (e.getValue().equalsIgnoreCase(name)) id = e.getKey();
                     SlotManager.Result res = id == null ? SlotManager.Result.NOT_INVITED_BY_YOU : sm.revoke(me, new com.mojang.authlib.GameProfile(id, me.invited.get(id)));
                     send(p, false, switch (res) {
-                        case OK -> name + " ist von der Whitelist runter, der Platz ist wieder frei.";
-                        case NOT_INVITED_BY_YOU -> name + " hat seinen Platz nicht von dir.";
-                        default -> "Das hat nicht geklappt.";
+                        case OK -> de.kronwerke.core.Text.t("slots.revoked", "%s ist von der Whitelist runter, der Platz ist wieder frei.", name);
+                        case NOT_INVITED_BY_YOU -> de.kronwerke.core.Text.t("slots.not_yours", "%s hat seinen Platz nicht von dir.", name);
+                        default -> de.kronwerke.core.Text.t("failed", "Das hat nicht geklappt.");
                     }, res != SlotManager.Result.OK);
                     return;
                 }
@@ -558,7 +579,7 @@ public final class KwNetwork {
                 case "deposit", "deposit_all" -> {
                     long taken = payload.action().equals("deposit_all") ? de.kronwerke.core.goal.GoalManager.get().depositAll(p)
                             : de.kronwerke.core.goal.GoalManager.get().deposit(p, p.getMainHandItem());
-                    sendHub(p, taken > 0 ? "Abgegeben: " + de.kronwerke.core.Text.number(taken) + "." : "Nichts davon passt zum aktuellen Ziel.", taken <= 0);
+                    sendHub(p, taken > 0 ? de.kronwerke.core.Text.t("deposit.done", "Abgegeben: %s. ", de.kronwerke.core.Text.number(taken)) : de.kronwerke.core.Text.t("deposit.none", "Nichts davon passt zum aktuellen Ziel."), taken <= 0);
                     return;
                 }
                 case "admin" -> {
@@ -637,11 +658,15 @@ public final class KwNetwork {
     private static final Map<UUID, com.mojang.authlib.GameProfile> confirming = new java.util.HashMap<>();
 
     public static void send(ServerPlayer p, boolean open, String message, boolean error) {
+        send(p, open, Component.literal(message), error, null);
+    }
+
+    public static void send(ServerPlayer p, boolean open, Component message, boolean error) {
         send(p, open, message, error, null);
     }
 
     /** Sends the streamer's slots to their client; open makes the client show the menu. */
-    public static void send(ServerPlayer p, boolean open, String message, boolean error, com.mojang.authlib.GameProfile confirm) {
+    public static void send(ServerPlayer p, boolean open, Component message, boolean error, com.mojang.authlib.GameProfile confirm) {
         SlotManager sm = SlotManager.get();
         SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
         if (me == null) {

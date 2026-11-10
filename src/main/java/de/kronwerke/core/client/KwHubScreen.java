@@ -70,22 +70,41 @@ public final class KwHubScreen extends KwScreen {
         }
         int y = top + h - FOOT + 8;
         int x = left + 10;
-        addRenderableWidget(FlatButton.primary(x, y, 104, "Hand abgeben", () -> send("deposit")).icon(new ItemStack(Items.GOLD_INGOT))
-                .tip("Gibt ab, was du in der Hand hältst", "Nur was das laufende Ziel braucht"));
-        addRenderableWidget(FlatButton.confirm(x + 110, y, 104, "Alles abgeben", "Wirklich alles?", FlatButton.Style.NORMAL, () -> send("deposit_all")).icon(new ItemStack(Items.CHEST))
-                .tip("Gibt aus dem Inventar alles ab, was das Ziel braucht", "Hotbar und Nebenhand bleiben, zwei Klicks"));
+        addRenderableWidget(FlatButton.primary(x, y, 104, tr("hub.deposit", "Hand abgeben"), () -> send("deposit")).icon(new ItemStack(Items.GOLD_INGOT))
+                .tip(tr("hub.deposit_tip", "Gibt ab, was du in der Hand hältst"), tr("hub.deposit_tip2", "Nur was das laufende Ziel braucht")));
+        addRenderableWidget(FlatButton.confirm(x + 110, y, 104, tr("hub.deposit_all", "Alles abgeben"), tr("hub.deposit_all_sure", "Wirklich alles?"), FlatButton.Style.NORMAL, () -> send("deposit_all")).icon(new ItemStack(Items.CHEST))
+                .tip(tr("hub.deposit_all_tip", "Gibt aus dem Inventar alles ab, was das Ziel braucht"), tr("hub.deposit_all_tip2", "Hotbar und Nebenhand bleiben, zwei Klicks")));
         int bx = left + w - 10;
         if (data.admin()) {
             bx -= 70;
-            addRenderableWidget(FlatButton.of(bx, y, 70, "Admin", () -> send("admin")).icon(new ItemStack(Items.COMMAND_BLOCK)).tip("Season, Ziele, Team, Obelisk"));
+            addRenderableWidget(FlatButton.of(bx, y, 70, "Admin", () -> send("admin")).icon(new ItemStack(Items.COMMAND_BLOCK)).tip(tr("hub.admin_tip", "Season, Ziele, Team, Obelisk")));
             bx -= 6;
         }
         if (data.streamer()) {
             bx -= 84;
-            addRenderableWidget(FlatButton.of(bx, y, 84, "Whitelist", () -> send("menu")).icon(new ItemStack(Items.PLAYER_HEAD)).tip("Deine Plätze und wer drin ist"));
+            addRenderableWidget(FlatButton.of(bx, y, 84, "Whitelist", () -> send("menu")).icon(new ItemStack(Items.PLAYER_HEAD)).tip(tr("hub.whitelist_tip", "Deine Plätze und wer drin ist")));
         }
         listTop = top + HEAD + 70;
         listBottom = top + h - FOOT - 6;
+    }
+
+    /** The goal's title in the player's language: the pack's lang files, the server's title as fallback. */
+    private static String title(KwNetwork.GoalView gv) {
+        return tr("goal." + gv.more().id() + ".title", gv.title());
+    }
+
+    private static String pillarName(KwNetwork.GoalView gv, String id) {
+        for (String p : gv.more().pillars()) {
+            int bar = p.indexOf('|');
+            if (bar > 0 && p.substring(0, bar).equals(id)) return tr("goal." + gv.more().id() + ".pillar." + id, p.substring(bar + 1));
+        }
+        return id;
+    }
+
+    /** Item names come from the client, so they are in the player's language. */
+    private static String itemName(KwNetwork.ItemView it) {
+        String n = de.kronwerke.core.Text.item(it.id()).getString();
+        return n.isEmpty() || n.equals(it.id()) ? it.name() : n;
     }
 
     private void send(String action) {
@@ -124,7 +143,7 @@ public final class KwHubScreen extends KwScreen {
             if (gv.active()) active = gv;
             if (gv.percent() >= 100) done++;
         }
-        String chip = active != null ? "Stufe " + (data.goals().indexOf(active) + 1) + " läuft" : done + " von " + data.goals().size() + " geschafft";
+        String chip = active != null ? tr("hub.chip_running", "Stufe %s läuft", data.goals().indexOf(active) + 1) : tr("hub.chip_done", "%s von %s geschafft", done, data.goals().size());
         Ui.chip(g, font, chip, x1 - font.width(chip) - 8, y, active != null ? 0xFF8a6420 : 0xFF2f6e3a);
     }
 
@@ -133,14 +152,14 @@ public final class KwHubScreen extends KwScreen {
         drawStages(g, mouseX, mouseY);
         drawGoal(g, mouseX, mouseY);
         Ui.rule(g, left + 8, top + h - FOOT, left + w - 8);
-        if (!data.message().isEmpty()) {
+        if (!data.message().getString().isEmpty()) {
             g.drawString(font, Ui.fit(font, data.message(), w - 20), left + 10, top + h - FOOT + 30, data.error() ? 0xFFff6b6b : 0xFF7fd88a, false);
         }
     }
 
     private void drawStages(GuiGraphics g, int mouseX, int mouseY) {
         int x0 = left + 10;
-        g.drawString(font, "Die Stufen", x0, top + HEAD + 8, Ui.MUTED, false);
+        g.drawString(font, tr("hub.stages", "Die Stufen"), x0, top + HEAD + 8, Ui.MUTED, false);
         drawMine(g, x0, y0Mine(), mouseX, mouseY);
         int y0 = top + HEAD + 22;
         int rx = x0 + 12;
@@ -167,10 +186,10 @@ public final class KwHubScreen extends KwScreen {
             String n = done ? "✔" : Integer.toString(i + 1);
             g.drawString(font, n, rx - font.width(n) / 2 + 1, cy - 4, done ? Ui.GOLD_LIGHT : gv.active() ? Ui.TEXT : Ui.MUTED, false);
             int tx = rx + 16;
-            g.drawString(font, Ui.fit(font, gv.title(), x0 + LEFT_W - 10 - tx), tx, cy - 9, sel || gv.active() ? Ui.TEXT : Ui.MUTED, false);
-            String st = done ? "geschafft" : gv.active() ? gv.percent() + " %" : "gesperrt";
+            g.drawString(font, Ui.fit(font, title(gv), x0 + LEFT_W - 10 - tx), tx, cy - 9, sel || gv.active() ? Ui.TEXT : Ui.MUTED, false);
+            String st = done ? tr("goal.state.done", "geschafft") : gv.active() ? gv.percent() + " %" : tr("goal.state.locked", "gesperrt");
             g.drawString(font, st, tx, cy + 1, done ? Ui.GOLD : gv.active() ? Ui.GOLD_LIGHT : Ui.DIM, false);
-            if (hover && !sel) hover("Anklicken zeigt die Stufe rechts");
+            if (hover && !sel) hover(tr("hub.stage_tip", "Anklicken zeigt die Stufe rechts"));
         }
     }
 
@@ -183,14 +202,14 @@ public final class KwHubScreen extends KwScreen {
         var m = data.mine();
         if (y + 22 > top + h - FOOT - 2) return;
         Ui.rule(g, x0, y, x0 + LEFT_W - 6);
-        g.drawString(font, "Deine Gaben", x0, y + 4, Ui.MUTED, false);
-        String line = m.points() <= 0 ? "Noch nichts gegeben" : Ui.number(m.points()) + " Punkte, Platz " + m.rank() + " von " + m.hands();
+        g.drawString(font, tr("hub.mine", "Deine Gaben"), x0, y + 4, Ui.MUTED, false);
+        String line = m.points() <= 0 ? tr("hub.mine_none", "Noch nichts gegeben") : tr("hub.mine_line", "%s Punkte, Platz %s von %s", Ui.number(m.points()), m.rank(), m.hands());
         g.drawString(font, Ui.fit(font, line, LEFT_W - 8), x0, y + 15, m.points() > 0 ? Ui.GOLD_LIGHT : Ui.DIM, false);
         if (m.streak() > 0 && y + 36 <= top + h - FOOT - 2) {
-            g.drawString(font, "Tagesgabe: " + m.streak() + " Tage in Folge", x0, y + 26, Ui.MUTED, false);
+            g.drawString(font, tr("hub.streak", "Tagesgabe: %s Tage in Folge", m.streak()), x0, y + 26, Ui.MUTED, false);
         }
         if (in(mouseX, mouseY, x0, y, x0 + LEFT_W - 6, y + 36)) {
-            hover("Punkte: Stück mal Gewicht, wie der Balken zählt", "Die Tagesgabe zählt, wenn du jeden Tag etwas abgibst");
+            hover(tr("hub.mine_tip", "Punkte: Stück mal Gewicht, wie der Balken zählt"), tr("hub.mine_tip2", "Die Tagesgabe zählt, wenn du jeden Tag etwas abgibst"));
         }
     }
 
@@ -199,7 +218,7 @@ public final class KwHubScreen extends KwScreen {
         int x0 = left + 10 + LEFT_W, x1 = left + w - 10;
         Ui.inset(g, x0, top + HEAD + 6, x1, top + h - FOOT - 4);
         if (gv == null) {
-            g.drawString(font, "Keine Ziele geladen.", x0 + 8, top + HEAD + 14, Ui.MUTED, false);
+            g.drawString(font, tr("hub.no_goals", "Keine Ziele geladen."), x0 + 8, top + HEAD + 14, Ui.MUTED, false);
             return;
         }
         boolean done = gv.percent() >= 100 && !gv.active();
@@ -209,16 +228,17 @@ public final class KwHubScreen extends KwScreen {
         String pct = done ? "✔" : gv.percent() + "%";
         g.drawString(font, pct, ringX - font.width(pct) / 2 + 1, ringY - 4, done ? Ui.GOLD_LIGHT : Ui.TEXT, false);
         if (in(mouseX, mouseY, ringX - 16, ringY - 16, ringX + 16, ringY + 16)) {
-            hover(done ? "Geschafft" : gv.active() ? gv.percent() + " % der Punkte sind im Obelisken" : "Noch gesperrt");
+            hover(done ? tr("hub.ring_done", "Geschafft") : gv.active() ? tr("hub.ring_running", "%s %% der Punkte sind im Obelisken", gv.percent()) : tr("hub.ring_locked", "Noch gesperrt"));
         }
         int textW = ringX - 20 - (x0 + 8);
-        g.drawString(font, Ui.fit(font, "Stufe " + (selected + 1), textW), x0 + 8, top + HEAD + 12, Ui.MUTED, false);
-        g.drawString(font, Ui.fit(font, Component.literal(gv.title()).withStyle(ChatFormatting.BOLD), textW), x0 + 8, top + HEAD + 22, Ui.GOLD, false);
+        g.drawString(font, Ui.fit(font, tr("hub.stage", "Stufe %s", selected + 1), textW), x0 + 8, top + HEAD + 12, Ui.MUTED, false);
+        g.drawString(font, Ui.fit(font, Component.literal(title(gv)).withStyle(ChatFormatting.BOLD), textW), x0 + 8, top + HEAD + 22, Ui.GOLD, false);
         int y = top + HEAD + 34;
-        String desc = gv.description();
+        String desc = gv.description().isEmpty() ? "" : tr("goal." + gv.more().id() + ".description", gv.description());
         if (desc.isEmpty()) {
-            desc = done ? "Diese Stufe ist geschafft, die Welt ist ein Stück weiter." : gv.active() ? "Alles unten zählt. Abgeben am Obelisken oder hier aus der Hand." : "Öffnet sich, sobald die Stufe davor geschafft ist.";
+            desc = done ? tr("hub.desc_done", "Diese Stufe ist geschafft, die Welt ist ein Stück weiter.") : gv.active() ? tr("hub.desc_running", "Alles unten zählt. Abgeben am Obelisken oder hier aus der Hand.") : tr("hub.desc_locked", "Öffnet sich, sobald die Stufe davor geschafft ist.");
         }
+        if (!gv.more().event().isEmpty()) desc = tr("hub.event", "Das Event %s.", gv.more().event()) + " " + desc;
         for (var line : font.split(Component.literal(desc), textW)) {
             if (y > listTop - 10) break;
             g.drawString(font, line, x0 + 8, y, Ui.MUTED, false);
@@ -226,31 +246,31 @@ public final class KwHubScreen extends KwScreen {
         }
         Ui.ornament(g, x0 + 8, listTop - 4, x1 - 8);
         if (done) {
-            g.drawString(font, "Geschafft. Die fleißigsten Hände:", x0 + 8, listTop + 6, Ui.GOLD, false);
+            g.drawString(font, tr("hub.done_top", "Geschafft. Die fleißigsten Hände:"), x0 + 8, listTop + 6, Ui.GOLD, false);
             int ty = listTop + 20, r = 1;
             for (String t : gv.more().top()) {
                 int bar = t.lastIndexOf('|');
-                String who = bar < 0 ? t : t.substring(0, bar), pts = bar < 0 ? "" : Ui.number(Long.parseLong(t.substring(bar + 1))) + " Punkte";
+                String who = bar < 0 ? t : t.substring(0, bar), pts = bar < 0 ? "" : tr("hub.points", "%s Punkte", Ui.number(Long.parseLong(t.substring(bar + 1))));
                 g.drawString(font, r++ + ". " + who, x0 + 12, ty, Ui.TEXT, false);
                 g.drawString(font, pts, x1 - 8 - font.width(pts), ty, Ui.MUTED, false);
                 ty += 12;
             }
-            if (gv.more().top().isEmpty()) g.drawString(font, "Ohne Namen, aber nicht ohne Hände.", x0 + 12, ty, Ui.MUTED, false);
+            if (gv.more().top().isEmpty()) g.drawString(font, tr("hub.no_names", "Ohne Namen, aber nicht ohne Hände."), x0 + 12, ty, Ui.MUTED, false);
             itemsH = 0;
             return;
         }
         if (!gv.active() && !gv.more().estimate()) {
-            g.drawString(font, "Noch gesperrt. Was sie braucht, steht hier, sobald die Stufe davor läuft.", x0 + 8, listTop + 6, Ui.MUTED, false);
+            g.drawString(font, Ui.fit(font, tr("hub.locked_list", "Noch gesperrt. Was sie braucht, steht hier, sobald die Stufe davor läuft."), x1 - x0 - 16), x0 + 8, listTop + 6, Ui.MUTED, false);
             itemsH = 0;
             return;
         }
         boolean estimate = gv.more().estimate();
         if (estimate) {
-            g.drawString(font, Ui.fit(font, "Die nächste Stufe, zum Vorsorgen. Mengen geschätzt, sie richten sich nach der Spielerzahl.", x1 - x0 - 16),
+            g.drawString(font, Ui.fit(font, tr("hub.estimate", "Die nächste Stufe, zum Vorsorgen. Mengen geschätzt, sie richten sich nach der Spielerzahl."), x1 - x0 - 16),
                     x0 + 8, listTop + 4, Ui.MUTED, false);
         }
         if (gv.state().equals("wartet auf das Event")) {
-            g.drawString(font, "Fast voll. Der Rest wird live im Event abgegeben.", x0 + 8, listTop + 4, Ui.GOLD_LIGHT, false);
+            g.drawString(font, Ui.fit(font, tr("hub.held", "Fast voll. Der Rest wird live im Event abgegeben."), x1 - x0 - 16), x0 + 8, listTop + 4, Ui.GOLD_LIGHT, false);
         }
         long total = 0;
         for (KwNetwork.ItemView it : gv.items()) total += it.need() * it.weight();
@@ -269,8 +289,9 @@ public final class KwHubScreen extends KwScreen {
         for (KwNetwork.ItemView it : sorted) {
             if (!it.pillar().equals(pillar)) {
                 pillar = it.pillar();
-                g.drawString(font, pillar, x0 + 8, iy + 2, Ui.PURPLE, false);
-                Ui.rule(g, x0 + 10 + font.width(pillar), iy + 6, x1 - 8);
+                String pn = pillarName(gv, pillar);
+                g.drawString(font, pn, x0 + 8, iy + 2, Ui.PURPLE, false);
+                Ui.rule(g, x0 + 10 + font.width(pn), iy + 6, x1 - 8);
                 iy += 13;
                 rows++;
             }
@@ -278,12 +299,13 @@ public final class KwHubScreen extends KwScreen {
             boolean hover = in(mouseX, mouseY, x0 + 4, Math.max(iy, listTop), x1 - 4, Math.min(iy + 22, listBottom));
             if (hover) g.fill(x0 + 4, iy, x1 - 4, iy + 22, 0x18FFFFFF);
             Ui.slotItem(g, it.id(), x0 + 8, iy + 2);
-            String count = estimate ? "ca. " + Ui.number(it.need()) : Ui.number(it.have()) + " / " + Ui.number(it.need());
+            String count = estimate ? tr("hub.about", "ca. %s", Ui.number(it.need())) : Ui.number(it.have()) + " / " + Ui.number(it.need());
             int countX = x1 - 8 - font.width(count);
             // what one piece is worth on the bar, where it is more than one point
             String weight = it.weight() > 1 ? "x" + Ui.number(it.weight()) : "";
             int nameW = countX - 6 - (x0 + 30) - (weight.isEmpty() ? 0 : font.width(weight) + 6);
-            String shown = Ui.fit(font, it.name(), nameW);
+            String name = itemName(it);
+            String shown = Ui.fit(font, name, nameW);
             g.drawString(font, shown, x0 + 30, iy + 2, full ? Ui.GREEN : Ui.TEXT, false);
             if (!weight.isEmpty()) g.drawString(font, weight, x0 + 30 + font.width(shown) + 6, iy + 2, Ui.GOLD, false);
             g.drawString(font, count, countX, iy + 2, full ? Ui.GREEN : Ui.MUTED, false);
@@ -292,11 +314,12 @@ public final class KwHubScreen extends KwScreen {
             if (!estimate) Ui.bar(g, x0 + 30, iy + 13, x1 - 8, 6, ip, full ? Ui.GREEN : Ui.CYAN, !full);
             if (hover) {
                 List<Component> tip = new ArrayList<>();
-                tip.add(Component.literal(it.name()).withStyle(ChatFormatting.GOLD));
-                tip.add(Component.literal(it.weight() > 1 ? "Ein Stück zählt " + Ui.number(it.weight()) + " Punkte" : "Ein Stück zählt einen Punkt").withStyle(ChatFormatting.YELLOW));
-                tip.add(Component.literal("Ganz: " + share + " % des Ziels").withStyle(ChatFormatting.GRAY));
-                if (!estimate) tip.add(Component.literal(ip + " %, " + (full ? "voll" : "es fehlen noch " + Ui.number(it.need() - it.have())
-                        + " Stück, " + Ui.number(it.missingPoints()) + " Punkte")).withStyle(full ? ChatFormatting.GREEN : ChatFormatting.GRAY));
+                tip.add(Component.literal(name).withStyle(ChatFormatting.GOLD));
+                tip.add(Component.literal(it.weight() > 1 ? tr("hub.item_weight", "Ein Stück zählt %s Punkte", Ui.number(it.weight())) : tr("hub.item_one", "Ein Stück zählt einen Punkt")).withStyle(ChatFormatting.YELLOW));
+                tip.add(Component.literal(tr("hub.item_share", "Ganz: %s %% des Ziels", share)).withStyle(ChatFormatting.GRAY));
+                if (!estimate) tip.add(Component.literal(full ? tr("hub.item_full", "%s %%, voll", ip)
+                        : tr("hub.item_missing", "%s %%, es fehlen noch %s Stück, %s Punkte", ip, Ui.number(it.need() - it.have()), Ui.number(it.missingPoints())))
+                        .withStyle(full ? ChatFormatting.GREEN : ChatFormatting.GRAY));
                 tip.add(Component.literal(it.id()).withStyle(ChatFormatting.DARK_GRAY));
                 hover(tip);
             }

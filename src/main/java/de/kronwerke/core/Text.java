@@ -38,10 +38,9 @@ public final class Text {
             ResourceLocation rl = ResourceLocation.tryParse(tag);
             String fallback = TAG_NAMES.get(tag);
             if (fallback == null && rl != null) {
-                fallback = BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM, rl))
-                        .flatMap(set -> set.stream().findFirst())
-                        .map(h -> new ItemStack(h.value()).getHoverName().getString() + " (alle Arten)")
-                        .orElse(tag);
+                // a tag without a name of its own: its first item, in the reader's language
+                var first = BuiltInRegistries.ITEM.getTag(TagKey.create(Registries.ITEM, rl)).flatMap(set -> set.stream().findFirst());
+                if (first.isPresent()) return t("tag.any", "%s (alle Arten)", new ItemStack(first.get().value()).getHoverName()).withStyle(ChatFormatting.AQUA);
             }
             return Component.translatableWithFallback("kronwerke.tag." + tag.replace(':', '.').replace('/', '.'), fallback == null ? tag : fallback)
                     .withStyle(ChatFormatting.AQUA);

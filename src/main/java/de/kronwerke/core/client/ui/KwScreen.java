@@ -55,6 +55,11 @@ public abstract class KwScreen extends Screen {
         top = (height - h) / 2;
     }
 
+    /** A line in the player's language: kronwerke.<key> from the lang files, the German text as fallback. */
+    protected static String tr(String key, String fallback, Object... args) {
+        return de.kronwerke.core.Text.t(key, fallback, args).getString();
+    }
+
     /** Called by drawContent for the thing under the mouse; shown after the widgets. */
     protected void hover(String... lines) {
         hoverTip.clear();
@@ -114,7 +119,7 @@ public abstract class KwScreen extends Screen {
         for (var child : children()) {
             if (child instanceof FlatButton b && b.isHovered() && !b.tipLines().isEmpty()) tip = b.tipLines();
         }
-        if (closeHover) tip = List.of(Component.literal("Schließen (Esc)"));
+        if (closeHover) tip = List.of(de.kronwerke.core.Text.t("ui.close", "Schließen (Esc)"));
         if (!tip.isEmpty()) g.renderComponentTooltip(font, tip, mouseX, mouseY);
     }
 

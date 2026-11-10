@@ -1,6 +1,8 @@
 package de.kronwerke.core.goal;
 
+import de.kronwerke.core.Text;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -48,7 +50,12 @@ public record Goal(String id, String title, String description, List<String> req
                    Boolean scale, List<Pillar> pillars, List<String> stages, List<String> onComplete,
                    List<KitItem> starterKit) {
 
-    public record Pillar(String id, String title, List<PillarItem> items) {}
+    public record Pillar(String id, String title, List<PillarItem> items) {
+        /** The pillar's name in the player's language (kronwerke.goal.<goal>.pillar.<id>), the title as fallback. */
+        public MutableComponent name(String goal) {
+            return Text.t("goal." + goal + ".pillar." + id, title == null ? id : title);
+        }
+    }
 
     public record PillarItem(String item, long base, Boolean fixed, Integer weight) {
 
@@ -81,6 +88,16 @@ public record Goal(String id, String title, String description, List<String> req
     }
 
     public record KitItem(String item, int count) {}
+
+    /** The title in the player's language (kronwerke.goal.<id>.title, from the pack), goals.json as fallback. */
+    public MutableComponent name() {
+        return Text.t("goal." + id + ".title", title);
+    }
+
+    /** The description in the player's language, goals.json as fallback. */
+    public MutableComponent text() {
+        return Text.t("goal." + id + ".description", description == null ? "" : description);
+    }
 
     public double holdFraction() {
         return holdAt == null ? 1.0 : holdAt;

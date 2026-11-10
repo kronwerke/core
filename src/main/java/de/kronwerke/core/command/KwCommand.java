@@ -98,23 +98,23 @@ public final class KwCommand {
                     if (here != null) id = here.getUUID();
                     if (id == null) id = de.kronwerke.core.link.NetworkSync.remoteId(name);
                     if (id == null) {
-                        fail(c, name + " ist gerade nicht online.");
+                        fail(c, Text.t("ignore.offline", "%s ist gerade nicht online.", name));
                         return 0;
                     }
                     boolean on = de.kronwerke.core.link.NetworkSync.toggleIgnore(me, id, name);
-                    ok(c, on ? "Du siehst den Chat von " + name + " nicht mehr, auf keinem Server. Nochmal /kw ignore " + name + " hebt das auf."
-                            : "Du siehst den Chat von " + name + " wieder.");
+                    ok(c, on ? Text.t("ignore.on", "Du siehst den Chat von %s nicht mehr, auf keinem Server. Nochmal /kw ignore %s hebt das auf.", name, name)
+                            : Text.t("ignore.off", "Du siehst den Chat von %s wieder.", name));
                     return 1;
                 })))
                 .then(Commands.literal("bar").executes(c -> {
                     boolean shown = GoalManager.get().toggleBar(c.getSource().getPlayerOrException());
-                    ok(c, shown ? "Die Leiste des Ziels ist wieder da." : "Die Leiste des Ziels ist ausgeblendet. /kw bar holt sie zurück.");
+                    ok(c, shown ? Text.t("bar.shown", "Die Leiste des Ziels ist wieder da.") : Text.t("bar.hidden", "Die Leiste des Ziels ist ausgeblendet. /kw bar holt sie zurück."));
                     return 1;
                 }))
                 .then(Commands.literal("undo").executes(c -> {
                     long back = GoalManager.get().undo(c.getSource().getPlayerOrException());
-                    if (back > 0) ok(c, "Zurückgegeben: " + Text.number(back) + ".");
-                    else fail(c, "Nichts zum Zurückgeben: nur Gaben der letzten zehn Sekunden, und nicht, wenn das Ziel damit voll oder angehalten ist.");
+                    if (back > 0) ok(c, Text.t("undo.done", "Zurückgegeben: %s.", Text.number(back)));
+                    else fail(c, Text.t("undo.none", "Nichts zum Zurückgeben: nur Gaben der letzten zehn Sekunden, und nicht, wenn das Ziel damit voll oder angehalten ist."));
                     return back > 0 ? 1 : 0;
                 }))
                 .then(Commands.literal("deposit")
@@ -289,13 +289,18 @@ public final class KwCommand {
     private static int help(CommandContext<CommandSourceStack> c) {
         boolean streamer = c.getSource().hasPermission(2) || (c.getSource().getPlayer() != null && SlotManager.get().ownSlots(c.getSource().getPlayer().getUUID()) != null);
         c.getSource().sendSuccess(() -> Component.literal("Kronwerke").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
-        line(c, "/kw goals", "Was der Obelisk gerade braucht und wie weit wir sind");
-        line(c, "/kw deposit", "Gibt den Stapel in der Hand am Obelisken ab, /kw deposit all das ganze Inventar");
-        line(c, "/kw top", "Die fleißigsten Hände beim laufenden Ziel");
+        line(c, "/kw goals", Text.t("help.goals", "Was der Obelisk gerade braucht und wie weit wir sind"));
+        line(c, "/kw deposit", Text.t("help.deposit", "Gibt den Stapel in der Hand am Obelisken ab, /kw deposit all das Inventar ohne Hotbar"));
+        line(c, "/kw undo", Text.t("help.undo", "Gibt die Gabe der letzten zehn Sekunden zurück"));
+        line(c, "/kw top", Text.t("help.top", "Die fleißigsten Hände beim laufenden Ziel"));
+        line(c, "/kw bar", Text.t("help.bar", "Blendet die Leiste des Ziels aus oder wieder ein"));
+        line(c, "/kw ignore <Name>", Text.t("help.ignore", "Blendet den Chat eines Spielers aus, auf allen Servern"));
         if (streamer) {
-            line(c, "/kw menu", "Deine Whitelist: Plätze, Köpfe, Einladen und Entfernen");
-            line(c, "/kw invite <Name>", "Lädt jemanden auf einen deiner Plätze ein");
-            line(c, "/kw revoke <Name>", "Nimmt den Platz wieder weg");
+            line(c, "/kw menu", Text.t("help.menu", "Deine Whitelist: Plätze, Köpfe, Einladen und Entfernen"));
+            if (KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || c.getSource().hasPermission(2)) {
+                line(c, "/kw invite <Name>", Text.t("help.invite", "Lädt jemanden auf einen deiner Plätze ein"));
+                line(c, "/kw revoke <Name>", Text.t("help.revoke", "Nimmt den Platz wieder weg"));
+            }
         }
         if (c.getSource().hasPermission(2)) {
             line(c, "/kw team", "Plätze aller Streamer, Spieler verschieben oder rauswerfen");
@@ -310,10 +315,14 @@ public final class KwCommand {
     }
 
     private static void line(CommandContext<CommandSourceStack> c, String cmd, String what) {
+        line(c, cmd, Component.literal(what));
+    }
+
+    private static void line(CommandContext<CommandSourceStack> c, String cmd, Component what) {
         c.getSource().sendSuccess(() -> Component.literal(" " + cmd).withStyle(ChatFormatting.YELLOW)
                 .withStyle(st -> st.withClickEvent(new net.minecraft.network.chat.ClickEvent(net.minecraft.network.chat.ClickEvent.Action.SUGGEST_COMMAND, cmd.replace(" <Name>", " ").replace(" ...", " ")))
-                        .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Component.literal("Klicken, um den Befehl in den Chat zu setzen"))))
-                .append(Component.literal("  " + what).withStyle(ChatFormatting.GRAY)), false);
+                        .withHoverEvent(new net.minecraft.network.chat.HoverEvent(net.minecraft.network.chat.HoverEvent.Action.SHOW_TEXT, Text.t("help.click", "Klicken, um den Befehl in den Chat zu setzen"))))
+                .append(Component.literal("  ").append(what).withStyle(ChatFormatting.GRAY)), false);
     }
 
     /** /kw without anything: the menu for players, the help for consoles. */
@@ -478,11 +487,11 @@ public final class KwCommand {
         ServerPlayer p = c.getSource().getPlayerOrException();
         SlotData.StreamerEntry me = SlotManager.get().ownSlots(p.getUUID());
         if (me == null) {
-            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord.").getString());
+            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord."));
             return 0;
         }
         if (!de.kronwerke.core.net.KwNetwork.allowAction(p, true)) {
-            fail(c, Text.t("slots.slow", "Langsam, eins nach dem anderen.").getString());
+            fail(c, Text.t("slots.slow", "Langsam, eins nach dem anderen."));
             return 0;
         }
         String target = StringArgumentType.getString(c, "player");
@@ -491,12 +500,12 @@ public final class KwCommand {
             SlotManager.Result r = profile.isEmpty() ? SlotManager.Result.UNKNOWN_PLAYER : SlotManager.get().invite(me, profile.get(), false);
             String used = me.used() + "/" + SlotManager.get().allowance(me);
             switch (r) {
-                case OK -> src.sendSuccess(() -> Component.literal(profile.get().getName() + " steht auf der Whitelist. Plätze: " + used).withStyle(ChatFormatting.GREEN), false);
-                case NO_SLOTS_LEFT -> src.sendFailure(Component.literal("Du hast keinen freien Platz mehr (" + used + ")."));
-                case ALREADY_INVITED -> src.sendFailure(Component.literal(target + " hat schon einen Platz."));
-                case ALREADY_WHITELISTED -> src.sendFailure(Component.literal(target + " ist schon auf der Whitelist."));
-                case UNKNOWN_PLAYER -> src.sendFailure(Component.literal("Kein Minecraft-Konto mit dem Namen " + target + ". Schreibweise prüfen."));
-                default -> src.sendFailure(Component.literal("Das hat nicht geklappt."));
+                case OK -> src.sendSuccess(() -> Text.t("slots.invited", "%s steht auf der Whitelist. Plätze: %s", profile.get().getName(), used).withStyle(ChatFormatting.GREEN), false);
+                case NO_SLOTS_LEFT -> src.sendFailure(Text.t("slots.full_n", "Du hast keinen freien Platz mehr (%s).", used));
+                case ALREADY_INVITED -> src.sendFailure(Text.t("slots.has_place", "%s hat schon einen Platz.", target));
+                case ALREADY_WHITELISTED -> src.sendFailure(Text.t("slots.whitelisted", "%s ist schon auf der Whitelist.", target));
+                case UNKNOWN_PLAYER -> src.sendFailure(Text.t("slots.unknown", "Kein Minecraft-Konto mit dem Namen %s. Schreibweise prüfen.", target));
+                default -> src.sendFailure(Text.t("failed", "Das hat nicht geklappt."));
             }
         });
         return 1;
@@ -507,19 +516,19 @@ public final class KwCommand {
         SlotData.StreamerEntry me = SlotManager.get().ownSlots(p.getUUID());
         String target = StringArgumentType.getString(c, "player");
         if (me == null) {
-            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord.").getString());
+            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord."));
             return 0;
         }
         // the players one invited are known by name already: no lookup needed
         java.util.UUID id = null;
         for (var e : me.invited.entrySet()) if (e.getValue().equalsIgnoreCase(target)) id = e.getKey();
         if (id == null) {
-            fail(c, target + " hat seinen Platz nicht von dir.");
+            fail(c, Text.t("slots.not_yours", "%s hat seinen Platz nicht von dir.", target));
             return 0;
         }
         SlotManager.Result r = SlotManager.get().revoke(me, new com.mojang.authlib.GameProfile(id, me.invited.get(id)));
-        if (r == SlotManager.Result.OK) ok(c, target + " ist von der Whitelist runter. Plätze: " + me.used() + "/" + SlotManager.get().allowance(me));
-        else fail(c, "Das hat nicht geklappt.");
+        if (r == SlotManager.Result.OK) ok(c, Text.t("slots.revoked_n", "%s ist von der Whitelist runter. Plätze: %s", target, me.used() + "/" + SlotManager.get().allowance(me)));
+        else fail(c, Text.t("failed", "Das hat nicht geklappt."));
         return r == SlotManager.Result.OK ? 1 : 0;
     }
 
@@ -527,10 +536,10 @@ public final class KwCommand {
         ServerPlayer p = c.getSource().getPlayerOrException();
         SlotData.StreamerEntry me = SlotManager.get().ownSlots(p.getUUID());
         if (me == null) {
-            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord.").getString());
+            fail(c, Text.t("slots.none", "Du hast keine eigenen Plätze. Plätze vergeben Streamer und Season-1-Spieler über Discord."));
             return 0;
         }
-        c.getSource().sendSuccess(() -> Component.literal("Deine Plätze: ").withStyle(ChatFormatting.GOLD)
+        c.getSource().sendSuccess(() -> Text.t("slots.yours", "Deine Plätze: ").withStyle(ChatFormatting.GOLD)
                 .append(Component.literal(me.used() + "/" + SlotManager.get().allowance(me)).withStyle(ChatFormatting.WHITE)), false);
         for (String n : me.invited.values()) {
             c.getSource().sendSuccess(() -> Component.literal("  - " + n).withStyle(ChatFormatting.GRAY), false);
@@ -550,11 +559,11 @@ public final class KwCommand {
             taken = GoalManager.get().deposit(p, hand);
         }
         if (taken == 0) {
-            fail(c, all ? "Nichts in deinem Inventar passt zum aktuellen Ziel (die Hotbar bleibt unberührt). /kw goals zeigt, was gebraucht wird."
-                    : "Nichts in deiner Hand passt zum aktuellen Ziel. /kw goals zeigt, was gebraucht wird.");
+            fail(c, all ? Text.t("deposit.none_all", "Nichts in deinem Inventar passt zum aktuellen Ziel (die Hotbar bleibt unberührt). /kw goals zeigt, was gebraucht wird.")
+                    : Text.t("deposit.none_hand", "Nichts in deiner Hand passt zum aktuellen Ziel. /kw goals zeigt, was gebraucht wird."));
             return 0;
         }
-        c.getSource().sendSuccess(() -> Component.literal("Abgegeben: " + Text.number(taken) + ". ").withStyle(ChatFormatting.GREEN)
+        c.getSource().sendSuccess(() -> Text.t("deposit.done", "Abgegeben: %s. ", Text.number(taken)).withStyle(ChatFormatting.GREEN)
                 .append(de.kronwerke.core.obelisk.Obelisk.undoComponent()), false);
         return 1;
     }
@@ -567,16 +576,16 @@ public final class KwCommand {
             boolean done = d.isCompleted(g.id());
             boolean active = gm.isActive(g);
             ChatFormatting color = done ? ChatFormatting.GREEN : active ? ChatFormatting.YELLOW : ChatFormatting.DARK_GRAY;
-            String state = done ? "geschafft" : active ? (gm.isHeld(g) ? "wartet auf das Event" : Math.round(gm.fraction(g) * 100) + "%") : "gesperrt";
-            c.getSource().sendSuccess(() -> Component.literal(" " + g.title() + " ").withStyle(color)
-                    .append(Component.literal("[" + state + "]").withStyle(ChatFormatting.GRAY)), false);
+            Component state = done ? Text.t("goal.state.done", "geschafft") : active ? (gm.isHeld(g) ? Text.t("goal.state.held", "wartet auf das Event") : Component.literal(Math.round(gm.fraction(g) * 100) + "%")) : Text.t("goal.state.locked", "gesperrt");
+            c.getSource().sendSuccess(() -> Component.literal(" ").append(g.name()).append(" ").withStyle(color)
+                    .append(Component.literal("[").append(state).append("]").withStyle(ChatFormatting.GRAY)), false);
             if (!active) continue;
             if (!g.description().isEmpty()) {
-                c.getSource().sendSuccess(() -> Component.literal("   " + g.description()).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), false);
+                c.getSource().sendSuccess(() -> Component.literal("   ").append(g.text()).withStyle(ChatFormatting.GRAY, ChatFormatting.ITALIC), false);
             }
             for (Goal.Pillar p : g.pillars()) {
                 boolean pd = gm.pillarDone(g, p);
-                c.getSource().sendSuccess(() -> Component.literal("   " + p.title()).withStyle(pd ? ChatFormatting.GREEN : ChatFormatting.AQUA), false);
+                c.getSource().sendSuccess(() -> Component.literal("   ").append(p.name(g.id())).withStyle(pd ? ChatFormatting.GREEN : ChatFormatting.AQUA), false);
                 for (Goal.PillarItem it : p.items()) {
                     long have = d.progress(g.id(), it.item()), need = d.target(g.id(), it.item());
                     c.getSource().sendSuccess(() -> Component.literal("     ").append(Text.item(it.item()).withStyle(have >= need ? ChatFormatting.GREEN : ChatFormatting.AQUA))
@@ -591,16 +600,16 @@ public final class KwCommand {
         GoalManager gm = GoalManager.get();
         Goal g = goalId == null ? (gm.activeGoals().isEmpty() ? null : gm.activeGoals().get(0)) : gm.goal(goalId);
         if (g == null) {
-            fail(c, "Dieses Ziel gibt es nicht.");
+            fail(c, Text.t("goal.unknown", "Dieses Ziel gibt es nicht."));
             return 0;
         }
-        c.getSource().sendSuccess(() -> Text.t("goals.top", "Die fleißigsten Hände: %s", g.title()).withStyle(ChatFormatting.GOLD), false);
+        c.getSource().sendSuccess(() -> Text.t("goals.top", "Die fleißigsten Hände: %s", g.name()).withStyle(ChatFormatting.GOLD), false);
         int rank = 1;
         for (Map.Entry<UUID, Long> e : gm.leaderboard(g, 10)) {
             String name = c.getSource().getServer().getProfileCache() == null ? e.getKey().toString()
                     : c.getSource().getServer().getProfileCache().get(e.getKey()).map(pr -> pr.getName()).orElse(e.getKey().toString());
             int r = rank++;
-            c.getSource().sendSuccess(() -> Component.literal(" " + r + ". " + name + "  " + Text.number(e.getValue()) + " Punkte").withStyle(ChatFormatting.GRAY), false);
+            c.getSource().sendSuccess(() -> Text.t("goals.top_row", " %s. %s  %s Punkte", r, name, Text.number(e.getValue())).withStyle(ChatFormatting.GRAY), false);
         }
         return 1;
     }
@@ -728,6 +737,14 @@ public final class KwCommand {
 
     private static void ok(CommandContext<CommandSourceStack> c, String msg) {
         c.getSource().sendSuccess(() -> Component.literal(msg).withStyle(ChatFormatting.GREEN), false);
+    }
+
+    private static void ok(CommandContext<CommandSourceStack> c, Component msg) {
+        c.getSource().sendSuccess(() -> msg.copy().withStyle(ChatFormatting.GREEN), false);
+    }
+
+    private static void fail(CommandContext<CommandSourceStack> c, Component msg) {
+        c.getSource().sendFailure(msg.copy().withStyle(ChatFormatting.RED));
     }
 
     private static void fail(CommandContext<CommandSourceStack> c, String msg) {

@@ -28,13 +28,12 @@ public final class AdminActions {
 
     /** A command source that keeps what the command says. */
     private static final class Capture implements CommandSource {
-        final List<String> lines = new ArrayList<>();
+        final List<Component> lines = new ArrayList<>();
         boolean failed;
 
         @Override
         public void sendSystemMessage(Component message) {
-            String s = message.getString();
-            if (!s.isBlank()) lines.add(s);
+            if (!message.getString().isBlank()) lines.add(message);
         }
 
         @Override
@@ -165,7 +164,7 @@ public final class AdminActions {
         Capture c = new Capture();
         var source = p.createCommandSourceStack().withSource(c);
         p.getServer().getCommands().performPrefixedCommand(source, cmd);
-        String last = c.lines.isEmpty() ? "Erledigt." : c.lines.get(c.lines.size() - 1);
+        Component last = c.lines.isEmpty() ? Component.literal("Erledigt.") : c.lines.get(c.lines.size() - 1);
         KwNetwork.sendAdmin(p, last, c.failed && c.lines.size() <= 1);
     }
 }

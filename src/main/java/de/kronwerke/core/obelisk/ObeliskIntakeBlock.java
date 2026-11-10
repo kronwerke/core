@@ -3,6 +3,7 @@ package de.kronwerke.core.obelisk;
 import com.mojang.serialization.MapCodec;
 import de.kronwerke.core.Text;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.LivingEntity;
@@ -85,8 +86,9 @@ public class ObeliskIntakeBlock extends BaseEntityBlock {
             }
             var gm = de.kronwerke.core.goal.GoalManager.get();
             boolean held = gm.activeGoals().stream().anyMatch(gm::isHeld);
-            String who = be.ownerName().isEmpty() ? "niemandem" : be.ownerName();
-            String state2 = !be.connected() ? "nicht verbunden: zu weit weg" : held ? "verbunden, aber das Ziel wartet gerade auf das Event" : "mit dem Obelisken verbunden";
+            Object who = be.ownerName().isEmpty() ? Text.t("obelisk.intake_nobody", "niemandem") : be.ownerName();
+            Component state2 = !be.connected() ? Text.t("obelisk.intake_far", "nicht verbunden: zu weit weg")
+                    : held ? Text.t("obelisk.intake_held", "verbunden, aber das Ziel wartet gerade auf das Event") : Text.t("obelisk.intake_ok", "mit dem Obelisken verbunden");
             player.sendSystemMessage(Text.t("obelisk.intake_info", "Zubringer von %s, %s.", who, state2).withStyle(ChatFormatting.GRAY));
         }
         return InteractionResult.CONSUME;

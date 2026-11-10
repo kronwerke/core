@@ -530,9 +530,9 @@ public final class GoalManager {
         String when = eventText(g);
         server.getPlayerList().broadcastSystemMessage(when.isEmpty()
                 ? Text.t("goal.hold", "Der Obelisk ist fast voll. %s wartet auf das Event, achtet auf die Ankündigung.",
-                        Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD)
+                        g.name().withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD)
                 : Text.t("goal.hold_at", "Der Obelisk ist fast voll. %s wartet auf das Event %s.",
-                        Component.literal(g.title()).withStyle(ChatFormatting.YELLOW), Component.literal(when).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GOLD), false);
+                        g.name().withStyle(ChatFormatting.YELLOW), Component.literal(when).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GOLD), false);
     }
 
     /** "am Samstag, 23. Januar, um 20 Uhr" when the team set the event's time, else empty. */
@@ -548,7 +548,7 @@ public final class GoalManager {
     public void release(Goal g) {
         data().release(g.id());
         server.getPlayerList().broadcastSystemMessage(Text.t("goal.release", "Der Obelisk nimmt wieder an. Macht %s voll!",
-                Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
+                g.name().withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
         de.kronwerke.core.obelisk.Obelisk.get().onRelease(g);
         refreshBossBar();
     }
@@ -563,7 +563,7 @@ public final class GoalManager {
         if (data().isCompleted(g.id())) return;
         data().markCompleted(g.id());
         server.getPlayerList().broadcastSystemMessage(Text.t("goal.complete", "Gemeinschaftsziel geschafft: %s",
-                Component.literal(g.title()).withStyle(ChatFormatting.GOLD)).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD), false);
+                g.name().withStyle(ChatFormatting.GOLD)).withStyle(ChatFormatting.GREEN, ChatFormatting.BOLD), false);
         KronwerkeCore.LOGGER.info("Goal {} completed", g.id());
         if (!de.kronwerke.core.obelisk.Obelisk.get().celebrate(g)) reveal(g);
         refreshBossBar();
@@ -705,7 +705,7 @@ public final class GoalManager {
                 if (!player.getInventory().add(stack)) player.drop(stack, false);
             }
             data().markKit(g.id(), player.getUUID());
-            player.sendSystemMessage(Text.t("goal.kit", "Das Startpaket für %s liegt in deinem Inventar.", g.title()).withStyle(ChatFormatting.GREEN));
+            player.sendSystemMessage(Text.t("goal.kit", "Das Startpaket für %s liegt in deinem Inventar.", g.name()).withStyle(ChatFormatting.GREEN));
         }
     }
 
@@ -726,15 +726,15 @@ public final class GoalManager {
         boolean asleep = de.kronwerke.core.obelisk.Obelisk.get().slumbering();
         for (Goal g : active) {
             ServerBossEvent bar = bars.computeIfAbsent(g.id(), k -> {
-                ServerBossEvent b = new ServerBossEvent(Component.literal(g.title()), BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.NOTCHED_10);
+                ServerBossEvent b = new ServerBossEvent(g.name(), BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.NOTCHED_10);
                 for (ServerPlayer p : server.getPlayerList().getPlayers()) if (!barHidden.contains(p.getUUID())) b.addPlayer(p);
                 return b;
             });
             double f = fraction(g);
             String ev = eventText(g);
-            String state = isHeld(g) ? (ev.isEmpty() ? "  wartet auf das Event" : "  Event " + ev) : asleep ? "  der Obelisk schläft" : String.format("  %d%%", Math.round(f * 100));
-            bar.setName(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)
-                    .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : asleep ? ChatFormatting.GRAY : ChatFormatting.WHITE)));
+            Component state = isHeld(g) ? (ev.isEmpty() ? Text.t("bar.held", "  wartet auf das Event") : Text.t("bar.event", "  Event %s", ev)) : asleep ? Text.t("bar.asleep", "  der Obelisk schläft") : Component.literal(String.format("  %d%%", Math.round(f * 100)));
+            bar.setName(g.name().withStyle(ChatFormatting.GOLD)
+                    .append(state.copy().withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : asleep ? ChatFormatting.GRAY : ChatFormatting.WHITE)));
             bar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
             bar.setProgress((float) Math.min(1.0, f));
             bar.setVisible(true);

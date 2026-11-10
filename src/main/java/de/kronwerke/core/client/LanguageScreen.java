@@ -90,11 +90,11 @@ public final class LanguageScreen extends KwScreen {
 
     @Override
     protected void drawContent(GuiGraphics g, int mouseX, int mouseY, float partial) {
-        g.drawCenteredString(font, Component.literal("Willkommen auf Kronwerke").withStyle(ChatFormatting.BOLD), left + w / 2, top + HEAD + 10, Ui.GOLD);
+        g.drawCenteredString(font, Component.literal("Willkommen auf Kronwerke / Welcome to Kronwerke").withStyle(ChatFormatting.BOLD), left + w / 2, top + HEAD + 10, Ui.GOLD);
         g.drawCenteredString(font, "Welche Sprache soll das Spiel haben?", left + w / 2, top + HEAD + 22, Ui.MUTED);
         g.drawCenteredString(font, "Which language should the game use?", left + w / 2, top + HEAD + 32, Ui.DIM);
         String[][] cards = {{"Deutsch", "Quests, Menüs und Hinweise auf Deutsch", "Jederzeit in den Optionen änderbar"},
-                {"English", "Quests, menus and hints in English", "Can be changed in the options any time"}};
+                {"English", "Menus, hints and items in English. The quest book is German for now, an English one follows.", "Can be changed in the options any time"}};
         hoverCard = -1;
         for (int i = 0; i < 2; i++) {
             int x = cardX(i), y = cardY(), cw = cardW(), ch = h - HEAD - 46 - 14;
