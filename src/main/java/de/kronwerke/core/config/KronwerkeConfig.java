@@ -27,6 +27,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> KEEP_ON_MAIN;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DIMENSION_SERVERS;
     public static final ModConfigSpec.IntValue SCALE_EXPECTED;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_FLUIDS;
     public static final ModConfigSpec.IntValue LOG_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
@@ -65,9 +66,9 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue BOSS_LIGHTNING_DAMAGE;
     public static final ModConfigSpec.DoubleValue BOSS_SHOCKWAVE_DAMAGE;
     public static final ModConfigSpec.ConfigValue<String> TAB_LINE;
-    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Double>> MOB_HEALTH;
-    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Double>> MOB_DAMAGE;
-    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Double>> MOB_ARMOR;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Number>> MOB_HEALTH;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Number>> MOB_DAMAGE;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends Number>> MOB_ARMOR;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_MIN_STAGE;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_SPAWN_CHANCE;
 
@@ -95,6 +96,8 @@ public final class KronwerkeConfig {
         b.push("locks");
         MACHINE_LOCKS = b.comment("Recipes whose result belongs to a stage that is not open are held back when the recipes load, so no machine, ritual, autocrafter or crafting grid makes it; the players are told which stage it needs. When a stage opens the recipes load again.")
                 .define("machineLocks", true);
+        LOCKED_FLUIDS = b.comment("Fluids and chemicals of a stage, as id=stage, for recipes whose result is no item. A fluid whose bucket is in a stage file is locked with it by itself.")
+                .defineListAllowEmpty("fluids", java.util.List.of(), o -> o instanceof String);
         b.pop();
 
         b.push("dimensions");
@@ -149,7 +152,7 @@ public final class KronwerkeConfig {
                 .defineInRange("damagePerPlayer", 0.15, 0.0, 10.0);
         BOSS_MAX_PLAYERS = b.comment("Players beyond this do not scale the boss further.")
                 .defineInRange("maxPlayers", 8, 1, 50);
-        BOSS_ATTACK_INTERVAL = b.comment("Ticks between the extra attacks when two or more players fight the boss (240 = 12 seconds). Must be a multiple of 40.")
+        BOSS_ATTACK_INTERVAL = b.comment("Ticks between the extra attacks when two or more players fight the boss (240 = 12 seconds), counted per boss.")
                 .defineInRange("attackInterval", 240, 40, 12000);
         BOSS_LIGHTNING_DAMAGE = b.comment("Damage of the lightning attack.")
                 .defineInRange("lightningDamage", 8.0, 0.0, 200.0);
@@ -159,11 +162,11 @@ public final class KronwerkeConfig {
 
         b.push("mobs");
         MOB_HEALTH = b.comment("Extra health of hostile mobs per open stage (1 to 5), as a fraction of their base (0.5 = plus 50 percent).")
-                .defineList("health", java.util.List.of(0.0, 0.3, 0.7, 1.2, 1.8), o -> o instanceof Double);
+                .defineList("health", java.util.List.of(0.0, 0.3, 0.7, 1.2, 1.8), o -> o instanceof Number);
         MOB_DAMAGE = b.comment("Extra attack damage of hostile mobs per open stage, as a fraction of their base.")
-                .defineList("damage", java.util.List.of(0.0, 0.2, 0.45, 0.75, 1.1), o -> o instanceof Double);
+                .defineList("damage", java.util.List.of(0.0, 0.2, 0.45, 0.75, 1.1), o -> o instanceof Number);
         MOB_ARMOR = b.comment("Extra armor points of hostile mobs per open stage.")
-                .defineList("armor", java.util.List.of(0.0, 2.0, 4.0, 7.0, 10.0), o -> o instanceof Double);
+                .defineList("armor", java.util.List.of(0.0, 2.0, 4.0, 7.0, 10.0), o -> o instanceof Number);
         MOB_MIN_STAGE = b.comment("Mobs that spawn naturally only from a stage on: \"mod:entity=stage\" or \"mod:*=stage\".")
                 .defineListAllowEmpty("minStage", java.util.List.of(
                         "eidolon_repraised:wraith=3", "eidolon_repraised:zombie_brute=3", "irons_spellbooks:necromancer=2", "mowziesmobs:naga=3",

@@ -31,6 +31,18 @@ public class GoalData extends SavedData {
     private final Set<String> revealed = new HashSet<>();
     /** Goals scaled before anyone played (a season start): scaled again after the first day. */
     private final Set<String> provisional = new HashSet<>();
+    /** When the event that opens a held goal is planned (epoch ms), if the team set it. */
+    private final Map<String, Long> eventAt = new HashMap<>();
+
+    public long eventAt(String goal) {
+        return eventAt.getOrDefault(goal, 0L);
+    }
+
+    public void setEventAt(String goal, long at) {
+        if (at <= 0) eventAt.remove(goal);
+        else eventAt.put(goal, at);
+        setDirty();
+    }
     /** goal -> (player -> contributed) */
     private final Map<String, Map<UUID, Long>> contributions = new HashMap<>();
     /** "goal/item" -> (player -> contributed), for the ledger and the pillar rankings */
@@ -252,6 +264,7 @@ public class GoalData extends SavedData {
         if (tag.contains("revealed")) getSet(tag, "revealed", d.revealed);
         else d.revealed.addAll(d.completed); // before 0.27: everything completed went out at once
         getSet(tag, "provisional", d.provisional);
+        getLongMap(tag, "eventAt", d.eventAt);
         CompoundTag contrib = tag.getCompound("contributions");
         for (String goal : contrib.getAllKeys()) {
             CompoundTag per = contrib.getCompound(goal);
@@ -290,6 +303,7 @@ public class GoalData extends SavedData {
         putSet(tag, "completed", completed);
         putSet(tag, "revealed", revealed);
         putSet(tag, "provisional", provisional);
+        putLongMap(tag, "eventAt", eventAt);
         CompoundTag contrib = new CompoundTag();
         contributions.forEach((goal, per) -> {
             CompoundTag t = new CompoundTag();

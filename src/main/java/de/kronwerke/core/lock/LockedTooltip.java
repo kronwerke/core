@@ -27,5 +27,9 @@ public final class LockedTooltip {
         lines.add(Component.translatableWithFallback("kronwerke.locked.opens", "Öffnet in %s.", stage).withStyle(ChatFormatting.RED));
         lines.add(Component.translatableWithFallback("kronwerke.locked.carry", "Einstecken geht, benutzen noch nicht.")
                 .withStyle(ChatFormatting.DARK_GRAY));
+        // which mod it comes from stays visible: players can tell which quest chapter it belongs to
+        String mod = net.neoforged.fml.ModList.get().getModContainerById(id.getNamespace())
+                .map(c -> c.getModInfo().getDisplayName()).orElse(id.getNamespace());
+        lines.add(Component.literal(mod).withStyle(ChatFormatting.BLUE, ChatFormatting.ITALIC));
     }
 }

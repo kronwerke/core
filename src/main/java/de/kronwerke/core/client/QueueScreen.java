@@ -55,7 +55,7 @@ public final class QueueScreen extends KwScreen {
 
     @Override
     protected int panelHeight() {
-        return 180;
+        return 200;
     }
 
     @Override
@@ -103,8 +103,12 @@ public final class QueueScreen extends KwScreen {
         g.drawCenteredString(font, Text.t("queue.place", "Platz %s von %s in der Warteschlange", state.position(), state.waiting()), cx, y + 50, Ui.TEXT);
         g.drawCenteredString(font, Text.t("queue.online", "%s von %s Spielern im Netzwerk", state.online(), state.limit()), cx, y + 63, Ui.MUTED);
         long s = (System.currentTimeMillis() - since) / 1000;
-        g.drawCenteredString(font, Text.t("queue.waited", "Du wartest seit %s:%s.", s / 60, String.format("%02d", s % 60)), cx, y + 80, Ui.DIM);
+        int eta = state.etaSeconds();
+        Component waitLine = eta <= 0 ? Text.t("queue.waited", "Du wartest seit %s:%s.", s / 60, String.format("%02d", s % 60))
+                : Text.t("queue.eta", "Du wartest seit %s:%s, noch etwa %s Minuten.", s / 60, String.format("%02d", s % 60), Math.max(1, Math.round(eta / 60.0)));
+        g.drawCenteredString(font, waitLine, cx, y + 80, Ui.DIM);
         g.drawCenteredString(font, Text.t("queue.auto", "Sobald ein Platz frei ist, geht es von selbst weiter."), cx, y + 92, Ui.DIM);
+        g.drawCenteredString(font, Text.t("queue.why", "Streamer und das Team kommen ohne Warten rein."), cx, y + 104, Ui.DIM);
     }
 
     @Override

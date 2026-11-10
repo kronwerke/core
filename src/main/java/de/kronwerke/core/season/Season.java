@@ -127,6 +127,18 @@ public final class Season extends SavedData {
         return gateAllow.contains(name.toLowerCase(Locale.ROOT));
     }
 
+    /** The accounts of the names on the list, learned at their first login: a rename keeps the pass. */
+    private final Map<UUID, String> gateIds = new HashMap<>();
+
+    public boolean gateAllows(com.mojang.authlib.GameProfile p) {
+        String byId = gateIds.get(p.getId());
+        if (byId != null && gateAllow.contains(byId)) return true;
+        if (!gateAllows(p.getName())) return false;
+        gateIds.put(p.getId(), p.getName().toLowerCase(Locale.ROOT));
+        setDirty();
+        return true;
+    }
+
     public boolean allow(String name, boolean add) {
         boolean changed = add ? gateAllow.add(name.toLowerCase(Locale.ROOT)) : gateAllow.remove(name.toLowerCase(Locale.ROOT));
         if (changed) setDirty();
@@ -168,6 +180,9 @@ public final class Season extends SavedData {
         net.minecraft.nbt.ListTag allow = new net.minecraft.nbt.ListTag();
         for (String n : gateAllow) allow.add(net.minecraft.nbt.StringTag.valueOf(n));
         tag.put("gateAllow", allow);
+        CompoundTag ids = new CompoundTag();
+        gateIds.forEach((k, v) -> ids.putString(k.toString(), v));
+        tag.put("gateIds", ids);
         return tag;
     }
 
@@ -182,6 +197,8 @@ public final class Season extends SavedData {
         d.beta = tag.getBoolean("beta");
         net.minecraft.nbt.ListTag allow = tag.getList("gateAllow", net.minecraft.nbt.Tag.TAG_STRING);
         for (int i = 0; i < allow.size(); i++) d.gateAllow.add(allow.getString(i));
+        CompoundTag ids = tag.getCompound("gateIds");
+        for (String k : ids.getAllKeys()) d.gateIds.put(UUID.fromString(k), ids.getString(k));
         return d;
     }
 }

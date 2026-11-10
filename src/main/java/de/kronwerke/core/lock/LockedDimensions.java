@@ -44,6 +44,22 @@ public final class LockedDimensions {
         return m;
     }
 
+    /** A Nether portal lit before its stage: the players nearby learn it now, not when they step in. */
+    public static void onPortalLit(net.neoforged.neoforge.event.level.BlockEvent.PortalSpawnEvent event) {
+        if (!(event.getLevel() instanceof net.minecraft.server.level.ServerLevel level) || !CHAPTERS) return;
+        ResourceLocation nether = net.minecraft.world.level.Level.NETHER.location();
+        if (openForAll(nether)) return;
+        Component name = Component.translatableWithFallback("kronwerke.dimension.minecraft.the_nether", FALLBACK_NAMES.get("minecraft:the_nether"));
+        for (ServerPlayer p : level.players()) {
+            if (p.blockPosition().distSqr(event.getPos()) > 32 * 32) continue;
+            ResourceLocation stage = lockingStage(p, nether);
+            if (stage == null) continue;
+            p.displayClientMessage(Component.translatableWithFallback("kronwerke.dimension.lit_locked",
+                    "Das Portal brennt, aber %s öffnet erst mit %s.", name.copy().withStyle(ChatFormatting.GOLD),
+                    LockedItems.stageName(stage).copy().withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GRAY), true);
+        }
+    }
+
     /** The stage the player still needs for the dimension, or null when the way is open. */
     public static ResourceLocation lockingStage(ServerPlayer player, ResourceLocation dimension) {
         if (!CHAPTERS || player.isCreative() || player.isSpectator()) return null;
@@ -53,9 +69,31 @@ public final class LockedDimensions {
         return has.has(stage) ? null : stage;
     }
 
+    /** Whether a dimension's stage is open for the server as a whole (the community reached it). */
+    private static boolean openForAll(ResourceLocation dim) {
+        ResourceLocation stage = table().get(dim);
+        if (stage == null || !stage.getPath().startsWith("stage")) return stage == null;
+        try {
+            return de.kronwerke.core.mobs.MobStages.stage() >= Integer.parseInt(stage.getPath().substring(5));
+        } catch (NumberFormatException e) {
+            return true;
+        }
+    }
+
     public static void onTravel(EntityTravelToDimensionEvent event) {
-        if (!(event.getEntity() instanceof ServerPlayer player)) return;
         ResourceLocation dim = event.getDimension().location();
+        if (!(event.getEntity() instanceof ServerPlayer player)) {
+            // a boat, cart or horse with a player in it: the player's stage counts
+            for (var p : event.getEntity().getPassengers()) {
+                if (p instanceof ServerPlayer rider && lockingStage(rider, dim) != null) {
+                    event.setCanceled(true);
+                    return;
+                }
+            }
+            // items and mobs: not into a dimension nobody may enter yet
+            if (CHAPTERS && !openForAll(dim)) event.setCanceled(true);
+            return;
+        }
         ResourceLocation stage = lockingStage(player, dim);
         if (stage == null) return;
         event.setCanceled(true);

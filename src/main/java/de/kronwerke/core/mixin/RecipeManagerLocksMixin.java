@@ -41,7 +41,7 @@ public abstract class RecipeManagerLocksMixin {
     @Inject(method = "apply(Ljava/util/Map;Lnet/minecraft/server/packs/resources/ResourceManager;Lnet/minecraft/util/profiling/ProfilerFiller;)V", at = @At("TAIL"))
     private void kronwerke$holdBackLaterStages(Map<ResourceLocation, JsonElement> object, ResourceManager resourceManager, ProfilerFiller profiler, CallbackInfo ci) {
         var all = getRecipes();
-        var keep = MachineLocks.filter(all, resourceManager, registries);
+        var keep = MachineLocks.filter(all, resourceManager, registries, object);
         if (keep != all) replaceRecipes(keep);
     }
 

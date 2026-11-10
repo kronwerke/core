@@ -202,7 +202,14 @@ public final class Travel {
         UUID id = p.getUUID();
         Arrival a = arrived.get(id);
         if (a != null && a.until() > System.currentTimeMillis()) return;
-        if (p.isPassenger() || p.isSpectator() || leaving.containsKey(id)) return;
+        if (p.isSpectator() || leaving.containsKey(id)) return;
+        if (p.isPassenger()) {
+            if (!inPortal.containsKey(id)) {
+                p.displayClientMessage(Text.t("portal.ride", "Steig erst ab: das Portal nimmt nur dich mit, kein Reittier und kein Boot.").withStyle(ChatFormatting.GRAY), true);
+                inPortal.put(id, new long[] {tick + 100, tick + 100, pos.asLong()}); // quiet for five seconds
+            }
+            return;
+        }
         for (Departure d : pending.values()) if (d.player().equals(id)) return;
         long[] t = inPortal.get(id);
         if (t == null) {
@@ -215,6 +222,10 @@ public final class Travel {
             }
             inPortal.put(id, new long[] {tick, tick, pos.asLong()});
             send(p, TravelPayload.CHARGE, target);
+            // pets that follow the player stay on this side; better said before than missed after
+            boolean pets = !p.serverLevel().getEntitiesOfClass(net.minecraft.world.entity.TamableAnimal.class, p.getBoundingBox().inflate(12),
+                    pet -> p.getUUID().equals(pet.getOwnerUUID()) && !pet.isOrderedToSit()).isEmpty();
+            if (pets) p.displayClientMessage(Text.t("portal.pets", "Deine Tiere bleiben hier, das Portal nimmt nur dich mit.").withStyle(ChatFormatting.GRAY), false);
             p.level().playSound(null, p.blockPosition(), SoundEvents.BEACON_POWER_SELECT, SoundSource.PLAYERS, 0.8f, 0.6f);
         }
     }
@@ -428,11 +439,17 @@ public final class Travel {
         server.execute(() -> {
             NetworkSync.Peer home = NetworkSync.portalTarget();
             evacuateUntil = System.currentTimeMillis() + 30_000;
+            if (home == null || !home.bus() || !home.running()) {
+                // main cannot take anyone now: nobody is sent off, and the launcher must not reset
+                // a world whose players' newest state would be lost with it
+                KronwerkeCore.LOGGER.warn("Evacuation asked, but main is not reachable; the reset waits");
+                NetworkSync.evacuationFailed("main is not reachable");
+                return;
+            }
             for (ServerPlayer p : new ArrayList<>(server.getPlayerList().getPlayers())) {
                 evacuating.add(p.getUUID());
                 p.sendSystemMessage(Text.t("portal.evacuate", "Diese Welt wird zurückgesetzt. Du reist jetzt nach Hause.").withStyle(ChatFormatting.GOLD));
-                if (home != null && home.bus()) depart(p, home, null);
-                else p.connection.disconnect(Text.t("portal.reset", "Diese Welt wird zurückgesetzt."));
+                depart(p, home, null);
             }
         });
     }
@@ -815,8 +832,12 @@ public final class Travel {
         level.getChunk(BlockPos.containing(at.x(), at.y(), at.z())); // loaded, so the items are kept
         if (d.get("extra") instanceof JsonObject x) Compat.restore(server, x); // a thrown backpack's contents
         for (JsonElement e : d.getAsJsonArray("items")) {
-            ItemStack st = ItemStack.parseOptional(level.registryAccess(), decode(e.getAsString()));
-            if (st.isEmpty()) continue;
+            CompoundTag raw = decode(e.getAsString());
+            ItemStack st = ItemStack.parseOptional(level.registryAccess(), raw);
+            if (st.isEmpty()) {
+                KronwerkeCore.LOGGER.warn("An item thrown through the portal from {} is unknown here and was lost: {}", from, raw.getString("id"));
+                continue;
+            }
             ItemEntity ie = new ItemEntity(level, at.x(), at.y() + 0.5, at.z(), st, 0, 0.1, 0);
             ie.setPickUpDelay(10);
             level.addFreshEntity(ie);

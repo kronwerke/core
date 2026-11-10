@@ -15,6 +15,7 @@ import java.util.UUID;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 import de.kronwerke.core.KronwerkeCore;
 import de.kronwerke.core.config.KronwerkeConfig;
@@ -88,7 +89,7 @@ public final class MachineLocks {
 
     public static int readStage() {
         try {
-            return Math.max(1, Math.min(5, Integer.parseInt(Files.readString(STAGE_FILE).trim())));
+            return Math.max(1, Integer.parseInt(Files.readString(STAGE_FILE).trim())); // as many stages as the goals open
         } catch (IOException | NumberFormatException e) {
             return 1;
         }
@@ -136,7 +137,8 @@ public final class MachineLocks {
      * Called as the server's recipes load: answers the recipes that stay, keeps the others for
      * the messages. With the locks off, or without stage files, everything stays.
      */
-    public static Collection<RecipeHolder<?>> filter(Collection<RecipeHolder<?>> all, ResourceManager rm, HolderLookup.Provider registries) {
+    public static Collection<RecipeHolder<?>> filter(Collection<RecipeHolder<?>> all, ResourceManager rm, HolderLookup.Provider registries,
+                                                     Map<ResourceLocation, JsonElement> json) {
         held = Map.of();
         heldCount = 0;
         if (!on()) {
@@ -149,8 +151,12 @@ public final class MachineLocks {
         if (stages.isEmpty()) return all;
         List<RecipeHolder<?>> keep = new ArrayList<>(all.size());
         Map<RecipeType<?>, List<Held>> back = new IdentityHashMap<>();
+        Map<ResourceLocation, Integer> fluids = fluidStages(stages);
         for (RecipeHolder<?> h : all) {
             Integer need = stageOf(h.value(), registries, stages);
+            // a result that is no item (a fluid, a chemical) or that the recipe only knows from
+            // its input: the recipe file names it
+            if (need == null && json != null) need = stageOfJson(json.get(h.id()), stages, fluids);
             if (need != null && need > open) {
                 back.computeIfAbsent(h.value().getType(), t -> new ArrayList<>()).add(new Held(h, need));
                 heldCount++;
@@ -161,6 +167,72 @@ public final class MachineLocks {
         held = back;
         KronwerkeCore.LOGGER.info("Stage {} is open: {} recipes of later stages are held back from every machine and crafting grid", open, heldCount);
         return keep;
+    }
+
+    /**
+     * The stage of fluids and chemicals: a fluid whose bucket is locked is locked with it, and
+     * locks.fluids names the rest (Mekanism's chemicals have no bucket), as id=stage.
+     */
+    static Map<ResourceLocation, Integer> fluidStages(Map<ResourceLocation, Integer> items) {
+        Map<ResourceLocation, Integer> out = new HashMap<>();
+        for (var f : BuiltInRegistries.FLUID.entrySet()) {
+            var bucket = f.getValue().getBucket();
+            if (bucket == null || bucket == net.minecraft.world.item.Items.AIR) continue;
+            Integer st = items.get(BuiltInRegistries.ITEM.getKey(bucket));
+            if (st != null) out.put(f.getKey().location(), st);
+        }
+        for (String e : de.kronwerke.core.config.KronwerkeConfig.LOCKED_FLUIDS.get()) {
+            int i = e.indexOf('=');
+            if (i <= 0) continue;
+            ResourceLocation id = ResourceLocation.tryParse(e.substring(0, i).trim());
+            try {
+                if (id != null) out.merge(id, Integer.parseInt(e.substring(i + 1).trim()), Math::min);
+            } catch (NumberFormatException ex) {
+                KronwerkeCore.LOGGER.warn("locks.fluids: {} is not id=stage", e);
+            }
+        }
+        return out;
+    }
+
+    /** The highest stage among the outputs a recipe file names (keys with result or output in them). */
+    static Integer stageOfJson(JsonElement recipe, Map<ResourceLocation, Integer> items, Map<ResourceLocation, Integer> fluids) {
+        if (!(recipe instanceof JsonObject o)) return null;
+        Integer best = null;
+        for (var e : o.entrySet()) {
+            String k = e.getKey().toLowerCase(java.util.Locale.ROOT);
+            if (!k.contains("result") && !k.contains("output")) continue;
+            Integer s = outputs(e.getValue(), items, fluids);
+            if (s != null && (best == null || s > best)) best = s;
+        }
+        return best;
+    }
+
+    private static Integer outputs(JsonElement el, Map<ResourceLocation, Integer> items, Map<ResourceLocation, Integer> fluids) {
+        Integer best = null;
+        if (el instanceof JsonPrimitive p && p.isString()) {
+            ResourceLocation id = ResourceLocation.tryParse(p.getAsString());
+            if (id != null) best = items.containsKey(id) ? items.get(id) : fluids.get(id);
+        } else if (el instanceof JsonObject o) {
+            for (String key : new String[]{"id", "item", "fluid", "chemical", "gas", "infuse_type", "pigment", "slurry"}) {
+                if (o.get(key) instanceof JsonPrimitive p && p.isString()) {
+                    ResourceLocation id = ResourceLocation.tryParse(p.getAsString());
+                    Integer s = id == null ? null : items.containsKey(id) ? items.get(id) : fluids.get(id);
+                    if (s != null && (best == null || s > best)) best = s;
+                }
+            }
+            for (var e : o.entrySet()) {
+                if (e.getValue().isJsonObject() || e.getValue().isJsonArray()) {
+                    Integer s = outputs(e.getValue(), items, fluids);
+                    if (s != null && (best == null || s > best)) best = s;
+                }
+            }
+        } else if (el instanceof com.google.gson.JsonArray a) {
+            for (JsonElement x : a) {
+                Integer s = outputs(x, items, fluids);
+                if (s != null && (best == null || s > best)) best = s;
+            }
+        }
+        return best;
     }
 
     private static Integer stageOf(Recipe<?> recipe, HolderLookup.Provider registries, Map<ResourceLocation, Integer> stages) {
@@ -184,6 +256,11 @@ public final class MachineLocks {
         KronwerkeCore.LOGGER.info("Stage {} is open now (the recipes were loaded for stage {}); the recipes load again", currentStage, appliedStage);
         writeStage(currentStage);
         appliedStage = currentStage; // once, even while the reload runs
+        // the whole recipe set goes out again: the server holds a few seconds and every client's
+        // recipe viewer rebuilds; players hear it first instead of wondering about the freeze
+        server.getPlayerList().broadcastSystemMessage(de.kronwerke.core.Text.t("locks.reload",
+                "Die Rezepte von Stufe %s werden geladen. Das dauert ein paar Sekunden, danach baut sich JEI neu auf.", currentStage)
+                .withStyle(net.minecraft.ChatFormatting.GRAY), false);
         server.reloadResources(server.getPackRepository().getSelectedIds()).exceptionally(t -> {
             KronwerkeCore.LOGGER.warn("Reloading the recipes for stage {} failed: {}", currentStage, t.toString());
             return null;
@@ -238,8 +315,11 @@ public final class MachineLocks {
         } else {
             toldAt.put(at.asLong(), now);
             if (toldAt.size() > 4096) toldAt.clear();
+            // named, and only for who stands at it: a hall of machines must not talk to everyone
+            Component machine = sl.getBlockState(at).getBlock().getName().copy().withStyle(ChatFormatting.WHITE);
+            Component named = Component.translatableWithFallback("kronwerke.machinelock.named", "%s: %s", machine, msg).withStyle(ChatFormatting.GRAY);
             for (ServerPlayer p : sl.players()) {
-                if (p.blockPosition().distSqr(at) <= 12 * 12) p.displayClientMessage(msg, true);
+                if (p.blockPosition().distSqr(at) <= 6 * 6) p.displayClientMessage(named, true);
             }
         }
         return null;

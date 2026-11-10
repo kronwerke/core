@@ -53,7 +53,7 @@ public final class TabList {
     public static String rankOf(ServerPlayer player) {
         String name = player.getGameProfile().getName();
         for (String owner : KronwerkeConfig.OWNERS.get()) {
-            if (owner.equalsIgnoreCase(name)) return "owner";
+            if (owner.equalsIgnoreCase(name) || owner.equalsIgnoreCase(player.getUUID().toString())) return "owner"; // a uuid survives a rename
         }
         if (player.hasPermissions(2)) return "admin";
         if (!de.kronwerke.core.link.Role.main()) return de.kronwerke.core.link.NetworkSync.streamer(name) ? "streamer" : "member";

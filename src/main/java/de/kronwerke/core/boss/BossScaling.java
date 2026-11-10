@@ -67,18 +67,40 @@ public final class BossScaling {
         bosses = null;
     }
 
+    /** Who hit the boss lately (boss id -> player -> game time): fighting from range counts too. */
+    private static final java.util.Map<Integer, java.util.Map<java.util.UUID, Long>> hitters = new java.util.HashMap<>();
+    private static final long HIT_MEMORY = 20 * 30;
+
+    /** The players in the fight: near the boss, or who hit it in the last thirty seconds from anywhere. */
     private static List<ServerPlayer> playersNear(ServerLevel level, LivingEntity boss) {
-        return level.getPlayers(p -> p.isAlive() && !p.isSpectator() && !p.isCreative() && p.distanceToSqr(boss) < RANGE * RANGE);
+        var hit = hitters.getOrDefault(boss.getId(), java.util.Map.of());
+        long now = level.getGameTime();
+        return level.getPlayers(p -> p.isAlive() && !p.isSpectator() && !p.isCreative()
+                && (p.distanceToSqr(boss) < RANGE * RANGE || now - hit.getOrDefault(p.getUUID(), Long.MIN_VALUE / 2) < HIT_MEMORY));
+    }
+
+    /** A player hurts a boss: remembered for the scaling. */
+    public static void onBossHurt(net.neoforged.neoforge.event.entity.living.LivingDamageEvent.Post event) {
+        if (!(event.getEntity() instanceof LivingEntity boss) || !(boss.level() instanceof ServerLevel level) || !isBoss(boss)) return;
+        if (event.getSource().getEntity() instanceof ServerPlayer p) {
+            hitters.computeIfAbsent(boss.getId(), k -> new java.util.HashMap<>()).put(p.getUUID(), level.getGameTime());
+        }
+        if (boss.isDeadOrDying()) hitters.remove(boss.getId());
     }
 
     public static void onTick(EntityTickEvent.Post event) {
         // every entity ticks through here: the cheap checks first
-        if (event.getEntity().tickCount % 40 != 0) return;
+        if (event.getEntity().tickCount % 20 != 0) return;
         if (!(event.getEntity() instanceof LivingEntity boss) || !(boss.level() instanceof ServerLevel level) || !isBoss(boss)) return;
-        int n = playersNear(level, boss).size();
-        apply(boss, n);
-        if (n >= 2 && boss.tickCount % KronwerkeConfig.BOSS_ATTACK_INTERVAL.get() == 0) {
-            extraAttack(level, boss, playersNear(level, boss));
+        List<ServerPlayer> near = playersNear(level, boss);
+        int n = near.size();
+        if (boss.tickCount % 40 == 0) apply(boss, n);
+        // the interval in ticks, counted per boss: any value works, not only multiples of the check
+        int interval = Math.max(20, KronwerkeConfig.BOSS_ATTACK_INTERVAL.get());
+        int last = boss.getPersistentData().getInt("kronwerke_attack");
+        if (n >= 2 && boss.tickCount - last >= interval) {
+            boss.getPersistentData().putInt("kronwerke_attack", boss.tickCount);
+            extraAttack(level, boss, near);
         }
     }
 
@@ -111,8 +133,10 @@ public final class BossScaling {
         int pick = level.random.nextInt(3);
         switch (pick) {
             case 0 -> {
-                // lightning on one player
-                ServerPlayer target = players.get(level.random.nextInt(players.size()));
+                // lightning on one player the boss can see (not through walls)
+                List<ServerPlayer> seen = players.stream().filter(boss::hasLineOfSight).toList();
+                if (seen.isEmpty()) return;
+                ServerPlayer target = seen.get(level.random.nextInt(seen.size()));
                 LightningBolt bolt = EntityType.LIGHTNING_BOLT.create(level);
                 if (bolt != null) {
                     bolt.moveTo(Vec3.atBottomCenterOf(target.blockPosition()));

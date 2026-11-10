@@ -47,14 +47,16 @@ public final class KwCommand {
     public static void registerSide(CommandDispatcher<CommandSourceStack> d) {
         d.register(Commands.literal("kw").executes(c -> {
             c.getSource().sendSuccess(() -> de.kronwerke.core.Text.t("network.side", "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
-                    de.kronwerke.core.link.Role.server()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
+                    de.kronwerke.core.link.NetworkSync.ownLabel()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
             return 1;
         }).then(Commands.literal("admin").requires(s -> s.hasPermission(2)).then(loadtest())));
     }
 
     /** The load test, on main and on every side world (bots in the side world's own dimension). */
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> loadtest() {
-        return Commands.literal("loadtest")
+        // only on a test server (testing.testCommands, for a live test in overrides.properties): the
+        // bots run every join handler and generate terrain in the world they are started in
+        return Commands.literal("loadtest").requires(s -> s.hasPermission(2) && KronwerkeConfig.TEST_COMMANDS.get())
                 .executes(KwCommand::loadtestInfo)
                 .then(Commands.literal("stop").executes(c -> { ok(c, de.kronwerke.core.loadtest.LoadTest.stop(c.getSource().getServer()) + " Testspieler entfernt."); return 1; }))
                 .then(Commands.literal("start")
@@ -87,6 +89,23 @@ public final class KwCommand {
                         .executes(KwCommand::menu)
                         .then(Commands.argument("player", StringArgumentType.word()).executes(KwCommand::revoke)))
                 .then(Commands.literal("slots").executes(KwCommand::slots))
+                .then(Commands.literal("ignore").then(Commands.argument("player", StringArgumentType.word()).executes(c -> {
+                    ServerPlayer me = c.getSource().getPlayerOrException();
+                    String name = StringArgumentType.getString(c, "player");
+                    // players of the whole network: here, or in the tab list from another server
+                    java.util.UUID id = null;
+                    ServerPlayer here = c.getSource().getServer().getPlayerList().getPlayerByName(name);
+                    if (here != null) id = here.getUUID();
+                    if (id == null) id = de.kronwerke.core.link.NetworkSync.remoteId(name);
+                    if (id == null) {
+                        fail(c, name + " ist gerade nicht online.");
+                        return 0;
+                    }
+                    boolean on = de.kronwerke.core.link.NetworkSync.toggleIgnore(me, id, name);
+                    ok(c, on ? "Du siehst den Chat von " + name + " nicht mehr, auf keinem Server. Nochmal /kw ignore " + name + " hebt das auf."
+                            : "Du siehst den Chat von " + name + " wieder.");
+                    return 1;
+                })))
                 .then(Commands.literal("bar").executes(c -> {
                     boolean shown = GoalManager.get().toggleBar(c.getSource().getPlayerOrException());
                     ok(c, shown ? "Die Leiste des Ziels ist wieder da." : "Die Leiste des Ziels ist ausgeblendet. /kw bar holt sie zurück.");
@@ -122,18 +141,7 @@ public final class KwCommand {
                                         .then(Commands.literal("off").executes(c -> gateBeta(c, false))))
                                 .then(Commands.literal("allow").then(Commands.argument("player", StringArgumentType.word()).executes(c -> gateAllow(c, true))))
                                 .then(Commands.literal("deny").then(Commands.argument("player", StringArgumentType.word()).executes(c -> gateAllow(c, false)))))
-                        .then(Commands.literal("loadtest")
-                                .executes(KwCommand::loadtestInfo)
-                                .then(Commands.literal("stop").executes(c -> { ok(c, de.kronwerke.core.loadtest.LoadTest.stop(c.getSource().getServer()) + " Testspieler entfernt."); return 1; }))
-                                .then(Commands.literal("start")
-                                        .then(Commands.argument("settlers", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
-                                                .then(Commands.argument("travellers", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
-                                                        .executes(c -> loadtestStart(c, 3000, 1.5))
-                                                        .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(64, 20000))
-                                                                .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"), 1.5))
-                                                                .then(Commands.argument("speed", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0.05, 10))
-                                                                        .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"),
-                                                                                com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "speed")))))))))
+                        .then(loadtest())
                         .then(Commands.literal("dumprecipes").requires(src -> src.hasPermission(4)).executes(c -> {
                             // every recipe as the server has it (jars, KubeJS, removals), for the pack's tools/check_progression.py
                             var server = c.getSource().getServer();
@@ -253,6 +261,9 @@ public final class KwCommand {
                                 .then(Commands.literal("complete").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds).executes(c -> goalOp(c, "complete"))))
                                 .then(Commands.literal("reset").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds).executes(c -> goalOp(c, "reset"))))
                                 .then(Commands.literal("open").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds).executes(c -> goalOp(c, "open"))))
+                                .then(Commands.literal("event").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds)
+                                        .then(Commands.literal("none").executes(c -> goalEvent(c, null)))
+                                        .then(Commands.argument("when", StringArgumentType.greedyString()).executes(c -> goalEvent(c, StringArgumentType.getString(c, "when"))))))
                                 .then(Commands.literal("rescale").then(Commands.argument("goal", StringArgumentType.word()).suggests(KwCommand::goalIds)
                                         .executes(c -> goalOp(c, "rescale_preview"))
                                         .then(Commands.literal("confirm").executes(c -> goalOp(c, "rescale")))))
@@ -672,6 +683,31 @@ public final class KwCommand {
         return 1;
     }
 
+    /** /kw admin goal event <goal> 2027-01-23T20:00: the time of the event that opens a held goal, shown to everyone. */
+    private static int goalEvent(CommandContext<CommandSourceStack> c, String when) {
+        GoalManager gm = GoalManager.get();
+        Goal g = gm.goal(StringArgumentType.getString(c, "goal"));
+        if (g == null) {
+            fail(c, "Kein Ziel mit dieser id.");
+            return 0;
+        }
+        if (when == null) {
+            gm.progressData().setEventAt(g.id(), 0);
+            ok(c, "Kein Eventtermin mehr für " + g.id() + ".");
+        } else {
+            try {
+                long at = java.time.LocalDateTime.parse(when.trim()).atZone(KronwerkeConfig.zone()).toInstant().toEpochMilli();
+                gm.progressData().setEventAt(g.id(), at);
+                ok(c, "Event für " + g.id() + " " + gm.eventText(g) + ".");
+            } catch (java.time.format.DateTimeParseException e) {
+                fail(c, "Zeit als 2027-01-23T20:00 angeben.");
+                return 0;
+            }
+        }
+        gm.refreshBossBar();
+        return 1;
+    }
+
     /** What a rescale would change: the factor and every item's target, against the progress. */
     public static List<String> rescalePreview(Goal g) {
         GoalManager gm = GoalManager.get();
@@ -700,8 +736,8 @@ public final class KwCommand {
 
     /** /kw admin locks on|off: the machine stage locks, kept in the config; the recipes load again. */
     private static int setLocks(com.mojang.brigadier.context.CommandContext<net.minecraft.commands.CommandSourceStack> c, boolean on) {
-        KronwerkeConfig.MACHINE_LOCKS.set(on);
-        KronwerkeConfig.SPEC.save();
+        // kept outside the pack's config file: a pack update does not turn it back
+        de.kronwerke.core.config.Overrides.put("locks.machineLocks", Boolean.toString(on));
         var server = c.getSource().getServer();
         c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal("Stufensperre für Maschinen " + (on ? "an" : "aus") + ", die Rezepte laden neu (ein paar Sekunden)."), true);
         server.reloadResources(server.getPackRepository().getSelectedIds());

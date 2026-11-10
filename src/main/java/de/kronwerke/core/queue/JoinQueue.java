@@ -47,6 +47,17 @@ public final class JoinQueue {
     private static final Deque<Waiting> waiting = new ArrayDeque<>();
     /** Let in and still between the end of the queue and the login, with when. */
     private static final Map<UUID, Long> admitted = new HashMap<>();
+    /** When the last players were let in, for the estimate on the queue screen. */
+    private static final java.util.ArrayDeque<Long> admits = new java.util.ArrayDeque<>();
+
+    /** Seconds until this place's turn, from how fast places freed up lately; 0 when unknown. */
+    static int eta(int position) {
+        if (admits.size() < 3 || position <= 0) return 0;
+        long span = admits.peekLast() - admits.peekFirst();
+        if (span <= 0 || System.currentTimeMillis() - admits.peekLast() > 30 * 60_000L) return 0;
+        double each = span / 1000.0 / (admits.size() - 1);
+        return (int) Math.min(6 * 3600, Math.round(each * position));
+    }
     /** Who left lately (a crash, a timeout, a quick restart of the game): back in without waiting for three minutes. */
     private static final Map<UUID, Long> leftAt = new HashMap<>();
 
@@ -119,7 +130,7 @@ public final class JoinQueue {
             waiting.removeIf(w -> w.profile().getId().equals(p.getId())); // a reconnect takes the old place's end
             waiting.addLast(new Waiting(listener, p, System.currentTimeMillis()));
             KronwerkeCore.LOGGER.info("{} waits in the join queue at {} ({} of {} on the network)", p.getName(), waiting.size(), online(), limit());
-            sender.accept(new QueuePayload(waiting.size(), waiting.size(), online(), limit()));
+            sender.accept(new QueuePayload(waiting.size(), waiting.size(), online(), limit(), eta(waiting.size())));
         }
 
         @Override
@@ -133,7 +144,7 @@ public final class JoinQueue {
         Long left = leftAt.get(p.getId());
         if (left != null && System.currentTimeMillis() - left < 180_000) return true;
         if (server.getPlayerList().isOp(p)) return true;
-        for (String owner : KronwerkeConfig.OWNERS.get()) if (owner.equalsIgnoreCase(p.getName())) return true;
+        for (String owner : KronwerkeConfig.OWNERS.get()) if (owner.equalsIgnoreCase(p.getName()) || owner.equalsIgnoreCase(p.getId().toString())) return true;
         if (SlotManager.get().isStreamer(p.getId())) return true;
         // coming back from a side world: already one of the network's players
         return de.kronwerke.core.portal.AwayData.get(server).where(p.getId()) != null;
@@ -159,6 +170,8 @@ public final class JoinQueue {
             Waiting w = waiting.pollFirst();
             if (!w.listener().isAcceptingMessages()) continue;
             admitted.put(w.profile().getId(), now);
+            admits.addLast(now);
+            while (admits.size() > 20) admits.removeFirst();
             send(w, 0);
             KronwerkeCore.LOGGER.info("{} leaves the join queue after {} s", w.profile().getName(), (now - w.since()) / 1000);
             try {
@@ -175,7 +188,7 @@ public final class JoinQueue {
     }
 
     private static void send(Waiting w, int position) {
-        w.listener().send(new ClientboundCustomPayloadPacket(new QueuePayload(position, waiting.size(), online(), limit())));
+        w.listener().send(new ClientboundCustomPayloadPacket(new QueuePayload(position, waiting.size(), online(), limit(), eta(position))));
     }
 
     /** /kw admin queue limit: the new limit, kept next to the server (see {@link #limit()}). */

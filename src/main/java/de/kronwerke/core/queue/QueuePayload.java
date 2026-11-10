@@ -11,13 +11,14 @@ import net.minecraft.resources.ResourceLocation;
  * Where a joining player stands in the queue, sent while the connection is still in the
  * configuration phase: position 1 is next, 0 means it is their turn now.
  */
-public record QueuePayload(int position, int waiting, int online, int limit) implements CustomPacketPayload {
+public record QueuePayload(int position, int waiting, int online, int limit, int etaSeconds) implements CustomPacketPayload {
     public static final Type<QueuePayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "queue"));
     public static final StreamCodec<ByteBuf, QueuePayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, QueuePayload::position,
             ByteBufCodecs.VAR_INT, QueuePayload::waiting,
             ByteBufCodecs.VAR_INT, QueuePayload::online,
             ByteBufCodecs.VAR_INT, QueuePayload::limit,
+            ByteBufCodecs.VAR_INT, QueuePayload::etaSeconds,
             QueuePayload::new);
 
     @Override

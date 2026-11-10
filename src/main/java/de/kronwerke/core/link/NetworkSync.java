@@ -155,7 +155,10 @@ public final class NetworkSync {
                 MutableComponent line = mark(str(m, "from")).append(TabList.badge(rank))
                         .append(Component.literal("<" + str(m, "player") + "> ").withStyle(ChatFormatting.WHITE))
                         .append(Component.literal(str(m, "text")).withStyle(ChatFormatting.WHITE));
-                server.getPlayerList().broadcastSystemMessage(line, false);
+                // a system line: the client's own block list does not see it, /kw ignore does
+                String sender = str(m, "uuid");
+                server.sendSystemMessage(line);
+                for (ServerPlayer o : server.getPlayerList().getPlayers()) if (!ignores(o, sender)) o.sendSystemMessage(line);
             }
             case "join", "leave" -> {
                 if (!flag("joins")) return;
@@ -230,11 +233,44 @@ public final class NetworkSync {
             int r = policy.has("radius") ? policy.get("radius").getAsInt() : 100;
             Component line = Component.translatable("chat.type.text", p.getDisplayName(), e.getMessage());
             for (ServerPlayer o : server.getPlayerList().getPlayers()) {
-                if (o.level() == p.level() && o.distanceToSqr(p) <= (double) r * r) o.sendSystemMessage(line);
+                if (o.level() == p.level() && o.distanceToSqr(p) <= (double) r * r && !ignores(o, p.getUUID().toString())) o.sendSystemMessage(line);
             }
             server.sendSystemMessage(line);
         }
         bus.send(m);
+    }
+
+    /**
+     * /kw ignore: whose chat a player does not want to see. Kept in the player's own data, so it
+     * travels with them to every server.
+     */
+    public static boolean ignores(ServerPlayer p, String uuid) {
+        if (uuid == null || uuid.isEmpty()) return false;
+        var list = p.getPersistentData().getList("kronwerke_ignore", net.minecraft.nbt.Tag.TAG_STRING);
+        for (int i = 0; i < list.size(); i++) if (list.getString(i).startsWith(uuid)) return true;
+        return false;
+    }
+
+    /** The uuid of a player on another server of the network, by name, or null. */
+    public static UUID remoteId(String name) {
+        for (List<Remote> l : remote.values()) for (Remote r : l) if (r.name().equalsIgnoreCase(name)) return r.uuid();
+        return null;
+    }
+
+    /** Adds or removes someone from the player's ignore list; true when they are ignored now. */
+    public static boolean toggleIgnore(ServerPlayer p, java.util.UUID other, String name) {
+        var tag = p.getPersistentData();
+        var list = tag.getList("kronwerke_ignore", net.minecraft.nbt.Tag.TAG_STRING);
+        for (int i = 0; i < list.size(); i++) {
+            if (list.getString(i).startsWith(other.toString())) {
+                list.remove(i);
+                tag.put("kronwerke_ignore", list);
+                return false;
+            }
+        }
+        list.add(net.minecraft.nbt.StringTag.valueOf(other + " " + name));
+        tag.put("kronwerke_ignore", list);
+        return true;
     }
 
     /** A player came: show them the other servers' players, then tell the others. */
@@ -454,6 +490,14 @@ public final class NetworkSync {
     public static void requestBackup(String why) {
         if (!on()) return;
         JsonObject m = op("backup");
+        m.addProperty("reason", why);
+        bus.send(m);
+    }
+
+    /** Tells the launcher an evacuation could not be done, so it does not reset the world. */
+    public static void evacuationFailed(String why) {
+        if (!on()) return;
+        JsonObject m = op("evacuate_failed");
         m.addProperty("reason", why);
         bus.send(m);
     }

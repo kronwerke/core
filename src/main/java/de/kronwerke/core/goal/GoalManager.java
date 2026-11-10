@@ -527,8 +527,21 @@ public final class GoalManager {
     }
 
     private void announceHold(Goal g) {
-        server.getPlayerList().broadcastSystemMessage(Text.t("goal.hold", "Der Obelisk ist fast voll. %s wartet auf das Event, achtet auf die Ankündigung.",
-                Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD), false);
+        String when = eventText(g);
+        server.getPlayerList().broadcastSystemMessage(when.isEmpty()
+                ? Text.t("goal.hold", "Der Obelisk ist fast voll. %s wartet auf das Event, achtet auf die Ankündigung.",
+                        Component.literal(g.title()).withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD)
+                : Text.t("goal.hold_at", "Der Obelisk ist fast voll. %s wartet auf das Event %s.",
+                        Component.literal(g.title()).withStyle(ChatFormatting.YELLOW), Component.literal(when).withStyle(ChatFormatting.WHITE)).withStyle(ChatFormatting.GOLD), false);
+    }
+
+    /** "am Samstag, 23. Januar, um 20 Uhr" when the team set the event's time, else empty. */
+    public String eventText(Goal g) {
+        long at = data().eventAt(g.id());
+        if (at <= 0) return "";
+        var t = java.time.Instant.ofEpochMilli(at).atZone(KronwerkeConfig.zone());
+        String s = java.time.format.DateTimeFormatter.ofPattern("'am' EEEE, d. MMMM, 'um' H:mm 'Uhr'", java.util.Locale.GERMAN).format(t);
+        return s.replace(":00 Uhr", " Uhr");
     }
 
     /** Lifts the hold so the last items can go in. */
@@ -556,6 +569,18 @@ public final class GoalManager {
         refreshBossBar();
     }
 
+    /** What the monsters carry in a stage, so nobody wonders why they die more often. */
+    public static Component mobLine(int stage) {
+        double hp = at(KronwerkeConfig.MOB_HEALTH.get(), stage), dmg = at(KronwerkeConfig.MOB_DAMAGE.get(), stage);
+        if (hp <= 0 && dmg <= 0) return null;
+        return Text.t("goal.mobs", "Die Monster werden stärker: %s Leben, %s Schaden.",
+                "+" + Math.round(hp * 100) + "%", "+" + Math.round(dmg * 100) + "%").withStyle(ChatFormatting.RED);
+    }
+
+    private static double at(List<? extends Number> l, int stage) {
+        return l.isEmpty() ? 0 : l.get(Math.max(0, Math.min(stage, l.size()) - 1)).doubleValue();
+    }
+
     public boolean isRevealed(Goal g) {
         return data().isRevealed(g.id());
     }
@@ -573,6 +598,10 @@ public final class GoalManager {
             giveKits(p);
         }
         refreshBossBar();
+        if (!g.stages().isEmpty()) {
+            Component line = mobLine(de.kronwerke.core.mobs.MobStages.stage());
+            if (line != null) server.getPlayerList().broadcastSystemMessage(line, false);
+        }
         KronwerkeCore.LOGGER.info("Goal {} revealed: stages and kits are out", g.id());
     }
 
@@ -702,7 +731,8 @@ public final class GoalManager {
                 return b;
             });
             double f = fraction(g);
-            String state = isHeld(g) ? "  wartet auf das Event" : asleep ? "  der Obelisk schläft" : String.format("  %d%%", Math.round(f * 100));
+            String ev = eventText(g);
+            String state = isHeld(g) ? (ev.isEmpty() ? "  wartet auf das Event" : "  Event " + ev) : asleep ? "  der Obelisk schläft" : String.format("  %d%%", Math.round(f * 100));
             bar.setName(Component.literal(g.title()).withStyle(ChatFormatting.GOLD)
                     .append(Component.literal(state).withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : asleep ? ChatFormatting.GRAY : ChatFormatting.WHITE)));
             bar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);

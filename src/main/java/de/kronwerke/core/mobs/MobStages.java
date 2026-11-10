@@ -57,7 +57,7 @@ public final class MobStages {
 
     /** A side world: main said which stage is open. */
     public static void setRemoteStage(int s) {
-        remoteStage = Math.max(1, Math.min(5, s));
+        remoteStage = Math.max(1, s);
         remoteKnown = true;
     }
 
@@ -66,7 +66,12 @@ public final class MobStages {
             Map<String, Integer> m = new HashMap<>();
             for (String s : KronwerkeConfig.MOB_MIN_STAGE.get()) {
                 int eq = s.lastIndexOf('=');
-                if (eq > 0) m.put(s.substring(0, eq).trim(), Integer.parseInt(s.substring(eq + 1).trim()));
+                try {
+                    if (eq > 0) m.put(s.substring(0, eq).trim(), Integer.parseInt(s.substring(eq + 1).trim()));
+                    else throw new NumberFormatException();
+                } catch (NumberFormatException ex) {
+                    de.kronwerke.core.KronwerkeCore.LOGGER.warn("mobs.minStage: {} is not entity=stage; skipped", s);
+                }
             }
             minStage = m;
         }
@@ -78,7 +83,12 @@ public final class MobStages {
             Map<String, Double> m = new HashMap<>();
             for (String s : KronwerkeConfig.MOB_SPAWN_CHANCE.get()) {
                 int eq = s.lastIndexOf('=');
-                if (eq > 0) m.put(s.substring(0, eq).trim(), Double.parseDouble(s.substring(eq + 1).trim()));
+                try {
+                    if (eq > 0) m.put(s.substring(0, eq).trim(), Double.parseDouble(s.substring(eq + 1).trim()));
+                    else throw new NumberFormatException();
+                } catch (NumberFormatException ex) {
+                    de.kronwerke.core.KronwerkeCore.LOGGER.warn("mobs.spawnChance: {} is not entity=chance; skipped", s);
+                }
             }
             chance = m;
         }
@@ -120,15 +130,15 @@ public final class MobStages {
         if (e.getLevel().isClientSide() || !(e.getEntity() instanceof Mob mob) || !hostile(mob)) return;
         if (de.kronwerke.core.boss.BossScaling.bossTypes().contains(mob.getType())) return;
         int s = stage();
-        List<? extends Double> hp = KronwerkeConfig.MOB_HEALTH.get(), dmg = KronwerkeConfig.MOB_DAMAGE.get(), arm = KronwerkeConfig.MOB_ARMOR.get();
+        List<? extends Number> hp = KronwerkeConfig.MOB_HEALTH.get(), dmg = KronwerkeConfig.MOB_DAMAGE.get(), arm = KronwerkeConfig.MOB_ARMOR.get();
         apply(mob, Attributes.MAX_HEALTH, HEALTH_ID, at(hp, s), AttributeModifier.Operation.ADD_MULTIPLIED_BASE, true);
         apply(mob, Attributes.ATTACK_DAMAGE, DAMAGE_ID, at(dmg, s), AttributeModifier.Operation.ADD_MULTIPLIED_BASE, false);
         apply(mob, Attributes.ARMOR, ARMOR_ID, at(arm, s), AttributeModifier.Operation.ADD_VALUE, false);
     }
 
-    private static double at(List<? extends Double> l, int stage) {
+    private static double at(List<? extends Number> l, int stage) {
         if (l.isEmpty()) return 0;
-        return l.get(Math.min(stage, l.size()) - 1);
+        return l.get(Math.min(stage, l.size()) - 1).doubleValue(); // 0 and 0.0 both count
     }
 
     private static void apply(Mob mob, net.minecraft.core.Holder<net.minecraft.world.entity.ai.attributes.Attribute> attr, ResourceLocation id,

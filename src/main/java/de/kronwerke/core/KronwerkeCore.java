@@ -53,6 +53,13 @@ public class KronwerkeCore {
         modBus.addListener(de.kronwerke.core.net.KwNetwork::register);
         // the join queue holds new connections in their configuration phase while the network is full
         modBus.addListener(de.kronwerke.core.queue.JoinQueue::onTasks);
+        // settings changed on the server win over the pack's config file, also after a pack update
+        modBus.addListener((net.neoforged.fml.event.config.ModConfigEvent.Loading e) -> {
+            if (e.getConfig().getSpec() == KronwerkeConfig.SPEC) de.kronwerke.core.config.Overrides.apply();
+        });
+        modBus.addListener((net.neoforged.fml.event.config.ModConfigEvent.Reloading e) -> {
+            if (e.getConfig().getSpec() == KronwerkeConfig.SPEC) de.kronwerke.core.config.Overrides.apply();
+        });
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.queue.JoinQueue::onTick);
         // a stage opened (or main told a side world): the recipes load again with the stage's recipes
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> {
@@ -93,6 +100,7 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.perf.StaleNukes::onJoin);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.boss.BossScaling::onTick);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.boss.BossScaling::onDamage);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.boss.BossScaling::onBossHurt);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.mobs.MobStages::onSpawn);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.mobs.MobStages::onJoin);
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.PlayerTickEvent.Post e) -> {
@@ -113,6 +121,7 @@ public class KronwerkeCore {
             NeoForge.EVENT_BUS.addListener(LockedItems::onAttack);
             de.kronwerke.core.lock.LockedAccessories.register();
             NeoForge.EVENT_BUS.addListener(de.kronwerke.core.lock.LockedDimensions::onTravel);
+            NeoForge.EVENT_BUS.addListener(de.kronwerke.core.lock.LockedDimensions::onPortalLit);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickItem.class, LockedItems::onInteract);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.RightClickBlock.class, LockedItems::onInteract);
             NeoForge.EVENT_BUS.addListener(PlayerInteractEvent.LeftClickBlock.class, LockedItems::onInteract);
@@ -174,6 +183,11 @@ public class KronwerkeCore {
     private void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
         if (NetworkSync.refuse(sp)) return;
+        if (sp instanceof de.kronwerke.core.loadtest.LoadBot) {
+            // a load test's bot leaves no trace in the season: no kit, no activity, no join message
+            de.kronwerke.core.portal.Travel.onLogin(sp);
+            return;
+        }
         if (Role.main()) {
             de.kronwerke.core.season.Season.get().catchUp(sp);
             GoalManager.get().onPlayerJoin(sp);

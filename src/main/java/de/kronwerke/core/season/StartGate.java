@@ -32,7 +32,7 @@ public final class StartGate {
         if (!server.isDedicatedServer() || !Role.main() || !Season.available()) return null;
         Season s = Season.get();
         if (!s.gateClosed()) return null;
-        if (server.getPlayerList().isOp(profile) || s.gateAllows(profile.getName())) return null;
+        if (server.getPlayerList().isOp(profile) || s.gateAllows(profile)) return null;
         if (s.beta() && de.kronwerke.core.slot.SlotManager.get().hasOwnPlace(profile.getId())) return null;
         String[] when = when(KronwerkeConfig.SEASON_START.get().trim());
         return Component.empty()
