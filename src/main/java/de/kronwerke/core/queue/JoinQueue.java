@@ -57,8 +57,23 @@ public final class JoinQueue {
         return Role.main() && KronwerkeConfig.SPEC.isLoaded() && KronwerkeConfig.QUEUE.get();
     }
 
+    /**
+     * The limit set in game, kept in kronwerke/queue-limit.txt next to the server: the config
+     * file comes with the pack and every pack update would put it back. Without one, the config's.
+     */
+    private static final java.nio.file.Path LIMIT_FILE = net.neoforged.fml.loading.FMLPaths.GAMEDIR.get().resolve("kronwerke").resolve("queue-limit.txt");
+    private static Integer setLimit;
+
     public static int limit() {
-        return KronwerkeConfig.QUEUE_LIMIT.get();
+        if (setLimit == null) {
+            setLimit = 0;
+            try {
+                if (java.nio.file.Files.exists(LIMIT_FILE)) setLimit = Integer.parseInt(java.nio.file.Files.readString(LIMIT_FILE).trim());
+            } catch (java.io.IOException | NumberFormatException e) {
+                KronwerkeCore.LOGGER.warn("{} could not be read: {}", LIMIT_FILE, e.toString());
+            }
+        }
+        return setLimit > 0 ? setLimit : KronwerkeConfig.QUEUE_LIMIT.get();
     }
 
     /** Everybody on the network, plus those let in who are still on their way. */
@@ -155,10 +170,15 @@ public final class JoinQueue {
         w.listener().send(new ClientboundCustomPayloadPacket(new QueuePayload(position, waiting.size(), online(), limit())));
     }
 
-    /** /kw admin queue limit: the new limit, kept in the config. */
+    /** /kw admin queue limit: the new limit, kept next to the server (see {@link #limit()}). */
     public static void setLimit(int n) {
-        KronwerkeConfig.QUEUE_LIMIT.set(n);
-        KronwerkeConfig.SPEC.save();
+        setLimit = n;
+        try {
+            java.nio.file.Files.createDirectories(LIMIT_FILE.getParent());
+            java.nio.file.Files.writeString(LIMIT_FILE, Integer.toString(n));
+        } catch (java.io.IOException e) {
+            KronwerkeCore.LOGGER.warn("{} could not be written: {}", LIMIT_FILE, e.toString());
+        }
     }
 
     public static String status() {

@@ -98,7 +98,7 @@ public final class KronwerkeConfig {
                 .defineListAllowEmpty("kit", java.util.List.of("waystones:waystone", "waystones:warp_dust*4"), o -> o instanceof String);
         QUEUE = b.comment("The join queue on main: when the network is full, a joining player waits in a queue screen (still connected) until a place is free, instead of being turned away. Vanilla's max-players no longer turns anyone away while it is on.")
                 .define("queue", true);
-        QUEUE_LIMIT = b.comment("How many players the whole network holds (main and the side worlds together) before new players queue. Operators, owners, streamers and players coming back from a side world never queue. Change it in game with /kw admin queue limit <n>.")
+        QUEUE_LIMIT = b.comment("How many players the whole network holds (main and the side worlds together) before new players queue. Operators, owners, streamers and players coming back from a side world never queue. Changed in game with /kw admin queue limit <n>, which is kept in kronwerke/queue-limit.txt and wins over this value (pack updates bring this file back).")
                 .defineInRange("queueLimit", 50, 1, 999);
         b.pop();
 
