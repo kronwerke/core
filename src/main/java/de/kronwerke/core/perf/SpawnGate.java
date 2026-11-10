@@ -20,6 +20,7 @@ public final class SpawnGate {
     private static final MobCategory[] CATEGORIES = MobCategory.values();
     private static MethodHandle interval;
     private static boolean looked;
+    private static boolean reported;
 
     private static ServerLevel lastLevel;
     private static long lastTime = Long.MIN_VALUE;
@@ -42,6 +43,18 @@ public final class SpawnGate {
     private static boolean compute(long time) {
         MethodHandle handle = handle();
         if (handle == null) return true;
+        if (!reported) {
+            reported = true;
+            StringBuilder all = new StringBuilder();
+            for (MobCategory category : CATEGORIES) {
+                try {
+                    all.append(category.getName()).append('=').append((int) handle.invokeExact(category)).append(' ');
+                } catch (Throwable t) {
+                    all.append(category.getName()).append("=? ");
+                }
+            }
+            de.kronwerke.core.KronwerkeCore.LOGGER.info("Spawn gate intervals: {}", all.toString().trim());
+        }
         try {
             for (MobCategory category : CATEGORIES) {
                 if (category == MobCategory.MISC) continue;
@@ -50,6 +63,7 @@ public final class SpawnGate {
             }
             return false;
         } catch (Throwable t) {
+            if (!reported) de.kronwerke.core.KronwerkeCore.LOGGER.warn("Spawn gate failed: {}", t.toString());
             return true;
         }
     }
@@ -62,6 +76,7 @@ public final class SpawnGate {
                 interval = MethodHandles.publicLookup().findStatic(type, "getSpawnInterval", MethodType.methodType(int.class, MobCategory.class));
             } catch (Throwable t) {
                 interval = null; // no ServerCore: every tick is due, vanilla behaviour
+                de.kronwerke.core.KronwerkeCore.LOGGER.warn("Spawn gate off, ServerCore spawn intervals not found: {}", t.toString());
             }
         }
         return interval;

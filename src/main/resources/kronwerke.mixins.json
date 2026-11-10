@@ -44,7 +44,8 @@
     "SpreadAutosaveMixin",
     "ArsWeatherDirtyMixin",
     "LightPendingMixin",
-    "LightUnsavedMixin"
+    "LightUnsavedMixin",
+    "ChunkQuietLightMixin"
   ],
   "client": [
     "ChaptersJeiBatchMixin"

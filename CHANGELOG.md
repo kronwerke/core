@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.23.12
+
+- Loaded chunks really stay unchanged now: the light engine's "already lit" pass over every chunk read from disk flipped its light flag off and on and marked it as changed (22 300 chunks in two minutes of the load test, undoing the clean start from 0.23.5). That pass no longer marks the chunk.
+- The Lootr ticker skip from 0.23.9 never took effect: Lootr reports decay and refresh as active as soon as its structure tags exist, and it ships them empty. The settings are now checked directly, with the tags counting only when they list a structure. The log says once at start whether Lootr containers keep their ticker.
+- The spawn gate logs the spawn interval of each mob category once.
+
 ## 0.23.11
 
 Chunk saving, from the 50 player load test:

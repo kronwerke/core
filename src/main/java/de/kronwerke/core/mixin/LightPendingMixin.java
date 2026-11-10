@@ -9,13 +9,16 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import de.kronwerke.core.config.KronwerkeConfig;
 import de.kronwerke.core.perf.LightPending;
+import de.kronwerke.core.perf.QuietLight;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ThreadedLevelLightEngine;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.ImposterProtoChunk;
 
 /** Records real light changes per chunk, see {@link LightPending}. */
 @Mixin(ThreadedLevelLightEngine.class)
@@ -37,6 +40,9 @@ public abstract class LightPendingMixin implements LightPending {
         if (!isLighted) {
             ChunkPos pos = chunk.getPos();
             this.kronwerke$markAround(pos.x, pos.z);
+        } else if (chunk instanceof ImposterProtoChunk full && !full.getWrapped().isUnsaved()
+                && KronwerkeConfig.CLEAN_CHUNK_LOADS.get()) {
+            ((QuietLight) full.getWrapped()).kronwerke$quietLight(); // see QuietLight
         }
     }
 
