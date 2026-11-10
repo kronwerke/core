@@ -25,6 +25,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue DIRECT_JOIN;
     public static final ModConfigSpec.ConfigValue<String> PORTAL_TARGET;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> KEEP_ON_MAIN;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> DIMENSION_SERVERS;
     public static final ModConfigSpec.IntValue LOG_DAYS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> LOCKED_DIMENSIONS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> JOIN_KIT;
@@ -157,6 +158,8 @@ public final class KronwerkeConfig {
                 .define("portalTarget", "mining");
         KEEP_ON_MAIN = b.comment("Parts of a player file (tag names) main keeps as it knows them when a player comes back from a side world: things that point at main's world, like the waystones a player has activated.")
                 .defineListAllowEmpty("keepOnMain", java.util.List.of("WaystonesData"), o -> o instanceof String);
+        DIMENSION_SERVERS = b.comment("Dimensions that run on a server of their own, as dimension=launcher role. A portal, a teleport or a respawn into one of them moves the player to that server; everything not listed stays on main. A role that is not on the bus leaves its dimension on main, so a single server keeps working.")
+                .defineListAllowEmpty("dimensionServers", java.util.List.of("minecraft:the_nether=nether", "minecraft:the_end=end"), o -> o instanceof String);
         b.pop();
 
         b.push("tab");

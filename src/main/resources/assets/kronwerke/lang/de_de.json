@@ -69,5 +69,8 @@
   "kronwerke.queue.waited": "Du wartest seit %s:%s.",
   "kronwerke.queue.auto": "Sobald ein Platz frei ist, geht es von selbst weiter.",
   "kronwerke.machinelock.grid": "Das kannst du erst ab %s herstellen.",
-  "kronwerke.machinelock.machine": "Diese Maschine stellt das erst ab %s her."
+  "kronwerke.machinelock.machine": "Diese Maschine stellt das erst ab %s her.",
+  "kronwerke.crossing.closed": "Das Portal flackert: %s ist gerade nicht erreichbar.",
+  "kronwerke.crossing.resume_closed": "%s ist gerade nicht erreichbar, du bist an deinem Portal.",
+  "kronwerke.crossing.other": "die andere Welt"
 }

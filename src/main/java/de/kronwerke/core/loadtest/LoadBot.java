@@ -61,12 +61,27 @@ public final class LoadBot extends ServerPlayer {
             }
             int x = Mth.floor(targetX), z = Mth.floor(targetZ);
             int y = chunk.getHeight(Heightmap.Types.MOTION_BLOCKING, x & 15, z & 15) + 1;
+            if (serverLevel().dimensionType().hasCeiling()) y = floor(chunk, x, z); // the Nether: on a cave floor, not on the roof
             step(targetX, y, targetZ);
             arrived = true;
             return;
         }
         heading = Math.atan2(dz, dx);
         step(getX() + dx / dist * speed, flyY, getZ() + dz / dist * speed);
+    }
+
+    /** The highest floor under the ceiling with room for a player, or the middle when there is none. */
+    private static int floor(LevelChunk chunk, int x, int z) {
+        var pos = new net.minecraft.core.BlockPos.MutableBlockPos(x, 0, z);
+        for (int y = 118; y > chunk.getMinBuildHeight() + 2; y--) {
+            pos.setY(y);
+            if (!chunk.getBlockState(pos).isAir()) continue;
+            pos.setY(y + 1);
+            if (!chunk.getBlockState(pos).isAir()) continue;
+            pos.setY(y - 1);
+            if (chunk.getBlockState(pos).isSolid()) return y;
+        }
+        return 64;
     }
 
     private void wander() {

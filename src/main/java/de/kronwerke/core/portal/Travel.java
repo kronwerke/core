@@ -84,9 +84,14 @@ public final class Travel {
     private static final Set<UUID> evacuating = new HashSet<>();
     private static long evacuateUntil;
 
-    record Departure(UUID player, String target, long until, JsonObject back) {}
+    record Departure(UUID player, String target, long until, JsonObject back, JsonObject arrive) {}
 
     record Arrival(String from, long until) {}
+
+    record Parked(String from, JsonObject data, long deadline) {}
+
+    /** Handoffs waiting for their chunks. */
+    private static final List<Parked> parked = new ArrayList<>();
 
     record ItemSend(ResourceKey<Level> dim, double x, double y, double z, List<ItemStack> stacks, long until) {}
 
@@ -97,7 +102,18 @@ public final class Travel {
         server = s;
         pending.clear();
         expected.clear();
-        if (!Role.main()) Hub.ensure(s);
+        if (!Role.main() && !Dimensions.dimensionServer()) Hub.ensure(s);
+        if (Dimensions.dimensionServer()) {
+            // nobody plays this server's overworld: keep no chunks of it loaded for nothing
+            s.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_SPAWN_CHUNK_RADIUS).set(0, s);
+        }
+    }
+
+    /** Whether the player is on the way out already (waiting for the target, or leaving). */
+    static boolean busy(UUID id) {
+        if (leaving.containsKey(id)) return true;
+        for (Departure d : pending.values()) if (d.player().equals(id)) return true;
+        return false;
     }
 
     // ---- what others ask ----
@@ -218,10 +234,11 @@ public final class Travel {
     }
 
     /** Where a player who went through the portal at pos stands when they come back: in front of it. */
-    private static JsonObject back(ServerPlayer p, BlockPos pos) {
+    static JsonObject back(ServerPlayer p, BlockPos pos) {
         if (!Role.main()) return null;
-        Direction.Axis axis = p.level().getBlockState(pos).hasProperty(MinePortalBlock.AXIS)
-                ? p.level().getBlockState(pos).getValue(MinePortalBlock.AXIS) : Direction.Axis.X;
+        var state = p.level().getBlockState(pos);
+        Direction.Axis axis = state.hasProperty(MinePortalBlock.AXIS) ? state.getValue(MinePortalBlock.AXIS)
+                : state.getOptionalValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_AXIS).orElse(Direction.Axis.X);
         double x = p.getX(), z = p.getZ();
         float yaw;
         if (axis == Direction.Axis.X) {
@@ -247,10 +264,22 @@ public final class Travel {
         if (server == null) return;
         long now = System.currentTimeMillis();
         charge();
+        if (!parked.isEmpty()) {
+            List<Parked> now_ = new ArrayList<>(parked);
+            parked.clear();
+            for (Parked pk : now_) {
+                try {
+                    handoff(pk.from(), pk.data(), pk.deadline());
+                } catch (IOException | RuntimeException ex) {
+                    KronwerkeCore.LOGGER.warn("player.handoff from {}: {}", pk.from(), ex.toString());
+                }
+            }
+        }
         for (var it = pending.entrySet().iterator(); it.hasNext(); ) {
             var en = it.next();
             if (en.getValue().until() < now) {
                 it.remove();
+                Crossing.failed(en.getValue().player(), en.getValue().target(), en.getValue().arrive());
                 ServerPlayer p = server.getPlayerList().getPlayer(en.getValue().player());
                 if (p != null) {
                     send(p, TravelPayload.CANCEL, null);
@@ -269,7 +298,8 @@ public final class Travel {
             }
         }
         if (!Role.main() && tick % 600 == 0) checkpoints();
-        if (!Role.main() && tick % 100 == 0) tiefgraeber();
+        if (Role.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get()) && tick % 100 == 0) tiefgraeber();
+        Crossing.tick(server);
         if (!evacuating.isEmpty() || evacuateUntil > 0) {
             evacuating.removeIf(id -> server.getPlayerList().getPlayer(id) == null);
             if (evacuating.isEmpty() || now > evacuateUntil) {
@@ -287,14 +317,14 @@ public final class Travel {
         depart(p, target, back, null);
     }
 
-    private static void depart(ServerPlayer p, NetworkSync.Peer target, JsonObject back, JsonObject arrive) {
+    static void depart(ServerPlayer p, NetworkSync.Peer target, JsonObject back, JsonObject arrive) {
         p.stopRiding();
         CompoundTag tag = p.saveWithoutId(new CompoundTag());
         JsonObject data = new JsonObject();
         data.addProperty("uuid", p.getUUID().toString());
         data.addProperty("name", p.getGameProfile().getName());
         data.addProperty("nbt", encode(tag));
-        if (Role.main()) {
+        if (Role.main() && target.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get())) {
             // the quest book's task; before the advancements are packed, so it travels too
             var adv = server.getAdvancements().get(ResourceLocation.fromNamespaceAndPath("kronwerke", "minenwelt"));
             if (adv != null) p.getAdvancements().award(adv, "travel");
@@ -305,7 +335,7 @@ public final class Travel {
         JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
         if (extra != null) data.add("extra", extra);
         String id = UUID.randomUUID().toString();
-        pending.put(id, new Departure(p.getUUID(), target.name(), System.currentTimeMillis() + 12_000, back));
+        pending.put(id, new Departure(p.getUUID(), target.name(), System.currentTimeMillis() + 12_000, back, arrive));
         NetworkSync.send(target.name(), "player.handoff", data, id);
         send(p, TravelPayload.GO, target);
     }
@@ -347,13 +377,14 @@ public final class Travel {
         UUID id = p.getUUID();
         inPortal.remove(id);
         if (leaving.remove(id) != null) return;
-        if (Role.main()) return;
+        if (Role.main() || p instanceof de.kronwerke.core.loadtest.LoadBot) return;
         NetworkSync.Peer home = NetworkSync.portalTarget();
         if (home == null) return;
         JsonObject data = new JsonObject();
         data.addProperty("uuid", id.toString());
         data.addProperty("nbt", encode(p.saveWithoutId(new CompoundTag())));
         progress(p, data);
+        Crossing.resume(p, data);
         JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
         if (extra != null) data.add("extra", extra);
         NetworkSync.send(home.name(), "player.home", data, null);
@@ -404,17 +435,35 @@ public final class Travel {
     }
 
     private static void handoff(String from, JsonObject d) throws IOException {
+        handoff(from, d, System.currentTimeMillis() + 8_000);
+    }
+
+    /**
+     * Takes a player in. When the place they arrive at needs chunks that are not loaded yet (a
+     * Nether portal far from any other, the End's platform), the chunk system loads them in
+     * the background first and the handoff waits, so this server never stops for a world
+     * generation; after the deadline it goes on anyway.
+     */
+    private static void handoff(String from, JsonObject d, long deadline) throws IOException {
         UUID id = UUID.fromString(str(d, "uuid"));
         if (server.getPlayerList().getPlayer(id) != null) return; // here already: the old move is stale
         CompoundTag tag = decode(str(d, "nbt"));
+        JsonObject a = d.get("arrive") instanceof JsonObject o ? o : null;
+        if (System.currentTimeMillis() < deadline && !Crossing.prepared(server, a, tag)) {
+            parked.add(new Parked(from, d, deadline));
+            return;
+        }
         if (Role.main()) {
-            AwayData.Back b = d.get("arrive") instanceof JsonObject a ? de.kronwerke.core.share.Share.arrive(a) : null;
+            AwayData.Back b = Crossing.arrive(server, id, a, tag);
+            if (b == null && a != null) b = de.kronwerke.core.share.Share.arrive(a);
             if (b == null) b = AwayData.get(server).back(id);
             place(tag, b == null ? spawn(server) : b);
             keepFromHere(id, tag);
             AwayData.get(server).home(id);
         } else {
-            place(tag, Hub.arrival(server));
+            AwayData.Back b = Crossing.arrive(server, id, a, tag);
+            if (b == null) b = Dimensions.dimensionServer() ? Crossing.fallback(server, tag) : Hub.arrival(server);
+            place(tag, b);
         }
         writePlayer(id, tag);
         writeProgress(id, d);
@@ -433,7 +482,7 @@ public final class Travel {
         if (server.getPlayerList().getPlayer(id) != null) return; // already back here: theirs wins
         AwayData away = AwayData.get(server);
         AwayData.Back b = away.back(id);
-        if (b == null && !final_) return; // not away: an old checkpoint
+        if (away.where(id) == null && !final_) return; // not away: an old checkpoint
         CompoundTag tag = decode(str(d, "nbt"));
         place(tag, b == null ? spawn(server) : b);
         keepFromHere(id, tag);
@@ -443,7 +492,10 @@ public final class Travel {
             Compat.restore(server, x);
             de.kronwerke.core.share.Share.unpack(id, x);
         }
-        if (final_) away.home(id);
+        if (final_) {
+            away.home(id);
+            if (d.get("resume") instanceof JsonObject r) away.resume(id, from, Crossing.arrive(server, id, r, tag));
+        }
     }
 
     /**
@@ -556,6 +608,7 @@ public final class Travel {
     public static void onLogin(ServerPlayer p) {
         UUID id = p.getUUID();
         Arrival a = expected.remove(id);
+        Crossing.onLogin(p, a != null);
         if (a != null) {
             arrived.put(id, new Arrival(a.from(), System.currentTimeMillis() + 6_000));
             send(p, TravelPayload.ARRIVE, null);
@@ -610,6 +663,7 @@ public final class Travel {
             if (s != null) drop(s);
             Departure d = pending.remove(id);
             if (d != null) {
+                Crossing.failed(d.player(), d.target(), d.arrive());
                 ServerPlayer p = server.getPlayerList().getPlayer(d.player());
                 if (p != null) send(p, TravelPayload.CANCEL, null);
             }

@@ -75,5 +75,8 @@
   "kronwerke.queue.waited": "Waiting for %s:%s.",
   "kronwerke.queue.auto": "As soon as a place is free, you join by yourself.",
   "kronwerke.machinelock.grid": "You can make this from %s on.",
-  "kronwerke.machinelock.machine": "This machine makes that from %s on."
+  "kronwerke.machinelock.machine": "This machine makes that from %s on.",
+  "kronwerke.crossing.closed": "The portal flickers: %s cannot be reached right now.",
+  "kronwerke.crossing.resume_closed": "%s cannot be reached right now, so you are at your portal.",
+  "kronwerke.crossing.other": "the other world"
 }

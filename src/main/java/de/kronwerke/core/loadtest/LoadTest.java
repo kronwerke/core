@@ -56,8 +56,8 @@ public final class LoadTest {
      * the radius, travellers fly at the given speed (blocks per tick) at flyY.
      */
     public static int start(MinecraftServer server, int settlers, int travellers, int radius, double speed, int flyY) {
-        ServerLevel level = server.overworld();
-        BlockPos spawn = level.getSharedSpawnPos();
+        ServerLevel level = home(server);
+        BlockPos spawn = center(level);
         ChunkPos at = new ChunkPos(spawn);
         // the bots start above the spawn: keep the chunks around it loaded, and wait for them
         level.getChunkSource().addRegionTicket(TICKET, at, 4, at);
@@ -93,6 +93,31 @@ public final class LoadTest {
     private static final List<Runnable> PENDING = new ArrayList<>();
     private static boolean listening;
 
+    /**
+     * Where the bots play: the overworld, or on a Nether or End server its own dimension, so
+     * a load test there loads what fifty players in the Nether would.
+     */
+    public static ServerLevel home(MinecraftServer server) {
+        if (de.kronwerke.core.portal.Dimensions.dimensionServer()) {
+            for (ServerLevel l : server.getAllLevels()) {
+                if (l.dimension() != net.minecraft.world.level.Level.OVERWORLD && de.kronwerke.core.portal.Dimensions.here(l.dimension())) return l;
+            }
+        }
+        return server.overworld();
+    }
+
+    private static BlockPos center(ServerLevel level) {
+        if (level.dimension() == net.minecraft.world.level.Level.END) return ServerLevel.END_SPAWN_POINT;
+        return level.dimension() == net.minecraft.world.level.Level.OVERWORLD ? level.getSharedSpawnPos() : BlockPos.ZERO;
+    }
+
+    /** The height travellers fly at: above the overworld, inside the Nether's caves, over the End's islands. */
+    public static int flyHeight(MinecraftServer server) {
+        ServerLevel l = home(server);
+        if (l.dimensionType().hasCeiling()) return 70;
+        return l.dimension() == net.minecraft.world.level.Level.OVERWORLD ? 320 : 120;
+    }
+
     private static boolean spawnReady(ServerLevel level, ChunkPos at) {
         for (int i = -3; i <= 3; i++) {
             for (int j = -3; j <= 3; j++) {
@@ -108,8 +133,8 @@ public final class LoadTest {
         listening = true;
         NeoForge.EVENT_BUS.addListener((ServerTickEvent.Post e) -> {
             if (PENDING.isEmpty() || e.getServer().getTickCount() % 10 != 0) return;
-            ServerLevel level = e.getServer().overworld();
-            if (!spawnReady(level, new ChunkPos(level.getSharedSpawnPos()))) return;
+            ServerLevel level = home(e.getServer());
+            if (!spawnReady(level, new ChunkPos(center(level)))) return;
             List<Runnable> run = new ArrayList<>(PENDING);
             PENDING.clear();
             run.forEach(Runnable::run);

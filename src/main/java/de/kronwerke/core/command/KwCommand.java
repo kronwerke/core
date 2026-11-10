@@ -48,7 +48,23 @@ public final class KwCommand {
             c.getSource().sendSuccess(() -> de.kronwerke.core.Text.t("network.side", "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
                     de.kronwerke.core.link.Role.server()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
             return 1;
-        }));
+        }).then(Commands.literal("admin").requires(s -> s.hasPermission(2)).then(loadtest())));
+    }
+
+    /** The load test, on main and on every side world (bots in the side world's own dimension). */
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> loadtest() {
+        return Commands.literal("loadtest")
+                .executes(KwCommand::loadtestInfo)
+                .then(Commands.literal("stop").executes(c -> { ok(c, de.kronwerke.core.loadtest.LoadTest.stop(c.getSource().getServer()) + " Testspieler entfernt."); return 1; }))
+                .then(Commands.literal("start")
+                        .then(Commands.argument("settlers", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
+                                .then(Commands.argument("travellers", com.mojang.brigadier.arguments.IntegerArgumentType.integer(0, 100))
+                                        .executes(c -> loadtestStart(c, 3000, 1.5))
+                                        .then(Commands.argument("radius", com.mojang.brigadier.arguments.IntegerArgumentType.integer(64, 20000))
+                                                .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"), 1.5))
+                                                .then(Commands.argument("speed", com.mojang.brigadier.arguments.DoubleArgumentType.doubleArg(0.05, 10))
+                                                        .executes(c -> loadtestStart(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "radius"),
+                                                                com.mojang.brigadier.arguments.DoubleArgumentType.getDouble(c, "speed"))))))));
     }
 
     public static void register(CommandDispatcher<CommandSourceStack> d) {
@@ -378,7 +394,8 @@ public final class KwCommand {
     private static int loadtestStart(CommandContext<CommandSourceStack> c, int radius, double speed) {
         int settlers = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "settlers");
         int travellers = com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "travellers");
-        int n = de.kronwerke.core.loadtest.LoadTest.start(c.getSource().getServer(), settlers, travellers, radius, speed, 320);
+        int n = de.kronwerke.core.loadtest.LoadTest.start(c.getSource().getServer(), settlers, travellers, radius, speed,
+                de.kronwerke.core.loadtest.LoadTest.flyHeight(c.getSource().getServer()));
         if (n == 0 && de.kronwerke.core.loadtest.LoadTest.waiting()) ok(c, "Die Chunks um den Spawn laden noch, die Testspieler kommen gleich.");
         else ok(c, n + " Testspieler dazu (" + travellers + " fliegend, " + speed + " Blöcke pro Tick, Radius " + radius + "). Jetzt "
                 + de.kronwerke.core.loadtest.LoadTest.count() + ".");

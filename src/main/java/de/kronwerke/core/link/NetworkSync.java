@@ -412,6 +412,12 @@ public final class NetworkSync {
         return peers.get(name);
     }
 
+    /** The first server on the bus with this launcher role, or null. */
+    public static Peer peerByRole(String role) {
+        for (Peer p : peers.values()) if (p.role().equals(role)) return p;
+        return null;
+    }
+
     /** The server a portal leads to: main from a side world, the first side world with the role from main. */
     public static Peer portalTarget() {
         for (Peer p : peers.values()) {
@@ -463,6 +469,7 @@ public final class NetworkSync {
     /** Players who may only arrive through a move: everyone but operators, on a side world. */
     public static boolean refuse(ServerPlayer p) {
         if (Role.main() || KronwerkeConfig.DIRECT_JOIN.get() || p.hasPermissions(2)) return false;
+        if (p instanceof de.kronwerke.core.loadtest.LoadBot) return false; // the load test's own players
         if (de.kronwerke.core.portal.Travel.expected(p.getUUID())) return false;
         KronwerkeCore.LOGGER.info("{} joined {} directly; sent away", p.getGameProfile().getName(), Role.server());
         refused.add(p.getUUID());

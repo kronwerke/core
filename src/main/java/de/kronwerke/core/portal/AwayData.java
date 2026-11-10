@@ -17,8 +17,12 @@ public final class AwayData extends SavedData {
 
     public record Back(String dim, double x, double y, double z, float yaw) {}
 
+    /** Where a player who logged out on a dimension server goes on with their next login. */
+    public record Resume(String server, Back at) {}
+
     private final Map<UUID, String> where = new HashMap<>();
     private final Map<UUID, Back> back = new HashMap<>();
+    private final Map<UUID, Resume> resume = new HashMap<>();
 
     public static AwayData get(MinecraftServer s) {
         return s.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);
@@ -28,7 +32,10 @@ public final class AwayData extends SavedData {
         where.put(id, server);
         if (b != null) {
             back.put(id, new Back(Travel.str(b, "dim"), b.get("x").getAsDouble(), b.get("y").getAsDouble(), b.get("z").getAsDouble(), b.get("yaw").getAsFloat()));
+        } else {
+            back.remove(id);
         }
+        resume.remove(id);
         setDirty();
     }
 
@@ -42,6 +49,33 @@ public final class AwayData extends SavedData {
 
     public void home(UUID id) {
         if (where.remove(id) != null) setDirty();
+    }
+
+    public void resume(UUID id, String server, Back at) {
+        if (at == null) return;
+        resume.put(id, new Resume(server, at));
+        setDirty();
+    }
+
+    /** The resume for this login, once. */
+    public Resume takeResume(UUID id) {
+        Resume r = resume.remove(id);
+        if (r != null) setDirty();
+        return r;
+    }
+
+    private static CompoundTag write(Back b) {
+        CompoundTag e = new CompoundTag();
+        e.putString("dim", b.dim());
+        e.putDouble("x", b.x());
+        e.putDouble("y", b.y());
+        e.putDouble("z", b.z());
+        e.putFloat("yaw", b.yaw());
+        return e;
+    }
+
+    private static Back read(CompoundTag e) {
+        return new Back(e.getString("dim"), e.getDouble("x"), e.getDouble("y"), e.getDouble("z"), e.getFloat("yaw"));
     }
 
     @Override
@@ -61,6 +95,13 @@ public final class AwayData extends SavedData {
             w.put(k.toString(), e);
         });
         tag.put("away", w);
+        CompoundTag r = new CompoundTag();
+        resume.forEach((k, v) -> {
+            CompoundTag e = write(v.at());
+            e.putString("server", v.server());
+            r.put(k.toString(), e);
+        });
+        tag.put("resume", r);
         return tag;
     }
 
@@ -72,6 +113,11 @@ public final class AwayData extends SavedData {
             UUID id = UUID.fromString(k);
             d.where.put(id, e.getString("server"));
             if (e.contains("dim")) d.back.put(id, new Back(e.getString("dim"), e.getDouble("x"), e.getDouble("y"), e.getDouble("z"), e.getFloat("yaw")));
+        }
+        CompoundTag r = tag.getCompound("resume");
+        for (String k : r.getAllKeys()) {
+            CompoundTag e = r.getCompound(k);
+            d.resume.put(UUID.fromString(k), new Resume(e.getString("server"), read(e)));
         }
         return d;
     }
