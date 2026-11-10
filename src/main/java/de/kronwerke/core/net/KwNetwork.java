@@ -152,30 +152,63 @@ public final class KwNetwork {
     }
 
     /** One goal as the hub shows it. */
-    public record GoalView(String title, String description, String state, int percent, boolean active, List<ItemView> items) {
+    /**
+     * active: the goal runs; estimate: its items are the base amounts of a goal that has not
+     * opened yet (the real ones depend on the players then); top: a finished goal's most
+     * diligent hands as "name|points".
+     */
+    public record GoalMore(boolean active, boolean estimate, List<String> top) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, GoalMore> CODEC = StreamCodec.composite(
+                ByteBufCodecs.BOOL, GoalMore::active,
+                ByteBufCodecs.BOOL, GoalMore::estimate,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), GoalMore::top,
+                GoalMore::new);
+    }
+
+    public record GoalView(String title, String description, String state, int percent, GoalMore more, List<ItemView> items) {
         public static final StreamCodec<RegistryFriendlyByteBuf, GoalView> CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, GoalView::title,
                 ByteBufCodecs.STRING_UTF8, GoalView::description,
                 ByteBufCodecs.STRING_UTF8, GoalView::state,
                 ByteBufCodecs.VAR_INT, GoalView::percent,
-                ByteBufCodecs.BOOL, GoalView::active,
+                GoalMore.CODEC, GoalView::more,
                 ItemView.CODEC.apply(ByteBufCodecs.list()), GoalView::items,
                 GoalView::new);
+
+        public boolean active() {
+            return more.active();
+        }
     }
 
-    /** One item of a pillar: id is the item id or #tag the client draws the icon from. */
-    public record ItemView(String pillar, String id, String name, long have, long need) {
+    /** One item of a pillar: id is the item id or #tag the client draws the icon from; weight is its points per piece. */
+    public record ItemView(String pillar, String id, String name, long have, long need, long weight) {
         public static final StreamCodec<RegistryFriendlyByteBuf, ItemView> CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, ItemView::pillar,
                 ByteBufCodecs.STRING_UTF8, ItemView::id,
                 ByteBufCodecs.STRING_UTF8, ItemView::name,
                 ByteBufCodecs.VAR_LONG, ItemView::have,
                 ByteBufCodecs.VAR_LONG, ItemView::need,
+                ByteBufCodecs.VAR_LONG, ItemView::weight,
                 ItemView::new);
+
+        public long missingPoints() {
+            return Math.max(0, need - have) * weight;
+        }
+    }
+
+    /** The player's own part and the season's name, for the hub. */
+    public record HubMine(String season, long points, int rank, int hands, int streak) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, HubMine> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8, HubMine::season,
+                ByteBufCodecs.VAR_LONG, HubMine::points,
+                ByteBufCodecs.VAR_INT, HubMine::rank,
+                ByteBufCodecs.VAR_INT, HubMine::hands,
+                ByteBufCodecs.VAR_INT, HubMine::streak,
+                HubMine::new);
     }
 
     /** The /kw hub: goals, what the player may do, and a line about the last action. */
-    public record HubPayload(List<GoalView> goals, boolean streamer, boolean admin, String message, boolean error) implements CustomPacketPayload {
+    public record HubPayload(List<GoalView> goals, boolean streamer, boolean admin, String message, boolean error, HubMine mine) implements CustomPacketPayload {
         public static final Type<HubPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, "hub"));
         public static final StreamCodec<RegistryFriendlyByteBuf, HubPayload> CODEC = StreamCodec.composite(
                 GoalView.CODEC.apply(ByteBufCodecs.list()), HubPayload::goals,
@@ -183,6 +216,7 @@ public final class KwNetwork {
                 ByteBufCodecs.BOOL, HubPayload::admin,
                 ByteBufCodecs.STRING_UTF8, HubPayload::message,
                 ByteBufCodecs.BOOL, HubPayload::error,
+                HubMine.CODEC, HubPayload::mine,
                 HubPayload::new);
 
         @Override
@@ -299,25 +333,49 @@ public final class KwNetwork {
         de.kronwerke.core.goal.GoalManager gm = de.kronwerke.core.goal.GoalManager.get();
         de.kronwerke.core.goal.GoalData d = gm.progressData();
         List<GoalView> goals = new ArrayList<>();
+        boolean nextShown = false;
+        de.kronwerke.core.goal.Goal running = null;
         for (de.kronwerke.core.goal.Goal g : gm.allGoals()) {
             boolean done = d.isCompleted(g.id());
             boolean active = gm.isActive(g);
+            if (active && running == null) running = g;
             String state = done ? "geschafft" : active ? (gm.isHeld(g) ? "wartet auf das Event" : "läuft") : "gesperrt";
             int percent = done ? 100 : active ? (int) Math.round(gm.fraction(g) * 100) : 0;
             List<ItemView> items = new ArrayList<>();
-            if (active) {
+            // the running goal with its real numbers; the next one with its base amounts, to stock up for
+            boolean estimate = !done && !active && !nextShown;
+            if (active || estimate) {
                 for (de.kronwerke.core.goal.Goal.Pillar pillar : g.pillars()) {
                     for (de.kronwerke.core.goal.Goal.PillarItem it : pillar.items()) {
-                        items.add(new ItemView(pillar.title(), it.item(), de.kronwerke.core.Text.item(it.item()).getString(), d.progress(g.id(), it.item()), d.target(g.id(), it.item())));
+                        long need = active ? d.target(g.id(), it.item()) : it.base();
+                        items.add(new ItemView(pillar.title(), it.item(), de.kronwerke.core.Text.item(it.item()).getString(),
+                                active ? d.progress(g.id(), it.item()) : 0, need, it.points()));
                     }
                 }
             }
-            goals.add(new GoalView(g.title(), g.description() == null ? "" : g.description(), state, percent, active, items));
+            if (estimate) nextShown = true;
+            List<String> top = new ArrayList<>();
+            if (done) {
+                for (var e : gm.leaderboard(g, 5)) top.add(de.kronwerke.core.obelisk.Obelisk.get().nameOf(e.getKey()) + "|" + e.getValue());
+            }
+            String desc = g.description() == null ? "" : g.description();
+            if (active && gm.isHeld(g) && !gm.eventText(g).isEmpty()) desc = "Das Event " + gm.eventText(g) + ". " + desc;
+            goals.add(new GoalView(g.title(), desc, state, percent, new GoalMore(active, estimate, top), items));
         }
+        long mine = 0;
+        int rank = 0, hands = 0;
+        if (running != null) {
+            var pts = gm.points(running);
+            mine = pts.getOrDefault(p.getUUID(), 0L);
+            rank = gm.rank(running, p.getUUID());
+            hands = pts.size();
+        }
+        int streak = de.kronwerke.core.obelisk.Obelisk.get().data().streak(p.getUUID());
+        HubMine me = new HubMine(de.kronwerke.core.config.KronwerkeConfig.SEASON_NAME.get(), mine, rank, hands, streak);
         boolean admin = p.hasPermissions(2);
         // the whitelist button only for players with places of their own to give
         boolean streamer = admin || SlotManager.get().ownSlots(p.getUUID()) != null;
-        PacketDistributor.sendToPlayer(p, new HubPayload(goals, streamer, admin, message, error));
+        PacketDistributor.sendToPlayer(p, new HubPayload(goals, streamer, admin, message, error, me));
     }
 
     public static void sendAdmin(ServerPlayer p, String message, boolean error) {
