@@ -155,8 +155,10 @@ public final class MachineLocks {
         for (RecipeHolder<?> h : all) {
             Integer need = stageOf(h.value(), registries, stages);
             // a result that is no item (a fluid, a chemical) or that the recipe only knows from
-            // its input: the recipe file names it
+            // its input: the recipe file names it. An open item result keeps the recipe, even
+            // when a chance byproduct is of a later stage.
             if (need == null && json != null) need = stageOfJson(json.get(h.id()), stages, fluids);
+            if (need != null && need == OPEN) need = null;
             if (need != null && need > open) {
                 back.computeIfAbsent(h.value().getType(), t -> new ArrayList<>()).add(new Held(h, need));
                 heldCount++;
@@ -243,8 +245,12 @@ public final class MachineLocks {
             return null; // some recipes only know their result from an input
         }
         if (result == null || result.isEmpty()) return null;
-        return stages.get(BuiltInRegistries.ITEM.getKey(result.getItem()));
+        Integer st = stages.get(BuiltInRegistries.ITEM.getKey(result.getItem()));
+        return st == null ? OPEN : st;
     }
+
+    /** stageOf for a recipe whose item result no stage locks. */
+    private static final int OPEN = 0;
 
     // ---- stage changes ----
 

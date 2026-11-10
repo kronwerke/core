@@ -73,7 +73,12 @@ public final class Overrides {
             else if (now instanceof Integer) next = Integer.parseInt(value.trim());
             else if (now instanceof Long) next = Long.parseLong(value.trim());
             else if (now instanceof Double) next = Double.parseDouble(value.trim());
-            else if (now instanceof List<?>) next = value.isBlank() ? List.of() : Arrays.stream(value.split(",")).map(String::trim).toList();
+            else if (now instanceof List<?> l) {
+                // a list keeps the kind of its elements: numbers stay numbers (the mob scaling lists)
+                boolean numbers = !l.isEmpty() && l.get(0) instanceof Number;
+                next = value.isBlank() ? List.of() : Arrays.stream(value.split(",")).map(String::trim)
+                        .map(x -> numbers ? (Object) (x.contains(".") ? (Number) Double.parseDouble(x) : (Number) Integer.parseInt(x)) : (Object) x).toList();
+            }
             else next = value;
             v.set(next);
             return true;
