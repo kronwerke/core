@@ -471,6 +471,8 @@ public final class KwCommand {
         var s = de.kronwerke.core.season.Season.get();
         var ob = de.kronwerke.core.obelisk.Obelisk.get();
         c.getSource().sendSuccess(() -> Component.literal("OK {\"running\":" + s.running() + ",\"number\":" + s.number() + ",\"startedAt\":" + s.startedAt()
+                + ",\"start\":" + new com.google.gson.Gson().toJson(KronwerkeConfig.SEASON_START.get())
+                + ",\"timezone\":" + new com.google.gson.Gson().toJson(KronwerkeConfig.TIMEZONE.get())
                 + ",\"gate\":" + s.gateClosed() + ",\"beta\":" + s.beta() + ",\"tier\":" + ob.tier() + ",\"slumbering\":" + ob.slumbering() + "}"), false);
         return 1;
     }
