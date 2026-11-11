@@ -50,6 +50,20 @@ public final class ShotFiles {
         Files.write(dir.resolve(name + ".png"), palette(png));
     }
 
+    /** Deletes every picture, small copy and bundle, before a fresh run. Returns the count. */
+    public static int clear(Path shots) throws IOException {
+        if (!Files.isDirectory(shots)) return 0;
+        int[] n = {0};
+        try (var walk = Files.walk(shots)) {
+            for (Path f : (Iterable<Path>) walk.sorted(java.util.Comparator.reverseOrder())::iterator) {
+                if (f.equals(shots) || f.getFileName().toString().equals("shots.json")) continue;
+                if (Files.isRegularFile(f)) n[0]++;
+                Files.deleteIfExists(f);
+            }
+        }
+        return n[0];
+    }
+
     /** Makes the small copies again from the full pictures in shots (prefix "" for all). */
     public static int reoptimise(Path shots, String prefix) throws IOException {
         int n = 0;

@@ -65,6 +65,8 @@ public final class CameraCommand {
                 }))
                 .then(Commands.literal("run").executes(c -> run(c, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> run(c, StringArgumentType.getString(c, "prefix")))))
+                .then(Commands.literal("clear").executes(c -> background(c, "Aufräumen",
+                        () -> ShotFiles.clear(Camera.shotsDir()) + " Dateien gelöscht.")))
                 .then(Commands.literal("reopt").executes(c -> reopt(c, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> reopt(c, StringArgumentType.getString(c, "prefix")))))
                 .then(Commands.literal("bundle").executes(c -> bundle(c, ""))
