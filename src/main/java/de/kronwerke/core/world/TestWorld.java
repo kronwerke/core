@@ -183,7 +183,9 @@ public final class TestWorld {
                     for (Entity e : level.getAllEntities()) if (e != null) all.add(e);
                     for (Entity e : all) {
                         boolean inside = e.getX() >= x0 && e.getX() <= x1 + 1 && e.getZ() >= z0 && e.getZ() <= z1 + 1;
-                        if (inside && (e.getTags().contains("kw_shot") || e instanceof net.minecraft.world.entity.item.ItemEntity)) e.discard();
+                        // everything but players: a scene's own entities carry no tag (an assembled
+                        // windmill, a spark a block spawned)
+                        if (inside && !(e instanceof net.minecraft.world.entity.player.Player)) e.discard();
                     }
                 } catch (RuntimeException ex) {
                     log.add(n + ": " + line + " -> " + ex);
@@ -333,6 +335,9 @@ public final class TestWorld {
         p.setXRot(face == net.minecraft.core.Direction.UP ? 90 : face == net.minecraft.core.Direction.DOWN ? -90 : 0);
         p.setShiftKeyDown(sneak);
         p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, hand);
+        // a fake player never ticks, so a cooldown an item sets (Create's belt after the first
+        // of its two clicks) would never run out
+        p.getCooldowns().removeCooldown(item);
         var at = net.minecraft.world.phys.Vec3.atCenterOf(pos).add(face.getStepX() * 0.5, face.getStepY() * 0.5, face.getStepZ() * 0.5);
         using = true;
         try {

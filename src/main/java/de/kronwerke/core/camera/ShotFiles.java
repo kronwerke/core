@@ -54,9 +54,12 @@ public final class ShotFiles {
     public static int clear(Path shots) throws IOException {
         if (!Files.isDirectory(shots)) return 0;
         int[] n = {0};
+        // the test world's scenes live in shots/world and are not pictures
+        Path world = shots.resolve("world"), fresh = shots.resolve("world.new");
         try (var walk = Files.walk(shots)) {
             for (Path f : (Iterable<Path>) walk.sorted(java.util.Comparator.reverseOrder())::iterator) {
                 if (f.equals(shots) || f.getFileName().toString().equals("shots.json")) continue;
+                if (f.startsWith(world) || f.startsWith(fresh)) continue;
                 if (Files.isRegularFile(f)) n[0]++;
                 Files.deleteIfExists(f);
             }

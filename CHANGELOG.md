@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37.11
+
+- `/kw testworld use` clears the item's cooldown first: its hand never ticks, so the cooldown Create's belt sets after the first of its two clicks never ran out and the second click did nothing.
+- A scene file's `#area` line clears every entity there but players, not only the tagged ones: an assembled contraption carries no tag.
+- Removing an obelisk block that is not the server's obelisk (the screenshot world has some) no longer touches the real obelisk's tiers. Without an obelisk set it threw, with one set it ran the tier cleanup in the wrong dimension and emptied the record of what the tiers had replaced.
+- `/kw cam clear` leaves the test world's scenes (`kronwerke/shots/world`) alone. It deleted part of them, failed on the folder and never reached the pictures.
+
 ## 0.37.10
 
 - The Omi tag no longer shows a box between its icon and the name: the space after the icon inherited the icon's own font, which has no space. The same went for a name appended to the badge in `/kwtag list`.

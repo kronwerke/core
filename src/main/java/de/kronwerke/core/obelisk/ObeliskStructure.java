@@ -58,7 +58,12 @@ public final class ObeliskStructure {
     }
 
     public static void clear(ServerLevel level, BlockPos core) {
-        ObeliskTiers.clear(level, Obelisk.get().data());
+        // the tiers belong to the server's one obelisk: an obelisk block that only stands
+        // somewhere (the screenshot world has some) takes down its own shell and nothing else
+        ObeliskData data = Obelisk.get().data();
+        if (data.isSet() && core.equals(data.pos()) && level.dimension().location().toString().equals(data.dimension())) {
+            ObeliskTiers.clear(level, data);
+        }
         for (int dx = -PEDESTAL; dx <= PEDESTAL; dx++) {
             for (int dz = -PEDESTAL; dz <= PEDESTAL; dz++) {
                 for (int dy = 0; dy <= HEIGHT; dy++) {
