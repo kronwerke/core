@@ -33,10 +33,28 @@ public final class ShotFiles {
     private ShotFiles() {
     }
 
+    /** The width the quest book gets; larger pictures are scaled down for the small copy. */
+    public static final int BOOK_WIDTH = 480;
+
     public static void writeOptimised(Path shots, String name, byte[] png) throws IOException {
         Path dir = shots.resolve("opt");
         Files.createDirectories(dir);
         Files.write(dir.resolve(name + ".png"), palette(png));
+    }
+
+    /** Makes the small copies again from the full pictures in shots (prefix "" for all). */
+    public static int reoptimise(Path shots, String prefix) throws IOException {
+        int n = 0;
+        if (!Files.isDirectory(shots)) return 0;
+        try (var all = Files.newDirectoryStream(shots, "*.png")) {
+            for (Path f : all) {
+                String file = f.getFileName().toString();
+                if (!file.startsWith(prefix)) continue;
+                writeOptimised(shots, file.substring(0, file.length() - 4), Files.readAllBytes(f));
+                n++;
+            }
+        }
+        return n;
     }
 
     /** Writes shots/bundle/000.bin, 001.bin, ... and index.json; returns the number of pictures. */
@@ -87,6 +105,16 @@ public final class ShotFiles {
 
     static byte[] palette(byte[] png) throws IOException {
         BufferedImage src = ImageIO.read(new ByteArrayInputStream(png));
+        if (src.getWidth() > BOOK_WIDTH) {
+            int h2 = Math.round(src.getHeight() * (float) BOOK_WIDTH / src.getWidth());
+            BufferedImage small = new BufferedImage(BOOK_WIDTH, h2, BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D g = small.createGraphics();
+            g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION, java.awt.RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+            g.setRenderingHint(java.awt.RenderingHints.KEY_RENDERING, java.awt.RenderingHints.VALUE_RENDER_QUALITY);
+            g.drawImage(src, 0, 0, BOOK_WIDTH, h2, null);
+            g.dispose();
+            src = small;
+        }
         int w = src.getWidth(), h = src.getHeight();
         int[] px = src.getRGB(0, 0, w, h, null, 0, w);
         int[] pal = medianCut(px, 256);
@@ -110,7 +138,18 @@ public final class ShotFiles {
             dst[i] = (byte) (int) k;
         }
         ByteArrayOutputStream o = new ByteArrayOutputStream();
-        ImageIO.write(out, "png", o);
+        javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("png").next();
+        javax.imageio.ImageWriteParam param = writer.getDefaultWriteParam();
+        if (param.canWriteCompressed()) {
+            param.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(0.0f); // the strongest deflate
+        }
+        try (javax.imageio.stream.ImageOutputStream ios = ImageIO.createImageOutputStream(o)) {
+            writer.setOutput(ios);
+            writer.write(null, new javax.imageio.IIOImage(out, null, null), param);
+        } finally {
+            writer.dispose();
+        }
         return o.toByteArray();
     }
 

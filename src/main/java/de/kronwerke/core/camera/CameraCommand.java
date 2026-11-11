@@ -65,9 +65,23 @@ public final class CameraCommand {
                 }))
                 .then(Commands.literal("run").executes(c -> run(c, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> run(c, StringArgumentType.getString(c, "prefix")))))
+                .then(Commands.literal("reopt").executes(c -> reopt(c, ""))
+                        .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> reopt(c, StringArgumentType.getString(c, "prefix")))))
                 .then(Commands.literal("bundle").executes(c -> bundle(c, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> bundle(c, StringArgumentType.getString(c, "prefix")))))
                 .then(shotNode())));
+    }
+
+    /** Makes the small copies again from the full pictures, after the size or palette changed. */
+    private static int reopt(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c, String prefix) {
+        try {
+            int n = ShotFiles.reoptimise(Camera.shotsDir(), prefix);
+            ok(c, n + " kleine Kopien neu erstellt.");
+            return n;
+        } catch (java.io.IOException e) {
+            c.getSource().sendFailure(Component.literal("Nicht erstellt: " + e.getMessage()));
+            return 0;
+        }
     }
 
     /** Packs the small copies in shots/opt into pieces for the console (shots/bundle). */
