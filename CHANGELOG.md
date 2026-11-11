@@ -6,6 +6,7 @@ The Nether and the End on servers of their own, and every finding of the product
 
 Network:
 - The Nether and the End run on servers of their own (`network.dimensionServers`). Portals, teleports and respawns into them move the player there; the arriving server finds or builds the portal, the End platform or the bed in its own world after loading the chunks in the background. A player who logs out there comes back there. Without such a server on the bus the dimension stays on main.
+- A player who arrives from another server is not kicked "for floating too long" in the first 20 seconds, while a slow client still loads the world under them.
 - A player is frozen between the travel snapshot and the transfer (no damage, no pickups, no menus); a late or failed move is cancelled at the target and the player keeps everything. A backpack thrown through a portal takes its contents.
 - A direct join to a side world is turned away at the door; main only takes a player file from the server it sent the player to. A world reset is called off when the players cannot be sent away (`evacuate_failed`).
 - Shared quest and network data is acknowledged only after the receiver saved it; the spread autosave resumes its queue after a restart. Quest resets carry a generation.

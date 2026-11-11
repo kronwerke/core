@@ -18,6 +18,7 @@
     "ChunkLoadCleanMixin",
     "ChunkQuietLightMixin",
     "ConnectionChannelAccessor",
+    "FloatGraceAccessor",
     "CraftingGridLocksMixin",
     "CuriosEmptyMobMixin",
     "CuriosTickEmptyMobMixin",

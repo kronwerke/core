@@ -162,8 +162,20 @@ public final class Crossing {
         return a;
     }
 
+    /** Players who just arrived from another server, until when they may hang in the air. */
+    private static final java.util.Map<UUID, Long> floatGrace = new java.util.concurrent.ConcurrentHashMap<>();
+
     /** Every tick: holds whose players are here go. */
     public static void tick(MinecraftServer s) {
+        if (!floatGrace.isEmpty()) {
+            long t = System.currentTimeMillis();
+            floatGrace.entrySet().removeIf(e -> {
+                ServerPlayer p = s.getPlayerList().getPlayer(e.getKey());
+                if (p == null || t > e.getValue()) return true;
+                ((de.kronwerke.core.mixin.FloatGraceAccessor) p.connection).kronwerke$setAboveGroundTicks(0);
+                return false;
+            });
+        }
         if (holds.isEmpty()) return;
         long now = System.currentTimeMillis();
         for (var it = holds.entrySet().iterator(); it.hasNext(); ) {
@@ -195,6 +207,8 @@ public final class Crossing {
     /** After the gate, for a player who did not arrive by a move. */
     public static void onLogin(ServerPlayer p, boolean arrived) {
         UUID id = p.getUUID();
+        // the client may still be loading the world while the player hangs in the air
+        if (arrived) floatGrace.put(id, System.currentTimeMillis() + 20_000);
         if (noBlock.remove(id)) p.connection.send(new ClientboundGameEventPacket(ClientboundGameEventPacket.NO_RESPAWN_BLOCK_AVAILABLE, 0));
         Hold next = onLogin.remove(id);
         if (next != null) {
