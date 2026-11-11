@@ -92,6 +92,8 @@ public final class QioLayer implements Layer {
     /** When a kind of thing last landed in a transit drive (it rests a while before it is sent on). */
     private final Map<Want, Long> landedAt = new HashMap<>();
     private Map<String, String> transitFile;
+    /** Frequencies Core's drives did not go into; not tried again until the next start. */
+    private final Set<String> failed = new HashSet<>();
     private int pullTag;
 
     private QioLayer(Field managers, Field typeCount, Field typeDrives, Field totalCount, Field totalCountCapacity, Field totalTypeCapacity,
@@ -194,16 +196,26 @@ public final class QioLayer implements Layer {
                     KronwerkeCore.LOGGER.warn("Shared network: the transit drive of QIO frequency {} could not be read: {}", key, e.toString());
                 }
             }
-            QioDrives.Holder h = new QioDrives.Holder(this, f, key, kept);
-            holders.put(f, h);
-            f.addDrive(new QIODriveData.QIODriveKey(h, 0));
-            f.addDrive(new QIODriveData.QIODriveKey(h, 1));
-            if (h.transit == null || h.mirror == null) {
-                // the mixin did not take: without the two drives this frequency is as it was before
-                KronwerkeCore.LOGGER.warn("Shared network: QIO frequency {} did not take Core's drives", key);
-                holders.remove(f);
+            if (failed.contains(key)) continue;
+            QioDrives.Holder h;
+            try {
+                h = new QioDrives.Holder(this, f, key, kept);
+                f.addDrive(new QIODriveData.QIODriveKey(h, 0));
+                f.addDrive(new QIODriveData.QIODriveKey(h, 1));
+            } catch (RuntimeException | LinkageError e) {
+                failed.add(key);
+                KronwerkeCore.LOGGER.warn("Shared network: QIO frequency {} stays as it is, Core's drives did not go in: {}", key, e.toString());
                 continue;
             }
+            if (h.transit == null || h.mirror == null) {
+                // the mixin did not take: Mekanism made two plain drives of them, which must not stay
+                failed.add(key);
+                f.removeDrive(new QIODriveData.QIODriveKey(h, 0), true);
+                f.removeDrive(new QIODriveData.QIODriveKey(h, 1), true);
+                KronwerkeCore.LOGGER.warn("Shared network: QIO frequency {} did not take Core's drives", key);
+                continue;
+            }
+            holders.put(f, h);
             // what the others already said about this frequency
             for (var peer : theirs.entrySet()) {
                 Map<String, Long> stock = peer.getValue().get(key);
