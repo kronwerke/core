@@ -113,12 +113,13 @@ public final class QioLayer implements Layer {
         try {
             Field m = open(FrequencyManager.class.getDeclaredField("managers"));
             Class<?> data = QIOFrequency.QIOItemTypeData.class;
-            return new QioLayer(m, open(data.getDeclaredField("count")), open(data.getDeclaredField("containingDrives")),
+            instance = new QioLayer(m, open(data.getDeclaredField("count")), open(data.getDeclaredField("containingDrives")),
                     open(QIOFrequency.class.getDeclaredField("totalCount")), open(QIOFrequency.class.getDeclaredField("totalCountCapacity")),
                     open(QIOFrequency.class.getDeclaredField("totalTypeCapacity")),
                     open(QIOFrequency.class.getDeclaredMethod("createTypeDataForAbsent", HashedItem.class)),
                     open(QIOFrequency.class.getDeclaredMethod("removeItemData", HashedItem.class)),
                     open(QIOFrequency.class.getDeclaredMethod("setNeedsUpdate", HashedItem.class)));
+            return instance;
         } catch (ReflectiveOperationException | RuntimeException e) {
             KronwerkeCore.LOGGER.warn("Shared network: Mekanism's QIO is not shared ({})", e.toString());
             return null;
@@ -332,6 +333,7 @@ public final class QioLayer implements Layer {
         landedAt.values().removeIf(t -> System.currentTimeMillis() - t > 60_000);
 
         askedAt.values().removeIf(t -> System.currentTimeMillis() - t > 60_000);
+        again.values().removeIf(a -> System.currentTimeMillis() > a.until());
     }
 
     /** What this server's own drives of a frequency hold: everything the frequency counts, less the mirror. */
@@ -432,7 +434,46 @@ public final class QioLayer implements Layer {
     /** From the mirror: something was to be taken that is only on another server. */
     void want(QioDrives.Holder h, HashedItem type, long amount) {
         if (serving) return;
-        wants.merge(new Want(h, type), amount, Long::sum);
+        Want w = new Want(h, type);
+        wants.merge(w, amount, Long::sum);
+        if (clicking) clicked = w;
+    }
+
+    // ---- a player's click on something that is not here yet is done again when it is ----
+
+    private static QioLayer instance;
+    private static boolean clicking, replaying;
+    private static Want clicked;
+    private record Again(Runnable click, long until) {}
+    private final Map<Want, Again> again = new HashMap<>();
+
+    /** QioTakeReplayMixin: a player's click in a QIO window is being handled. */
+    public static void clickBegins() {
+        clicking = true;
+        clicked = null;
+    }
+
+    public static void clickEnds(Runnable click) {
+        clicking = false;
+        Want w = clicked;
+        clicked = null;
+        if (w == null || replaying || instance == null) return;
+        instance.again.put(w, new Again(click, System.currentTimeMillis() + 2_000));
+    }
+
+    private void arrived(QioDrives.Holder h, HashedItem type) {
+        Again a = again.remove(new Want(h, type));
+        if (a == null || System.currentTimeMillis() > a.until()) return;
+        replaying = true;
+        try {
+            a.click().run();
+        } catch (RuntimeException e) {
+            KronwerkeCore.LOGGER.warn("Shared network: a QIO click could not be done again: {}", e.toString());
+        } finally {
+            replaying = false;
+            clicking = false;
+            clicked = null;
+        }
     }
 
     private void ask() {
@@ -603,6 +644,7 @@ public final class QioLayer implements Layer {
             long in = type == null ? 0 : insert(h, type.getInternalStack(), n, wasAsked || from == null);
             if (type != null && in > 0) {
                 if (h.transit.getStored(type) > 0) landedAt.put(new Want(h, type), System.currentTimeMillis());
+                if (wasAsked) arrivals.add(new Want(h, type));
                 if (from != null) {
                     // the other server has that much less now; its next message says the same
                     Map<String, Long> stock = theirs.getOrDefault(from, Map.of()).get(h.key);
@@ -621,12 +663,18 @@ public final class QioLayer implements Layer {
                 rest.add(one);
             }
         }
+        // only now, with the books in order: the clicks that waited for these
+        List<Want> came = new ArrayList<>(arrivals);
+        arrivals.clear();
+        for (Want w : came) arrived(w.holder(), w.type());
         if (rest.isEmpty()) return null;
         JsonObject back = new JsonObject();
         back.addProperty("f", data.get("f").getAsString());
         back.add("items", rest);
         return back;
     }
+
+    private final List<Want> arrivals = new ArrayList<>();
 
     @Override
     public JsonObject receive(MinecraftServer srv, String from, JsonObject data) {

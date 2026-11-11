@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.1
+
+- Taking something out of a QIO window that only another server has takes one click, as always: the click that came too early is done again as soon as the things are here (seen on the real servers with 0.39.0: the first click asked for the cobblestone on main and gave nothing, the second took it).
+- Nuclear Radiation's table of tag bindings is copied once a second instead of once per item it is asked about: its JEI page asks about every item of the game, which was the largest single part of JEI's start at every login on the test client.
+
 ## 0.39.0
 
 - Mekanism's QIO is one storage on every server of the network. A dashboard, an exporter or a crafting window sees everything a frequency holds on any server, and what is taken comes from the server that has it, a split second later. The things stay in the drives they were put in: every server tells the others what its own drives hold, and each shows that through a drive that only shows (the mirror), so Mekanism itself counts, lists, filters and searches the whole storage. What is asked for lands in a small transit drive; what is not used after ten seconds, and what is put in where the real drives are full or missing, goes to a server with room. Before, everything a side world's drives held was sent to main, and a dashboard in the Nether showed nothing of main's.
