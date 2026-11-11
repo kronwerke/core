@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.35.0
+
+- A new stage no longer reloads every data pack (CORE-39). The recipes of the last load are filtered again for the stage and handed to the recipe manager, which takes milliseconds; before, the server stood still for 5 to 6 seconds even when empty, and every client's JEI rebuilt. The mods' own reload listeners run after it, mostly off the server thread, so mods with their own recipe lists (Mekanism, Create and others) build them anew. Clients always get every recipe now, the held back ones too, so a new stage sends them nothing; JEI and the recipe book show the recipes as before the machine locks, and Chapters still hides the locked items. `/kw admin locks refilter <stage>` filters for another stage as a test; the real stage comes back within seconds.
+- Mekanism machines say which stage an item needs when a player clicks it into a slot and only a held back recipe would take it. Mekanism checks its slots against its own recipe list, so until now the slot refused the item without a word.
+
 ## 0.34.0
 
 - Tags by hand: `/kwtag <player> <tag>` (also `/kw admin tag`) gives a player any icon of the Nautical Ranks pack (32 of them) or one of Kronwerke's own, with a fitting name colour. It changes at once in the tab list, in chat and above the head, without a relog, on every server of the network, and survives restarts (`config/kronwerke/tags.json`, main repeats the list to the side worlds). `/kwtag <player> auto` goes back to the automatic rank, `/kwtag list` shows who has one, `/kwtag tags` shows all. A tagged player keeps the place of their automatic rank in the tab list.

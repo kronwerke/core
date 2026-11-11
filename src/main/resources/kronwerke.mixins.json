@@ -55,6 +55,7 @@
     "RadiationNearbyMixin",
     "RadiationScanMixin",
     "RecipeManagerLocksMixin",
+    "RecipesForClientsMixin",
     "ReliquaryCharmTickMixin",
     "SelectorParserTagsMixin",
     "SelectorTagIndexMixin",

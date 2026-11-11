@@ -230,7 +230,14 @@ public final class KwCommand {
                                     return 1;
                                 })
                                 .then(Commands.literal("on").executes(c -> setLocks(c, true)))
-                                .then(Commands.literal("off").executes(c -> setLocks(c, false))))
+                                .then(Commands.literal("off").executes(c -> setLocks(c, false)))
+                                // for a test: filters for another stage without a reload; the real stage comes back within seconds
+                                .then(Commands.literal("refilter").then(Commands.argument("stage", IntegerArgumentType.integer(1, 20)).executes(c -> {
+                                    boolean done = de.kronwerke.core.lock.MachineLocks.reopen(c.getSource().getServer(), IntegerArgumentType.getInteger(c, "stage"));
+                                    ok(c, done ? "Gefiltert für Stufe " + IntegerArgumentType.getInteger(c, "stage") + ": " + de.kronwerke.core.lock.MachineLocks.heldCount() + " Rezepte zurückgehalten. Details im Log."
+                                            : "Nichts zu filtern (Sperre war beim Laden aus).");
+                                    return done ? 1 : 0;
+                                }))))
                         .then(Commands.literal("queue")
                                 .executes(c -> {
                                     c.getSource().sendSuccess(() -> net.minecraft.network.chat.Component.literal(de.kronwerke.core.queue.JoinQueue.status()), false);

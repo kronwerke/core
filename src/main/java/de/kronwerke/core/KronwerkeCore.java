@@ -71,6 +71,7 @@ public class KronwerkeCore {
         });
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, de.kronwerke.core.lock.MachineLocks::onAddReloadListeners);
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
         NeoForge.EVENT_BUS.addListener(this::onServerStopping);
         NeoForge.EVENT_BUS.addListener(this::onPlayerLogin);

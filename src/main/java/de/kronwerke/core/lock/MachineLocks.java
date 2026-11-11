@@ -65,6 +65,11 @@ public final class MachineLocks {
     private static volatile Map<RecipeType<?>, List<Held>> held = Map.of();
     private static volatile int appliedStage = -1;
     private static int heldCount;
+    /** Every recipe of the last real load, before holding back, and the ones with a stage: a new stage filters these again instead of reloading. */
+    private static volatile List<RecipeHolder<?>> loadedAll = List.of();
+    private static volatile List<Held> staged = List.of();
+    /** The listeners mods add to a data reload (they clear their recipe caches there), from the last reload. */
+    private static volatile List<net.minecraft.server.packs.resources.PreparableReloadListener> modListeners = List.of();
     private static final Map<Long, Long> toldAt = new HashMap<>();
     private static final Map<UUID, Long> toldPlayerAt = new HashMap<>();
     /** When a machine's misses were last compared with the held back recipes: at most every two seconds. */
@@ -143,6 +148,8 @@ public final class MachineLocks {
                                                      Map<ResourceLocation, JsonElement> json) {
         held = Map.of();
         heldCount = 0;
+        loadedAll = List.of();
+        staged = List.of();
         if (!on()) {
             appliedStage = -1;
             return all;
@@ -154,6 +161,7 @@ public final class MachineLocks {
         List<RecipeHolder<?>> keep = new ArrayList<>(all.size());
         Map<RecipeType<?>, List<Held>> back = new IdentityHashMap<>();
         Map<ResourceLocation, Integer> fluids = fluidStages(stages);
+        List<Held> withStage = new ArrayList<>();
         for (RecipeHolder<?> h : all) {
             Integer need = stageOf(h.value(), registries, stages);
             // a result that is no item (a fluid, a chemical) or that the recipe only knows from
@@ -161,6 +169,7 @@ public final class MachineLocks {
             // when a chance byproduct is of a later stage.
             if (need == null && json != null) need = stageOfJson(json.get(h.id()), stages, fluids);
             if (need != null && need == OPEN) need = null;
+            if (need != null) withStage.add(new Held(h, need));
             if (need != null && need > open) {
                 back.computeIfAbsent(h.value().getType(), t -> new ArrayList<>()).add(new Held(h, need));
                 heldCount++;
@@ -169,8 +178,134 @@ public final class MachineLocks {
             }
         }
         held = back;
+        loadedAll = new ArrayList<>(all); // all is the manager's own view, which changes with replaceRecipes
+        staged = withStage;
         KronwerkeCore.LOGGER.info("Stage {} is open: {} recipes of later stages are held back from every machine and crafting grid", open, heldCount);
         return keep;
+    }
+
+    /**
+     * Clients always get every recipe, the held back ones too: JEI and the recipe book show
+     * them as before (Chapters hides the locked items), and a new stage needs nothing new on
+     * the client. Before, the whole recipe set went out again and every client's JEI rebuilt,
+     * which froze the game for everyone for several seconds (review CORE-39).
+     */
+    public static java.util.Collection<RecipeHolder<?>> forClients(java.util.Collection<RecipeHolder<?>> sent) {
+        Map<RecipeType<?>, List<Held>> h = held;
+        if (h.isEmpty()) return sent;
+        List<RecipeHolder<?>> out = new ArrayList<>(sent.size() + heldCount);
+        out.addAll(sent);
+        for (List<Held> l : h.values()) for (Held x : l) out.add(x.holder());
+        return out;
+    }
+
+    /** Kept from the newest data reload; see {@link #reopen}. */
+    public static void onAddReloadListeners(net.neoforged.neoforge.event.AddReloadListenerEvent e) {
+        List<net.minecraft.server.packs.resources.PreparableReloadListener> keep = new ArrayList<>();
+        for (var l : e.getListeners()) {
+            String name = nameOf(l);
+            for (String p : RECIPE_CACHES) {
+                if (name.startsWith(p)) {
+                    keep.add(l);
+                    break;
+                }
+            }
+        }
+        modListeners = keep;
+    }
+
+    /**
+     * The reload listeners that only forget a mod's own recipe list, by class name. Only these
+     * run on a new stage: a data listener (Apotheosis' affixes and elites, Silent Gear's parts)
+     * that runs outside a real reload loses its registry context and loads nothing, so running
+     * every listener empties those mods (seen in a test on 11.11.). Mods that keep recipes and
+     * forget them on a tag update instead are in {@link #forgetOnTags}.
+     */
+    private static final String[] RECIPE_CACHES = {
+            "mekanism.common.ReloadListener",
+            "com.simibubi.create.foundation.recipe.RecipeFinder",
+            "com.simibubi.create.foundation.recipe.trie.RecipeTrieFinder",
+            "com.simibubi.create.content.kinetics.belt.BeltHelper",
+            "me.desht.pneumaticcraft.common.recipes.PneumaticCraftRecipeType$CacheReloadListener",
+            "vazkii.botania.common.handler.BotaniaRecipeIngredientsCache",
+            "vazkii.botania.common.block.block_entity.CraftyCrateBlockEntity",
+            "xfacthd.framedblocks.common.crafting.FramingSawRecipeCache",
+            "plus.dragons.createcentralkitchen.common.packager.UnpackingRecipeCache",
+            "plus.dragons.createenchantmentindustry.integration.apothic_enchanting.common.processing.infuser.InfuserBlockEntity",
+            "org.violetmoon.zeta.util.handler.RecipeCrawlHandler",
+            "com.aetherteam.aether.data.ReloadListeners$RecipeReloadListener",
+            "com.hollingsworth.arsnouveau.common.event.EventHandler",
+    };
+
+    /** Mods that count reloads by tag updates and build their recipe lists again when the count moved (Immersive Engineering). */
+    private static void forgetOnTags() {
+        try {
+            Class.forName("blusunrize.immersiveengineering.api.crafting.cache.CachedRecipeList")
+                    .getMethod("onTagsUpdated", net.neoforged.neoforge.event.TagsUpdatedEvent.class).invoke(null, (Object) null);
+        } catch (ClassNotFoundException e) {
+            // not in the pack
+        } catch (ReflectiveOperationException | RuntimeException e) {
+            KronwerkeCore.LOGGER.warn("Immersive Engineering's recipe lists could not be renewed: {}", e.toString());
+        }
+    }
+
+    /** The class of a mod's listener, behind NeoForge's wrapper. */
+    static String nameOf(net.minecraft.server.packs.resources.PreparableReloadListener l) {
+        try {
+            java.lang.reflect.Field f = l.getClass().getDeclaredField("wrapped");
+            f.setAccessible(true);
+            Object w = f.get(l);
+            if (w != null) return w.getClass().getName();
+        } catch (ReflectiveOperationException | RuntimeException ignored) {
+            // not NeoForge's wrapper
+        }
+        return l.getClass().getName();
+    }
+
+    /**
+     * A new stage without reloading the data: the recipes of the last load are filtered again
+     * for the stage and handed to the recipe manager, which takes milliseconds instead of a
+     * reload of every data pack (5 to 6 seconds with the server standing still). The reload
+     * listeners of the mods that keep their own recipe lists (Mekanism, Create and others, see
+     * {@link #RECIPE_CACHES}) run after it, off the server thread where they can. Clients
+     * already have every recipe and get nothing. Answers false when there is nothing to filter
+     * (the locks were off at the last load): then the full reload is the way.
+     */
+    public static boolean reopen(MinecraftServer server, int stage) {
+        List<RecipeHolder<?>> all = loadedAll;
+        if (all.isEmpty()) return false;
+        long t0 = System.nanoTime();
+        java.util.Set<RecipeHolder<?>> back = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+        Map<RecipeType<?>, List<Held>> byType = new IdentityHashMap<>();
+        for (Held h : staged) {
+            if (h.stage() <= stage) continue;
+            back.add(h.holder());
+            byType.computeIfAbsent(h.holder().value().getType(), x -> new ArrayList<>()).add(h);
+        }
+        List<RecipeHolder<?>> keep = new ArrayList<>(all.size() - back.size());
+        for (RecipeHolder<?> h : all) if (!back.contains(h)) keep.add(h);
+        server.getRecipeManager().replaceRecipes(keep);
+        forgetOnTags();
+        held = byType;
+        heldCount = back.size();
+        appliedStage = stage;
+        long ms = (System.nanoTime() - t0) / 1_000_000;
+        KronwerkeCore.LOGGER.info("Stage {} is open: recipes filtered again in {} ms, {} held back", stage, ms, heldCount);
+        List<net.minecraft.server.packs.resources.PreparableReloadListener> mods = modListeners;
+        if (!mods.isEmpty()) {
+            long t1 = System.nanoTime();
+            // started from a worker thread like a real reload: some listeners wait in reload()
+            // for work they hand to the server thread, which would never come if they ran on it
+            java.util.concurrent.CompletableFuture.supplyAsync(() -> net.minecraft.server.packs.resources.SimpleReloadInstance.of(server.getResourceManager(), mods,
+                            net.minecraft.Util.backgroundExecutor(), server, java.util.concurrent.CompletableFuture.completedFuture(net.minecraft.util.Unit.INSTANCE)).done(),
+                    net.minecraft.Util.backgroundExecutor())
+                    .thenCompose(f -> f)
+                    .whenComplete((v, err) -> {
+                        if (err != null) KronwerkeCore.LOGGER.warn("The mods' reload after stage {} failed: {}", stage, err.toString());
+                        else KronwerkeCore.LOGGER.info("The mods' recipe caches are new for stage {} ({} listeners, {} ms)", stage, mods.size(), (System.nanoTime() - t1) / 1_000_000);
+                    });
+        }
+        return true;
     }
 
     /**
@@ -259,10 +394,11 @@ public final class MachineLocks {
     /** Every few seconds: when another stage is open than the recipes were loaded for, they load again. */
     public static void tick(MinecraftServer server, int currentStage) {
         if (!on() || appliedStage < 0 || currentStage == appliedStage) return;
-        // the reload holds the server for a few seconds: not in the middle of the rite that opened the stage
+        // not in the middle of the rite that opened the stage
         if (de.kronwerke.core.obelisk.ObeliskRite.running()) return;
-        KronwerkeCore.LOGGER.info("Stage {} is open now (the recipes were loaded for stage {}); the recipes load again", currentStage, appliedStage);
         writeStage(currentStage);
+        if (reopen(server, currentStage)) return;
+        KronwerkeCore.LOGGER.info("Stage {} is open now (the recipes were loaded for stage {}); the recipes load again", currentStage, appliedStage);
         appliedStage = currentStage; // once, even while the reload runs
         // the whole recipe set goes out again: the server holds a few seconds and every client's
         // recipe viewer rebuilds; players hear it first instead of wondering about the freeze
