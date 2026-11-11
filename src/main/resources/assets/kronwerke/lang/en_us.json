@@ -265,5 +265,6 @@
   "kronwerke.season.resume": "The season goes on.",
   "kronwerke.travel.busy": "You are on your way, one moment.",
   "kronwerke.travel.pull": "Your data is still on its way from %s. Try again in a few seconds.",
-  "kronwerke.gate.soon": "Starting any moment now. Try again in a few minutes."
+  "kronwerke.gate.soon": "Starting any moment now. Try again in a few minutes.",
+  "kronwerke.admin.side": "Here in %s only the players. Season, goals and places are managed in the main world."
 }

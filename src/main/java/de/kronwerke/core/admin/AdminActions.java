@@ -58,6 +58,11 @@ public final class AdminActions {
         String[] a = raw.split("\\|");
         String op = a[0];
         String arg = a.length > 1 ? a[1] : "";
+        // a side world's panel has only the players
+        if (!de.kronwerke.core.link.Role.main() && !java.util.Set.of("tp", "mode", "spawn", "kick", "refresh").contains(op)) {
+            KwNetwork.sendAdmin(p, "Das geht nur in der Hauptwelt.", true);
+            return;
+        }
         try {
             switch (op) {
                 case "season_start" -> {

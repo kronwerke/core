@@ -49,7 +49,13 @@ public final class KwCommand {
             c.getSource().sendSuccess(() -> de.kronwerke.core.Text.t("network.side", "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
                     de.kronwerke.core.link.NetworkSync.ownLabel()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
             return 1;
-        }).then(Commands.literal("admin").requires(s -> s.hasPermission(2)).then(loadtest()).then(tagIndex()).then(lag())));
+        }).then(Commands.literal("admin").requires(s -> s.hasPermission(2))
+                // the panel with the network's players; season, goals and slots stay on main
+                .executes(c -> {
+                    if (c.getSource().getEntity() instanceof net.minecraft.server.level.ServerPlayer p) de.kronwerke.core.net.KwNetwork.sendAdmin(p, 4, "", false);
+                    return 1;
+                })
+                .then(loadtest()).then(tagIndex()).then(lag())));
     }
 
     /** Times entities, machines and chunk ticks per chunk for a few seconds and names the costliest chunks. */

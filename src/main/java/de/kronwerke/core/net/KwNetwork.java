@@ -247,8 +247,9 @@ public final class KwNetwork {
     }
 
     /** The server tab: the start gate, the queue, the machine locks, the scaling, the network. */
+    /** side: the panel on a Nether, End or mining server, which only has the players. */
     public record ServerView(boolean gateOn, boolean beta, String gateList, boolean queueOn, String queue, int queueLimit,
-                             boolean locksOn, String locks, String scaling, String network) {
+                             boolean locksOn, String locks, String scaling, String network, boolean side) {
         static void write(RegistryFriendlyByteBuf b, ServerView v) {
             b.writeBoolean(v.gateOn);
             b.writeBoolean(v.beta);
@@ -260,11 +261,12 @@ public final class KwNetwork {
             b.writeUtf(v.locks);
             b.writeUtf(v.scaling);
             b.writeUtf(v.network);
+            b.writeBoolean(v.side);
         }
 
         static ServerView read(RegistryFriendlyByteBuf b) {
             return new ServerView(b.readBoolean(), b.readBoolean(), b.readUtf(), b.readBoolean(), b.readUtf(), b.readVarInt(),
-                    b.readBoolean(), b.readUtf(), b.readUtf(), b.readUtf());
+                    b.readBoolean(), b.readUtf(), b.readUtf(), b.readUtf(), b.readBoolean());
         }
     }
 
@@ -282,17 +284,19 @@ public final class KwNetwork {
     }
 
     /** place: how the player is on the whitelist ("Platz von X", "Streamer", "Team", "von Hand"). */
-    public record PlayerRow(String name, String where, boolean bypass, boolean creative, String place) {
+    /** server: the label of the server the player is on, empty when it is this one. */
+    public record PlayerRow(String name, String where, boolean bypass, boolean creative, String place, String server) {
         static void write(RegistryFriendlyByteBuf b, PlayerRow p) {
             b.writeUtf(p.name);
             b.writeUtf(p.where);
             b.writeBoolean(p.bypass);
             b.writeBoolean(p.creative);
             b.writeUtf(p.place);
+            b.writeUtf(p.server);
         }
 
         static PlayerRow read(RegistryFriendlyByteBuf b) {
-            return new PlayerRow(b.readUtf(), b.readUtf(), b.readBoolean(), b.readBoolean(), b.readUtf());
+            return new PlayerRow(b.readUtf(), b.readUtf(), b.readBoolean(), b.readBoolean(), b.readUtf(), b.readUtf());
         }
     }
 
@@ -440,9 +444,32 @@ public final class KwNetwork {
         sendAdmin(p, tab, Component.literal(message), error);
     }
 
+    /**
+     * The panel on a side world: only the players, of the whole network, with what works from
+     * here (teleport, game mode, spawn on this server; kick everywhere, since kicks are passed
+     * on). Season, goals and slots stay on main.
+     */
+    private static void sendAdminSide(ServerPlayer p, Component message, boolean error) {
+        List<PlayerRow> players = new ArrayList<>();
+        for (ServerPlayer o : p.getServer().getPlayerList().getPlayers()) {
+            players.add(new PlayerRow(o.getGameProfile().getName(), o.level().dimension().location().getPath().replace('_', ' '), false, o.isCreative(), "", ""));
+        }
+        for (var r : de.kronwerke.core.link.NetworkSync.remotePlayers()) players.add(new PlayerRow(r.name(), r.server(), false, false, "", r.server()));
+        players.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
+        Component msg = message.getString().isEmpty()
+                ? de.kronwerke.core.Text.t("admin.side", "Hier in %s nur die Spieler. Season, Ziele und Plätze verwaltest du in der Hauptwelt.", de.kronwerke.core.link.NetworkSync.ownLabel())
+                : message;
+        ServerView sv = new ServerView(false, false, "", false, "", 0, false, "", "", de.kronwerke.core.link.NetworkSync.ownLabel(), true);
+        PacketDistributor.sendToPlayer(p, new AdminPayload(4, false, 0, List.of(), List.of(), players, "", false, msg, error, sv));
+    }
+
     /** tab -1 keeps whatever tab the client shows. */
     public static void sendAdmin(ServerPlayer p, int tab, Component message, boolean error) {
         if (!p.hasPermissions(2)) return;
+        if (!de.kronwerke.core.link.Role.main()) {
+            sendAdminSide(p, message, error);
+            return;
+        }
         SlotManager sm = SlotManager.get();
         List<StreamerView> list = new ArrayList<>();
         for (SlotData.StreamerEntry e : sm.allStreamers()) {
@@ -475,7 +502,17 @@ public final class KwNetwork {
                 case "season1" -> "Season 1";
                 default -> "Team";
             } : from != null ? "Platz von " + from.name : o.hasPermissions(2) ? "Team" : "von Hand";
-            players.add(new PlayerRow(o.getGameProfile().getName(), where, d.hasBypass(o.getUUID()), o.isCreative(), place));
+            players.add(new PlayerRow(o.getGameProfile().getName(), where, d.hasBypass(o.getUUID()), o.isCreative(), place, ""));
+        }
+        // the whole network: players on the Nether, End and mining servers too (review R3-16)
+        for (var r : de.kronwerke.core.link.NetworkSync.remotePlayers()) {
+            SlotData.StreamerEntry own = sm.find(r.uuid()), from = sm.inviterOf(r.uuid());
+            String place = own != null && own.granted ? switch (own.kind) {
+                case "streamer" -> "Streamer";
+                case "season1" -> "Season 1";
+                default -> "Team";
+            } : from != null ? "Platz von " + from.name : "von Hand";
+            players.add(new PlayerRow(r.name(), r.server(), false, false, place, r.server()));
         }
         players.sort((a, b) -> a.name().compareToIgnoreCase(b.name()));
         de.kronwerke.core.obelisk.ObeliskData od = de.kronwerke.core.obelisk.Obelisk.get().data();
@@ -494,7 +531,7 @@ public final class KwNetwork {
                 de.kronwerke.core.lock.MachineLocks.on(),
                 de.kronwerke.core.lock.MachineLocks.on() ? "Stufe " + de.kronwerke.core.lock.MachineLocks.appliedStage() + " offen, " + de.kronwerke.core.lock.MachineLocks.heldCount() + " Rezepte zurückgehalten" : "aus",
                 gm.activePlayers() + " aktive Spieler (Fenster " + de.kronwerke.core.config.KronwerkeConfig.SCALE_DAYS.get() + " Tage)",
-                net.length() == 0 ? "allein" : net.toString());
+                net.length() == 0 ? "allein" : net.toString(), false);
         PacketDistributor.sendToPlayer(p, new AdminPayload(tab, season.running(), season.number(), goals, list, players, obelisk, built, message, error, sv));
     }
 
@@ -512,6 +549,10 @@ public final class KwNetwork {
             if (de.kronwerke.core.portal.Travel.frozen(p)) return;
             if (!allowAction(p, false)) return; // a flood of menu packets: dropped
             if (!de.kronwerke.core.link.Role.main()) {
+                if (payload.action().equals("admin")) {
+                    sendAdmin(p, 4, "", false);
+                    return;
+                }
                 p.sendSystemMessage(de.kronwerke.core.Text.t("network.main_only", "Das geht nur in der Hauptwelt.").withStyle(net.minecraft.ChatFormatting.GRAY));
                 return;
             }

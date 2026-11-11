@@ -49,6 +49,20 @@ public final class NetworkSync {
     /** A player on another server, as shown in this server's tab list. */
     record Remote(UUID uuid, String name, String rank, int ping, String skin, String skinSig, String server) {}
 
+    /** A player on another server of the network, with that server's label. */
+    public record RemotePlayer(UUID uuid, String name, String server) {}
+
+    /** Server thread: everyone on the other servers. */
+    public static List<RemotePlayer> remotePlayers() {
+        List<RemotePlayer> out = new ArrayList<>();
+        for (var e : remote.entrySet()) {
+            Peer peer = peers.get(e.getKey());
+            String label = peer == null || peer.label().isEmpty() ? e.getKey() : peer.label();
+            for (Remote r : e.getValue()) out.add(new RemotePlayer(r.uuid(), r.name(), label));
+        }
+        return out;
+    }
+
     private static MinecraftServer server;
     private static Bus bus;
     private static JsonObject policy = new JsonObject();

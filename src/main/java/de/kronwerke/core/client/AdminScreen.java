@@ -85,6 +85,7 @@ public final class AdminScreen extends KwScreen {
         listBottom = top + h - FOOT - 6;
         if (target != null) targetText = target.getValue();
         target = null;
+        if (side()) tab = 4; // a side world's panel has only the players
         switch (tab) {
             case 0 -> initOverview();
             case 1 -> initGoals();
@@ -214,6 +215,10 @@ public final class AdminScreen extends KwScreen {
         addRenderableWidget(FlatButton.confirm(cx, y, 150, "Rangliste hier", "Wand hier aufstellen?", FlatButton.Style.NORMAL, () -> send("board_here", "")).icon(new ItemStack(Items.CHISELED_DEEPSLATE)).tip("Stellt die Ranglisten-Wand vor dich"));
     }
 
+    private boolean side() {
+        return data.server() != null && data.server().side();
+    }
+
     private void initPlayers() {
         int y = listTop - scroll;
         int bw = 48;
@@ -221,6 +226,11 @@ public final class AdminScreen extends KwScreen {
             if (visible(y)) {
                 int bx = cx + cw - 5 * (bw + 4) + 4 - 6;
                 addRenderableWidget(FlatButton.confirm(bx + 4 * (bw + 4), y + 3, bw, "Kick", "Sicher?", FlatButton.Style.DANGER, () -> send("kick", pr.name())).tip("Wirft " + pr.name() + " vom Server"));
+                if (!pr.server().isEmpty()) {
+                    // on another server: a kick reaches them there, the rest does not
+                    y += ROW;
+                    continue;
+                }
                 addRenderableWidget(FlatButton.of(bx, y + 3, bw, "TP", () -> send("tp", pr.name())).tip("Teleportiert dich zu " + pr.name()));
                 addRenderableWidget(FlatButton.of(bx + bw + 4, y + 3, bw, pr.bypass() ? "Bypass aus" : "Bypass", () -> send("bypass", pr.name())).tip("Stufen-Sperren für diesen Spieler"));
                 addRenderableWidget(FlatButton.of(bx + 2 * (bw + 4), y + 3, bw, pr.creative() ? "Überleben" : "Kreativ", () -> send("mode", pr.name())).tip("Spielmodus wechseln"));
@@ -252,7 +262,7 @@ public final class AdminScreen extends KwScreen {
         }
         if (mx >= left + 6 && mx < left + SIDE && my >= top + HEAD + 6) {
             int i = (int) ((my - top - HEAD - 6) / 26);
-            if (i >= 0 && i < TABS.length && i != tab) {
+            if (i >= 0 && i < TABS.length && i != tab && !side()) {
                 tab = i;
                 scroll = 0;
                 Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.UI_BUTTON_CLICK, 1.2f));
@@ -276,6 +286,11 @@ public final class AdminScreen extends KwScreen {
 
     @Override
     protected void drawHeaderRight(GuiGraphics g, int x1, int y) {
+        if (side()) {
+            String here = data.server().network();
+            Ui.chip(g, font, here, x1 - font.width(here) - 8, y, 0xFF5a3f86);
+            return;
+        }
         String chip = data.seasonRunning() ? "Season " + data.seasonNumber() + " läuft" : "Vorbereitung";
         Ui.chip(g, font, chip, x1 - font.width(chip) - 8, y, data.seasonRunning() ? 0xFF2f6e3a : 0xFF5a3f86);
     }
@@ -294,8 +309,8 @@ public final class AdminScreen extends KwScreen {
                 g.fill(left + 8, ty, left + SIDE - 2, ty + 24, 0x30FFFFFF);
             }
             g.renderItem(ICONS[i], left + 14, ty + 4);
-            g.drawString(font, TABS[i], left + 36, ty + 8, i == tab ? Ui.TEXT : Ui.MUTED, false);
-            if (hover && i != tab) hover(TAB_TIPS[i]);
+            g.drawString(font, TABS[i], left + 36, ty + 8, i == tab ? Ui.TEXT : side() ? 0xFF55505C : Ui.MUTED, false);
+            if (hover && i != tab) hover(side() ? "Nur in der Hauptwelt" : TAB_TIPS[i]);
         }
         switch (tab) {
             case 0 -> drawOverview(g);
@@ -479,8 +494,8 @@ public final class AdminScreen extends KwScreen {
             face(g, pr.name(), cx + 4, y + 4, 16);
             g.drawString(font, Ui.fit(font, pr.name(), textW - 26), cx + 24, y + 4, Ui.TEXT, false);
             List<String> tags = new ArrayList<>();
-            tags.add(pr.where());
-            tags.add(pr.place());
+            tags.add(pr.server().isEmpty() ? pr.where() : "auf " + pr.server());
+            if (!pr.place().isEmpty()) tags.add(pr.place());
             if (pr.bypass()) tags.add("Bypass");
             if (pr.creative()) tags.add("Kreativ");
             g.drawString(font, Ui.fit(font, String.join(", ", tags), textW - 26), cx + 24, y + 13, Ui.MUTED, false);

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.32.0
+
+- The admin panel lists the players of the whole network, with the server they are on; a kick reaches them there. On the Nether, End and mining servers `/kw admin` opens the panel with the network's players (teleport, game mode and spawn for those on that server, kick for everyone); season, goals and slots stay on main. (R3-16)
+
 ## 0.31.0
 
 Round 2 and 3 of the production review.
