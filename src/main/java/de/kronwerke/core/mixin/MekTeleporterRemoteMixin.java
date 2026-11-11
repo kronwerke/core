@@ -57,10 +57,10 @@ public abstract class MekTeleporterRemoteMixin {
         Level here = ((BlockEntity) (Object) this).getLevel();
         if (here == null) return null;
         for (Entity e : getToTeleport(here == target, target)) {
-            if (!(e instanceof ServerPlayer p) || Travel.frozen(p)) continue;
+            if (!(e instanceof ServerPlayer p) || Travel.frozen(p) || FrequencyLayer.held(p.getUUID())) continue;
             long cost = TileEntityTeleporter.calculateEnergyCost(p, target, place);
             if (energyContainer.extract(cost, Action.SIMULATE, AutomationType.INTERNAL) < cost) continue;
-            if (!Travel.moveTo(p, remote.peer(), FrequencyLayer.arrival(remote, p.getYRot()))) continue;
+            if (!Travel.moveTo(p, remote.peer(), FrequencyLayer.arrival(remote, p.getYRot(), p.getUUID()))) continue;
             energyContainer.extract(cost, Action.EXECUTE, AutomationType.INTERNAL);
             didTeleport.add(p.getUUID());
             teleDelay = 5;

@@ -47,7 +47,7 @@ public abstract class MekPortableTeleporterRemoteMixin {
         }
         player.closeContainer();
         if (player.isPassenger()) player.stopRiding();
-        if (!Travel.moveTo(player, remote.peer(), FrequencyLayer.arrival(remote, player.getYRot()))) return null;
+        if (!Travel.moveTo(player, remote.peer(), FrequencyLayer.arrival(remote, player.getYRot(), player.getUUID()))) return null;
         if (energy != null) energy.extract(cost, Action.EXECUTE, AutomationType.MANUAL);
         player.level().playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.PLAYER_TELEPORT, SoundSource.PLAYERS);
         return null;

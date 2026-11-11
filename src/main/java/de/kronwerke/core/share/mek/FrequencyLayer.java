@@ -375,14 +375,53 @@ public final class FrequencyLayer implements Layer {
     @Override
     public AwayData.Back arrive(MinecraftServer server, JsonObject arrive) {
         if (!arrive.has("layer") || !name().equals(arrive.get("layer").getAsString())) return null;
+        try {
+            UUID id = UUID.fromString(arrive.get("id").getAsString());
+            hold.put(id, System.currentTimeMillis() + 30_000);
+            ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(arrive.get("dim").getAsString())));
+            BlockPos at = new BlockPos(arrive.get("px").getAsInt(), arrive.get("py").getAsInt(), arrive.get("pz").getAsInt());
+            TileEntityTeleporter tile = level == null ? null : WorldUtils.getTileEntity(TileEntityTeleporter.class, level, at);
+            if (tile != null) {
+                // Mekanism's own guard, for as long as it lasts
+                tile.didTeleport.add(id);
+                tile.teleDelay = 100;
+            }
+        } catch (RuntimeException e) {
+            // an older Core on the other side: they arrive all the same
+        }
         return new AwayData.Back(arrive.get("dim").getAsString(), arrive.get("x").getAsDouble(), arrive.get("y").getAsDouble(), arrive.get("z").getAsDouble(),
                 arrive.get("yaw").getAsFloat());
     }
 
+    /**
+     * Who came out of a teleporter here from another server, and when they were last seen in
+     * a frame (at first: when they are expected at the latest). Mekanism keeps arrivals from
+     * going straight back by a list in the teleporter, which it clears of everyone who is not
+     * standing there; a player from another server is not standing there yet for seconds.
+     */
+    private static final Map<UUID, Long> hold = new java.util.concurrent.ConcurrentHashMap<>();
+
+    /** Whether the player just arrived through a teleporter and has not left its frame since. */
+    public static boolean held(UUID id) {
+        Long t = hold.get(id);
+        if (t == null) return false;
+        long now = System.currentTimeMillis();
+        if (now > t + 1500) {
+            hold.remove(id);
+            return false;
+        }
+        if (now > t) hold.put(id, now);
+        return true;
+    }
+
     /** What the move of a player to a remote teleporter carries: where they come out. */
-    public static JsonObject arrival(Remote r, float yaw) {
+    public static JsonObject arrival(Remote r, float yaw, UUID player) {
         JsonObject a = new JsonObject();
         a.addProperty("layer", "mek.freq");
+        a.addProperty("id", player.toString());
+        a.addProperty("px", r.pos().getX());
+        a.addProperty("py", r.pos().getY());
+        a.addProperty("pz", r.pos().getZ());
         a.addProperty("dim", r.dim());
         a.addProperty("x", r.target().getX() + 0.5);
         a.addProperty("y", r.target().getY());

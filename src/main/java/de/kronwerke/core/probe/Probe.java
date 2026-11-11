@@ -75,6 +75,7 @@ public final class Probe {
     private static final Deque<String> chat = new ArrayDeque<>();
     private static final Map<KeyMapping, Integer> held = new HashMap<>();
     private static int wait;
+    private static long frameCount, waitFrame;
     private static String lastScreen = "", lastLevel = "", lastPhase = "", lastServer = "";
     private static boolean optionsSet;
 
@@ -115,6 +116,7 @@ public final class Probe {
     private static void frame() {
         lastFrame = System.nanoTime();
         frames++;
+        frameCount++;
         long now = System.currentTimeMillis();
         if (now - frameWindowStart >= 1000) {
             fps = (int) (frames * 1000 / (now - frameWindowStart));
@@ -224,7 +226,8 @@ public final class Probe {
             wait--;
             return;
         }
-        while (wait == 0 && !queue.isEmpty()) {
+        if (frameCount < waitFrame) return;
+        while (wait == 0 && frameCount >= waitFrame && !queue.isEmpty()) {
             String line = queue.removeFirst();
             try {
                 String answer = run(mc, line);
@@ -329,9 +332,15 @@ public final class Probe {
                 mouseMove(mc, Double.parseDouble(p[0]), Double.parseDouble(p[1]));
                 return null;
             case "click": {
+                // many screens work out what is under the mouse while they draw: move first, press two frames later
+                mouseMove(mc, Double.parseDouble(p[0]), Double.parseDouble(p[1]));
+                queue.addFirst("press " + rest);
+                waitFrame = frameCount + 2;
+                return null;
+            }
+            case "press": {
                 int button = p.length > 2 ? Integer.parseInt(p[2]) : 0;
                 double x = Double.parseDouble(p[0]), y = Double.parseDouble(p[1]);
-                mouseMove(mc, x, y);
                 Screen sc = mc.screen;
                 if (sc == null) return "no screen";
                 // the screen's own path, as the mouse handler takes it: without the window's size in
