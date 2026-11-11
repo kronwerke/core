@@ -64,10 +64,14 @@ public final class JeiKeep {
         keptUntil = 0;
         var con = Minecraft.getInstance().getConnection();
         int now = con == null ? -2 : con.getRecipeManager().getRecipes().size();
-        if (now != recipes) {
+        // the same pack on every server, but not always the very same number: after a restart the
+        // farm world had 45077 recipes and main 45078 (11.11.2026). A handful in 45000 is not
+        // worth stopping the game for 20 seconds at every move; another pack version is.
+        if (Math.abs(now - recipes) > Math.max(3, recipes / 2000)) {
             KronwerkeCore.LOGGER.info("JEI starts again: this server has {} recipes, the last one had {}", now, recipes);
             return false;
         }
+        if (now != recipes) KronwerkeCore.LOGGER.info("JEI stays although this server has {} recipes and the last one had {}", now, recipes);
         return true;
     }
 

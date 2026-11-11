@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.8
+
+- JEI is also kept across a move when the two servers differ by a handful of recipes (up to 3, or one in 2000). After a restart the farm world had 45077 recipes and main 45078; with 0.39.7 that no longer drops the connection but still stopped the game for JEI's whole start at every move.
+
 ## 0.39.7
 
 - A move no longer ends in "Network Protocol Error" when the two servers do not have exactly the same recipes. JEI is kept across a move by skipping its stop; when the recipes differ JEI restarts itself, which is a stop and a start in one go, the stop was skipped again, and the start "from started to started" threw inside the handling of a packet, so the game dropped the connection. Seen on the real servers on 11.11.: the farm world had 45077 recipes and main 45078, the test player was thrown out of the farm world at every arrival and sent back there at every login. JEI is now stopped for real before such a start.
