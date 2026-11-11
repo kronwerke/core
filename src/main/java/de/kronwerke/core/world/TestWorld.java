@@ -74,9 +74,10 @@ public final class TestWorld {
         ServerLevel level = level(server);
         if (clearMobs && level != null) {
             for (Row r : queue) load(level, r);
-            for (Entity e : level.getAllEntities()) {
-                if (e.getTags().contains("kw_shot")) e.discard();
-            }
+            // a copy: discarding while walking the level's own list skips entities and hands out nulls
+            java.util.List<Entity> all = new java.util.ArrayList<>();
+            for (Entity e : level.getAllEntities()) if (e != null) all.add(e);
+            for (Entity e : all) if (e.getTags().contains("kw_shot")) e.discard();
         }
         total = queue.size();
         report = done;

@@ -62,6 +62,7 @@ public final class CameraShots {
             KronwerkeCore.LOGGER.info("Camera screen: {}", screen);
         }
         reconnect(mc);
+        closeScreens(mc);
         if (job == null || mc.level == null || mc.player == null) return;
         waited++;
         // the sections around the camera have to be built first; at most 30 seconds
@@ -123,6 +124,21 @@ public final class CameraShots {
             byte[] part = java.util.Arrays.copyOfRange(png, from, Math.min(png.length, from + ShotPartPayload.MAX));
             PacketDistributor.sendToServer(new ShotPartPayload(p.id(), i, total, part));
         }
+    }
+
+    /**
+     * Screens a player would see in the world (the Origins choice on first join, a guide book,
+     * a welcome window) would cover the picture: the camera closes them. Loading screens stay.
+     */
+    private static void closeScreens(Minecraft mc) {
+        if (mc.level == null || mc.player == null || mc.screen == null) return;
+        if (mc.screen instanceof net.minecraft.client.gui.screens.ReceivingLevelScreen
+                || mc.screen instanceof net.minecraft.client.gui.screens.LevelLoadingScreen
+                || mc.screen instanceof net.minecraft.client.gui.screens.ProgressScreen
+                || mc.screen instanceof net.minecraft.client.gui.screens.GenericMessageScreen
+                || mc.screen instanceof ConnectScreen
+                || mc.screen instanceof DisconnectedScreen) return;
+        mc.setScreen(null);
     }
 
     /** Back onto the server after a restart or a kick, every 30 seconds. */
