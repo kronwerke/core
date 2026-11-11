@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.1
+
+- Malum's weeping well check no longer loads chunks on the server thread. The guard from 0.25 checked 8 blocks around the player, but Lodestone's search reaches up to 26 blocks on the positive side; with 50 players flying through new Nether terrain the tick waited 60 seconds for such a chunk and the watchdog stopped the server. The guard now covers every chunk the search touches.
+
 ## 0.27.0
 
 The Nether and the End on servers of their own, and every finding of the production review.
