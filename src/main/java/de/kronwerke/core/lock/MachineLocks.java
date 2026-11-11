@@ -319,15 +319,7 @@ public final class MachineLocks {
         Component what = resultName(hit, sl);
         Component msg = message(hit.stage(), actor != null && ActingContext.inGrid(), what);
         if (actor != null) {
-            toldPlayerAt.put(actor.getUUID(), now);
-            // over the window the player works in (a machine, a crafting grid); the action bar
-            // when no window is open (an altar, a ritual) or the client has no Core
-            boolean window = actor.containerMenu != actor.inventoryMenu || ActingContext.inGrid();
-            if (window && actor.connection.hasChannel(de.kronwerke.core.net.LockHintPayload.TYPE)) {
-                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(actor, new de.kronwerke.core.net.LockHintPayload(BlockPos.ZERO, true, msg));
-            } else {
-                actor.displayClientMessage(msg, true);
-            }
+            tellActor(actor, msg, now);
         } else {
             toldAt.put(at.asLong(), now);
             if (toldAt.size() > 4096) toldAt.clear();
@@ -343,6 +335,45 @@ public final class MachineLocks {
             }
         }
         return null;
+    }
+
+    private static void tellActor(ServerPlayer actor, Component msg, long now) {
+        toldPlayerAt.put(actor.getUUID(), now);
+        // over the window the player works in (a machine, a crafting grid); the action bar
+        // when no window is open (an altar, a ritual) or the client has no Core
+        boolean window = actor.containerMenu != actor.inventoryMenu || ActingContext.inGrid();
+        if (window && actor.connection.hasChannel(de.kronwerke.core.net.LockHintPayload.TYPE)) {
+            net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(actor, new de.kronwerke.core.net.LockHintPayload(BlockPos.ZERO, true, msg));
+        } else {
+            actor.displayClientMessage(msg, true);
+        }
+    }
+
+    /**
+     * A machine with its own recipe list (Mekanism) refused an input a player put in: when a
+     * held back recipe of that machine would have taken it, the player hears which stage it
+     * needs. Only for a player's click, never for pipes and hoppers, and at most every three
+     * seconds per player.
+     */
+    public static void missedInput(RecipeType<?> type, Level level, java.util.function.Predicate<Object> fits) {
+        ServerPlayer actor = ActingContext.player();
+        if (actor == null || !(level instanceof ServerLevel sl) || held.isEmpty()) return;
+        long now = System.currentTimeMillis();
+        Long last = toldPlayerAt.get(actor.getUUID());
+        if (last != null && now - last < 3000) return;
+        List<Held> list = held.get(type);
+        if (list == null) return;
+        for (Held h : list) {
+            boolean hit;
+            try {
+                hit = fits.test(h.holder().value());
+            } catch (RuntimeException e) {
+                hit = false;
+            }
+            if (!hit || hasStage(actor, h.stage())) continue;
+            tellActor(actor, message(h.stage(), false, resultName(h, sl)), now);
+            return;
+        }
     }
 
     private static final boolean CHAPTERS = net.neoforged.fml.ModList.get().isLoaded("chapters");

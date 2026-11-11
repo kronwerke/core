@@ -43,6 +43,7 @@
     "LootrTickerMixin",
     "MahouLivingMixin",
     "MalumWellLoadedMixin",
+    "MekanismInputLocksMixin",
     "MowzieLivingTickMixin",
     "NetherPortalCrossingMixin",
     "PlayerCrossingMixin",
