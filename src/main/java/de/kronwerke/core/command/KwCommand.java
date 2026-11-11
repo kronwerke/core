@@ -46,6 +46,11 @@ public final class KwCommand {
     /** On a side world: /kw only says where things are; season, goals and slots live on main. */
     public static void registerSide(CommandDispatcher<CommandSourceStack> d) {
         d.register(Commands.literal("kw").executes(c -> {
+            if (c.getSource().getEntity() instanceof net.minecraft.server.level.ServerPlayer p) {
+                // the same hub as at home: main builds it for this player
+                de.kronwerke.core.net.HubLink.ask(p, "");
+                return 1;
+            }
             c.getSource().sendSuccess(() -> de.kronwerke.core.Text.t("network.side", "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
                     de.kronwerke.core.link.NetworkSync.ownLabel()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
             return 1;

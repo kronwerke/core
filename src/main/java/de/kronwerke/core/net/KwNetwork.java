@@ -389,6 +389,16 @@ public final class KwNetwork {
     }
 
     public static void sendHub(ServerPlayer p, Component message, boolean error) {
+        if (!de.kronwerke.core.link.Role.main()) {
+            // a side world: main has the goals and builds the same hub for this player
+            HubLink.ask(p, "");
+            return;
+        }
+        PacketDistributor.sendToPlayer(p, hub(p.getUUID(), p.hasPermissions(2), message, error));
+    }
+
+    /** The hub of one player, built on main (for a player here, or for one on a side world, see HubLink). */
+    static HubPayload hub(java.util.UUID id, boolean admin, Component message, boolean error) {
         de.kronwerke.core.goal.GoalManager gm = de.kronwerke.core.goal.GoalManager.get();
         de.kronwerke.core.goal.GoalData d = gm.progressData();
         List<GoalView> goals = new ArrayList<>();
@@ -427,16 +437,15 @@ public final class KwNetwork {
         int rank = 0, hands = 0;
         if (running != null) {
             var pts = gm.points(running);
-            mine = pts.getOrDefault(p.getUUID(), 0L);
-            rank = gm.rank(running, p.getUUID());
+            mine = pts.getOrDefault(id, 0L);
+            rank = gm.rank(running, id);
             hands = pts.size();
         }
-        int streak = de.kronwerke.core.obelisk.Obelisk.get().data().streak(p.getUUID());
+        int streak = de.kronwerke.core.obelisk.Obelisk.get().data().streak(id);
         HubMine me = new HubMine(de.kronwerke.core.config.KronwerkeConfig.SEASON_NAME.get(), mine, rank, hands, streak);
-        boolean admin = p.hasPermissions(2);
         // the whitelist button only for players with places of their own to give
-        boolean streamer = admin || SlotManager.get().ownSlots(p.getUUID()) != null;
-        PacketDistributor.sendToPlayer(p, new HubPayload(goals, streamer, admin, message, error, me));
+        boolean streamer = admin || SlotManager.get().ownSlots(id) != null;
+        return new HubPayload(goals, streamer, admin, message, error, me);
     }
 
     public static void sendAdmin(ServerPlayer p, String message, boolean error) {
@@ -561,7 +570,11 @@ public final class KwNetwork {
                     sendAdmin(p, 4, "", false);
                     return;
                 }
-                p.sendSystemMessage(de.kronwerke.core.Text.t("network.main_only", "Das geht nur in der Hauptwelt.").withStyle(net.minecraft.ChatFormatting.GRAY));
+                switch (payload.action()) {
+                    case "hub" -> HubLink.ask(p, "");
+                    case "deposit", "deposit_all" -> HubLink.ask(p, "deposit");
+                    default -> HubLink.ask(p, "main_only");
+                }
                 return;
             }
             SlotManager sm = SlotManager.get();

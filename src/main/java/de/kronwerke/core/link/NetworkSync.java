@@ -207,6 +207,10 @@ public final class NetworkSync {
                     de.kronwerke.core.goal.StageLink.onBypassMessage(server, d);
                     return;
                 }
+                if (topic.equals(de.kronwerke.core.net.HubLink.TOPIC) && m.get("data") instanceof JsonObject d) {
+                    de.kronwerke.core.net.HubLink.onMessage(server, str(m, "from"), d);
+                    return;
+                }
                 if (topic.equals(Moderation.TOPIC) && m.get("data") instanceof JsonObject d) {
                     Moderation.onMessage(str(m, "from"), d);
                     return;

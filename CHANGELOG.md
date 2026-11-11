@@ -2,6 +2,7 @@
 
 ## 0.39.5
 
+- The /kw hub opens on every server. In the farm world, the Nether and the End it only said that season, goals and places are in the main world; now main builds the hub for the player who asked and the side world shows it, with the same goals, numbers and rank. Giving to the goal and the whitelist still need the main world and say so in the hub's own line.
 - AE2: taking something out of a terminal that is still in main's storage (network linked over a quantum bridge between servers) takes one click: the click that came too early is done again when the things are here. Seen on the real servers before: the first click on the gold gave nothing, the second took it.
 
 ## 0.39.4
