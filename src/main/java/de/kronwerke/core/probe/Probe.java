@@ -151,7 +151,10 @@ public final class Probe {
                     event("STALL " + took + " ms in " + (cut > 0 ? first.substring(0, cut) : first));
                     if (took >= 1000) {
                         StringBuilder sb = new StringBuilder(stamp() + " STALL " + took + " ms\n");
-                        for (var en : top) sb.append("  ").append(en.getValue()).append("x ").append(en.getKey()).append('\n');
+                        for (var en : top) {
+                            String k = en.getKey();
+                            sb.append("  ").append(en.getValue()).append("x ").append(k.length() > 420 ? k.substring(0, 420) : k).append('\n');
+                        }
                         append("stalls.log", sb.toString());
                     }
                 }
@@ -172,8 +175,8 @@ public final class Probe {
                 if (n == 0 && sb.length() == 0) sb.append(c.substring(c.lastIndexOf('.') + 1)).append('.').append(e.getMethodName()).append(" < ");
                 continue;
             }
-            sb.append(c.substring(c.lastIndexOf('.') + 1)).append('.').append(e.getMethodName()).append(':').append(e.getLineNumber());
-            if (++n >= 16) break;
+            sb.append(c.substring(c.lastIndexOf('.') + 1)).append('.').append(e.getMethodName());
+            if (++n >= 12) break;
             sb.append(" < ");
         }
         return sb.toString();
@@ -327,12 +330,26 @@ public final class Probe {
                 return null;
             case "click": {
                 int button = p.length > 2 ? Integer.parseInt(p[2]) : 0;
-                mouseMove(mc, Double.parseDouble(p[0]), Double.parseDouble(p[1]));
-                Method m = mc.mouseHandler.getClass().getDeclaredMethod("onPress", long.class, int.class, int.class, int.class);
-                m.setAccessible(true);
-                m.invoke(mc.mouseHandler, mc.getWindow().getWindow(), button, 1, 0);
-                m.invoke(mc.mouseHandler, mc.getWindow().getWindow(), button, 0, 0);
-                return null;
+                double x = Double.parseDouble(p[0]), y = Double.parseDouble(p[1]);
+                mouseMove(mc, x, y);
+                Screen sc = mc.screen;
+                if (sc == null) return "no screen";
+                // the screen's own path, as the mouse handler takes it: without the window's size in
+                // between, which the camera's window (no display) does not report
+                sc.afterMouseAction();
+                boolean done = net.neoforged.neoforge.client.ClientHooks.onScreenMouseClickedPre(sc, x, y, button);
+                if (!done) {
+                    done = sc.mouseClicked(x, y, button);
+                    done = net.neoforged.neoforge.client.ClientHooks.onScreenMouseClickedPost(sc, x, y, button, done);
+                }
+                if (mc.screen == sc) {
+                    boolean up = net.neoforged.neoforge.client.ClientHooks.onScreenMouseReleasedPre(sc, x, y, button);
+                    if (!up) {
+                        up = sc.mouseReleased(x, y, button);
+                        net.neoforged.neoforge.client.ClientHooks.onScreenMouseReleasedPost(sc, x, y, button, up);
+                    }
+                }
+                return done ? "handled" : "not handled";
             }
             case "scroll": {
                 mouseMove(mc, Double.parseDouble(p[0]), Double.parseDouble(p[1]));
@@ -417,6 +434,9 @@ public final class Probe {
         StringBuilder sb = new StringBuilder();
         sb.append("screen=").append(mc.screen == null ? "-" : mc.screen.getClass().getName());
         if (mc.screen != null) sb.append(" title=\"").append(mc.screen.getTitle().getString()).append('"');
+        var win = mc.getWindow();
+        sb.append("\nwindow=").append(win.getScreenWidth()).append('x').append(win.getScreenHeight()).append(" frame=").append(win.getWidth()).append('x').append(win.getHeight())
+                .append(" gui=").append(win.getGuiScaledWidth()).append('x').append(win.getGuiScaledHeight());
         sb.append("\nserver=").append(server(mc)).append(" overlay=").append(TravelOverlay.phaseName()).append(" fps=").append(fps)
                 .append(" lowest=").append(lowFps);
         lowFps = 999;
@@ -519,6 +539,14 @@ public final class Probe {
     /** Puts the pointer somewhere on the screen, in the screen's own (scaled) coordinates. */
     private static void mouseMove(Minecraft mc, double x, double y) throws Exception {
         var win = mc.getWindow();
+        if (win.getScreenWidth() <= 0 || win.getScreenHeight() <= 0) {
+            // a window without a display reports no size: the frame's size is the window's
+            for (String f : new String[] {"width", "height"}) {
+                Field fl = win.getClass().getDeclaredField(f);
+                fl.setAccessible(true);
+                fl.setInt(win, f.equals("width") ? win.getWidth() : win.getHeight());
+            }
+        }
         double px = x * win.getScreenWidth() / win.getGuiScaledWidth(), py = y * win.getScreenHeight() / win.getGuiScaledHeight();
         Method m = mc.mouseHandler.getClass().getDeclaredMethod("onMove", long.class, double.class, double.class);
         m.setAccessible(true);
