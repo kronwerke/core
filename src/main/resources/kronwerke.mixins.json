@@ -87,6 +87,7 @@
     "WaystoneTravelMixin"
   ],
   "client": [
+    "ChatKeepMixin",
     "JeiKeepMixin",
     "QuestFileDropMixin",
     "StaleHolderIdMixin",

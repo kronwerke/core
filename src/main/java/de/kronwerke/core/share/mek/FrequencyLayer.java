@@ -403,9 +403,15 @@ public final class FrequencyLayer implements Layer {
 
     /** Whether the player just arrived through a teleporter and has not left its frame since. */
     public static boolean held(UUID id) {
+        long now = System.currentTimeMillis();
+        // anyone who just arrived from another server, however: main puts a player who comes home
+        // where they left, and for one who left through a teleporter that is inside its frame
+        if (de.kronwerke.core.portal.Travel.arrivedFrom(id) != null) {
+            hold.put(id, now);
+            return true;
+        }
         Long t = hold.get(id);
         if (t == null) return false;
-        long now = System.currentTimeMillis();
         if (now > t + 1500) {
             hold.remove(id);
             return false;
