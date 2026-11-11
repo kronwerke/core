@@ -63,6 +63,7 @@ public final class CameraShots {
         }
         reconnect(mc);
         closeScreens(mc);
+        if (mc.level != null && mc.level.getGameTime() % 20 == 0) openAllStages();
         if (job == null || mc.level == null || mc.player == null) return;
         waited++;
         // the sections around the camera have to be built first; at most 30 seconds
@@ -139,6 +140,22 @@ public final class CameraShots {
                 || mc.screen instanceof ConnectScreen
                 || mc.screen instanceof DisconnectedScreen) return;
         mc.setScreen(null);
+    }
+
+    /**
+     * The pictures show what a stage looks like once it is open: the camera sees every item
+     * as unlocked (no "???" veils, no hidden names), whatever the server has opened so far.
+     * Only on the camera's own client; the server's locks stay as they are.
+     */
+    private static void openAllStages() {
+        if (!net.neoforged.fml.ModList.get().isLoaded("chapters")) return;
+        java.util.Set<net.minecraft.resources.ResourceLocation> all = new java.util.HashSet<>(com.gabinx.chapters.stage.ClientStageCache.snapshot());
+        int before = all.size();
+        for (var m : java.util.List.of(com.gabinx.chapters.stage.ClientStageIndices.itemsView(), com.gabinx.chapters.stage.ClientStageIndices.fluidsView(),
+                com.gabinx.chapters.stage.ClientStageIndices.chemicalsView(), com.gabinx.chapters.stage.ClientStageIndices.recipesView())) {
+            for (var stages : m.values()) all.addAll(stages);
+        }
+        if (all.size() != before) com.gabinx.chapters.stage.ClientStageCache.set(all);
     }
 
     /** Back onto the server after a restart or a kick, every 30 seconds. */

@@ -130,7 +130,11 @@ public final class CameraCommand {
     private static int run(CommandContext<CommandSourceStack> c, String prefix) {
         MinecraftServer s = c.getSource().getServer();
         List<Job> jobs = new ArrayList<>();
-        try (Reader r = s.getResourceManager().getResourceOrThrow(LIST).openAsReader()) {
+        // kronwerke/shots/shots.json in the server folder wins over the pack's list, so poses can
+        // be tried out without a pack update
+        java.nio.file.Path local = Camera.shotsDir().resolve("shots.json");
+        try (Reader r = java.nio.file.Files.exists(local) ? java.nio.file.Files.newBufferedReader(local)
+                : s.getResourceManager().getResourceOrThrow(LIST).openAsReader()) {
             JsonElement root = JsonParser.parseReader(r);
             JsonArray list = root.isJsonArray() ? root.getAsJsonArray() : root.getAsJsonObject().getAsJsonArray("shots");
             for (JsonElement e : list) {
