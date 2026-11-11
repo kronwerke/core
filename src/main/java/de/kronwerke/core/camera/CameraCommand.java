@@ -65,7 +65,21 @@ public final class CameraCommand {
                 }))
                 .then(Commands.literal("run").executes(c -> run(c, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> run(c, StringArgumentType.getString(c, "prefix")))))
+                .then(Commands.literal("bundle").executes(c -> bundle(c, ""))
+                        .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> bundle(c, StringArgumentType.getString(c, "prefix")))))
                 .then(shotNode())));
+    }
+
+    /** Packs the small copies in shots/opt into pieces for the console (shots/bundle). */
+    private static int bundle(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c, String prefix) {
+        try {
+            int n = ShotFiles.bundle(Camera.shotsDir(), prefix);
+            ok(c, n + " Bilder in kronwerke/shots/bundle gepackt.");
+            return n;
+        } catch (java.io.IOException e) {
+            c.getSource().sendFailure(Component.literal("Nicht gepackt: " + e.getMessage()));
+            return 0;
+        }
     }
 
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> shotNode() {

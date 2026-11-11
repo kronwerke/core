@@ -108,26 +108,10 @@ public final class Camera {
         try {
             Files.createDirectories(SHOTS);
             Files.write(SHOTS.resolve(p.name() + ".png"), png);
-            writeParts(p.name(), png);
+            ShotFiles.writeOptimised(SHOTS, p.name(), png);
             p.done().accept("");
         } catch (IOException e) {
             p.done().accept("Nicht gespeichert: " + e.getMessage());
-        }
-    }
-
-    /** Pieces of at most 150 KB in shots/parts, so the console's files API can hand out large pictures. */
-    private static final int PART = 150_000;
-
-    private static void writeParts(String name, byte[] png) throws IOException {
-        Path dir = SHOTS.resolve("parts");
-        Files.createDirectories(dir);
-        try (var old = Files.newDirectoryStream(dir, name + ".png.*")) {
-            for (Path f : old) Files.deleteIfExists(f);
-        }
-        int n = (png.length + PART - 1) / PART;
-        for (int i = 0; i < n; i++) {
-            int from = i * PART;
-            Files.write(dir.resolve(String.format("%s.png.%03d", name, i)), java.util.Arrays.copyOfRange(png, from, Math.min(png.length, from + PART)));
         }
     }
 
