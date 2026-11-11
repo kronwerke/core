@@ -7,7 +7,7 @@
 
 ## 0.39.4
 
-- Flux Networks: a network made in the farm world reaches the other servers. An older Core had left that world's number counter far above its block of numbers, so what was made there belonged to no server and was never sent (seen on the real servers: number 364540001 instead of 1000001). The counter is put back into the server's block at start, on main as well (351730000 there), and the networks made with those numbers count as made on their server, so they travel too.
+- Flux Networks: networks reach the other servers at all. Flux Networks starts the number counter of a new world at a random number up to 500 million; Core only raised it when it was below the server's block of numbers, so on the real servers main counted from 351730000 and the farm world from 364540000, and what was made with such a number belonged to no server and was never sent. The counter is now put into the server's block on the first tick, on every server. Networks that already have such a number stay where they are.
 - Powah: an ender channel is as large on every server as on the one where it is largest. A channel only gets room from energy cells put into an ender cell, so a cell placed in the farm world showed 0/0 FE and took nothing while the same channel had room at home.
 
 ## 0.39.3

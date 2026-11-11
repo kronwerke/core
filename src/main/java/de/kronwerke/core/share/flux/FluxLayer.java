@@ -247,14 +247,9 @@ public final class FluxLayer implements Layer {
         };
     }
 
-    /**
-     * Whether a server of that role made the network with this number: its block, or the block
-     * an older Core gave every server from its role's name (main 351, the farm world 364), in
-     * which the test networks of November 2026 were made.
-     */
+    /** Whether a server of that role made the network with this number. */
     private static boolean made(String role, int id) {
-        int b = id / SIDE_IDS;
-        return b == block(role) || b == 4 + Math.floorMod(role.hashCode(), 500);
+        return id / SIDE_IDS == block(role);
     }
 
     private static boolean mine(int id) {
@@ -264,8 +259,10 @@ public final class FluxLayer implements Layer {
     private void keepIdsApart() {
         try {
             FluxNetworkData d = FluxNetworkData.getInstance();
-            // the counter has to be inside this server's block: an older Core left the mining
-            // world's far above it, and what was made with such a number was nobody's network
+            // the counter has to be inside this server's block. Flux Networks starts a new world's
+            // counter at a random number up to 500 million (FluxNetworkData's constructor), far
+            // outside it, and a network made with such a number was nobody's: it never travelled.
+            // This runs on the first tick, before a player can make one.
             int from = SIDE_IDS * block(Role.role()), now = uniqueId.getInt(d);
             if (now < from || now >= from + SIDE_IDS) {
                 int last = from;
