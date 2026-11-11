@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.38.2
+
+- JEI stays up while a player moves between the servers of the network. It stopped at the logout and built everything again at the login, which stood the whole client still in the middle of the travel animation (25 seconds on the test client, most of the time of a move). The pack and its recipes are the same on every server, so on a move JEI is kept; a server with a different number of recipes makes it start again as before. Enchantments and the other data-driven registries are sent anew by every server: an object of the old connection that JEI still holds is found by its name when it is sent to the server.
+- The quest book of a login no longer takes the old copy apart quest by quest (each one searched all 3 500 others): the old copy is only marked as gone.
+- Mekanism's frequencies are one list on every server: a teleporter, QIO or entangloporter frequency made or deleted on one server is there or gone on the others a second later, with name, owner and security. Before, a frequency had to be made by hand with the same name on both sides.
+- Mekanism's teleporter and portable teleporter reach a teleporter on another server: the servers tell each other where their active teleporters stand, and a teleport to one of another server moves the player there, in front of that teleporter, for the usual energy.
+- A move to a place on another server (a waystone, a teleporter) from main remembers where the player stood, for a way back that names no place.
+
 ## 0.38.1
 
 - The test player's pictures are JPEGs that fit through the console's API, its timeline keeps one line per standstill (the stacks go to `stalls.log`), `log REGEX` reads the client's own log, and one line takes several commands.

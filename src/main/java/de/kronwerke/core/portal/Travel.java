@@ -361,7 +361,17 @@ public final class Travel {
     public static boolean moveTo(ServerPlayer p, String peer, JsonObject arrive) {
         NetworkSync.Peer target = NetworkSync.peer(peer);
         if (target == null || !target.bus() || !target.running() || peer.equals(Role.server())) return false;
-        depart(p, target, null, arrive);
+        JsonObject back = null;
+        if (Role.main()) {
+            // main remembers where they stood, for a way home that names no place (the mining world's portal)
+            back = new JsonObject();
+            back.addProperty("dim", p.level().dimension().location().toString());
+            back.addProperty("x", p.getX());
+            back.addProperty("y", p.getY());
+            back.addProperty("z", p.getZ());
+            back.addProperty("yaw", p.getYRot());
+        }
+        depart(p, target, back, arrive);
         return true;
     }
 

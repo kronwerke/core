@@ -35,6 +35,11 @@ public final class TravelOverlay {
     private TravelOverlay() {
     }
 
+    /** Whether the server said that this client is on its way to another server of the network. */
+    public static boolean moving() {
+        return phase == GO && !arrived;
+    }
+
     /** For the test player's timeline. */
     public static String phaseName() {
         return switch (phase) {
