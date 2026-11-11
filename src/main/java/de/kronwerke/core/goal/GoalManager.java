@@ -414,7 +414,7 @@ public final class GoalManager {
     }
 
     /** Feedback for inserts that come stack after stack (an intake fed by a belt or a pipe). */
-    private record Batch(Goal goal, Goal.PillarItem item, ItemStack shown, UUID who, Component name, long amount, long since) {}
+    private record Batch(Goal goal, Goal.PillarItem item, ItemStack shown, UUID who, Component name, long amount, long since, long last) {}
 
     private final Map<String, Batch> batches = new LinkedHashMap<>();
 
@@ -439,14 +439,16 @@ public final class GoalManager {
                 if (batch) {
                     String key = who + "|" + g.id() + "|" + it.item();
                     Batch b = batches.get(key);
-                    batches.put(key, new Batch(g, it, shown, who, name, (b == null ? 0 : b.amount()) + take, b == null ? System.currentTimeMillis() : b.since()));
+                    long t = System.currentTimeMillis();
+                    batches.put(key, new Batch(g, it, shown, who, name, (b == null ? 0 : b.amount()) + take, b == null ? t : b.since(), t));
                 } else {
                     feedback(g, it, shown, who, name, take, announce);
                 }
                 // a held goal waits for the event even when the last piece filled it
                 if (isHeld(g)) announceHold(g);
                 else if (done(g) >= total(g)) complete(g);
-                refreshBossBar();
+                // a pipe into the intake deposits every few ticks: the bar is sent at most once a second
+                barDue = true;
                 if (server != null) {
                     ServerPlayer depositor = server.getPlayerList().getPlayer(who);
                     if (depositor != null) de.kronwerke.core.steps.FirstSteps.deposited(depositor);
@@ -467,12 +469,27 @@ public final class GoalManager {
     }
 
     /** Every second: batches older than three seconds give their feedback, once. */
+    private boolean barDue;
+    private long barAt;
+
+    /**
+     * Deposits from a pipe or a farm are told when the feed has been quiet for ten seconds,
+     * or once a minute while it keeps running; a hand deposit after three seconds as before
+     * (review R2-08: a running intake used to post every three seconds).
+     */
     public void flushBatches() {
-        if (batches.isEmpty()) return;
         long now = System.currentTimeMillis();
+        if (barDue && now - barAt >= 1000) {
+            barDue = false;
+            barAt = now;
+            refreshBossBar();
+        }
+        if (batches.isEmpty()) return;
         for (var it = batches.values().iterator(); it.hasNext(); ) {
             Batch b = it.next();
-            if (now - b.since() < 3000) continue;
+            boolean running = b.last() - b.since() >= 2000; // more than one deposit, spread out: a feed
+            long quiet = now - b.last();
+            if (running ? quiet < 10_000 && now - b.since() < 60_000 : now - b.since() < 3000) continue;
             it.remove();
             feedback(b.goal(), b.item(), b.shown(), b.who(), b.name(), b.amount(), true);
         }
@@ -527,7 +544,10 @@ public final class GoalManager {
             }
             back += x.amount();
         }
-        if (back > 0) refreshBossBar();
+        if (back > 0) {
+            refreshBossBar();
+            de.kronwerke.core.obelisk.Obelisk.get().undoStreak(player.getUUID());
+        }
         return back;
     }
 

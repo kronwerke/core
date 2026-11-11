@@ -521,7 +521,7 @@ public final class KwNetwork {
                 case "invite" -> {
                     SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
                     if (me == null || !(KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || p.hasPermissions(2))) {
-                        send(p, false, de.kronwerke.core.Text.t("slots.discord", "Einladen geht über Discord: /whitelist add im Kronwerke-Discord."), true);
+                        send(p, false, de.kronwerke.core.Text.t("slots.discord", "Plätze verwaltest du im Discord: /whitelist verwalten."), true);
                         return;
                     }
                     if (!allowAction(p, true)) {
@@ -564,6 +564,12 @@ public final class KwNetwork {
                 case "revoke" -> {
                     SlotData.StreamerEntry me = sm.ownSlots(p.getUUID());
                     if (me == null || !allowAction(p, true)) return;
+                    // with slots managed in Discord a removal here would leave the bot's invite
+                    // behind, the same rule as for invites (review R3-07)
+                    if (!(KronwerkeConfig.STREAMERS_MANAGE_OWN_SLOTS.get() || p.hasPermissions(2))) {
+                        send(p, false, de.kronwerke.core.Text.t("slots.discord", "Plätze verwaltest du im Discord: /whitelist verwalten."), true);
+                        return;
+                    }
                     java.util.UUID id = null;
                     for (var e : me.invited.entrySet()) if (e.getValue().equalsIgnoreCase(name)) id = e.getKey();
                     SlotManager.Result res = id == null ? SlotManager.Result.NOT_INVITED_BY_YOU : sm.revoke(me, new com.mojang.authlib.GameProfile(id, me.invited.get(id)));

@@ -154,7 +154,7 @@ public final class Travel {
      * pick nothing up, so nothing they do there can exist twice.
      */
     public static boolean frozen(ServerPlayer p) {
-        return busy(p.getUUID());
+        return busy(p.getUUID()) || Crossing.held(p.getUUID());
     }
 
     /** A frozen player takes no damage: dying after the snapshot would drop what also travels. */
@@ -339,6 +339,14 @@ public final class Travel {
      * Sends a player home from a side world to a place a layer of the shared network names (a
      * waystone on main, say): main puts them there instead of in front of their portal.
      */
+    /** Moves a player to a named server of the network (a waystone there); false when it is not up. */
+    public static boolean moveTo(ServerPlayer p, String peer, JsonObject arrive) {
+        NetworkSync.Peer target = NetworkSync.peer(peer);
+        if (target == null || !target.bus() || !target.running() || peer.equals(Role.server())) return false;
+        depart(p, target, null, arrive);
+        return true;
+    }
+
     public static boolean moveTo(ServerPlayer p, JsonObject arrive) {
         NetworkSync.Peer target = NetworkSync.portalTarget();
         if (Role.main() || target == null || !target.bus() || !target.running()) return false;
@@ -576,6 +584,10 @@ public final class Travel {
                     }
                     case "player.cancel" -> cancelled(from, d);
                     case "kw.items" -> receiveItems(from, d);
+                    case "kw.items.ok" -> {
+                        ItemSend sent = itemSends.remove(str(d, "sid"));
+                        if (sent != null && d.get("lost") instanceof JsonArray lost && !lost.isEmpty()) drop(sent); // unknown there: back here
+                    }
                     default -> {
                         // a newer Core's topic
                     }
@@ -617,6 +629,7 @@ public final class Travel {
             away.home(id);
         } else {
             AwayData.Back b = Crossing.arrive(server, id, a, tag);
+            if (b == null && a != null) b = de.kronwerke.core.share.Share.arrive(a); // a waystone of this server
             if (b == null) b = Dimensions.dimensionServer() ? Crossing.fallback(server, tag) : Hub.arrival(server);
             place(tag, b);
             // the mining world's overworld is not main's: a bed on main means nothing there
@@ -869,6 +882,7 @@ public final class Travel {
         Entity owner = item.getOwner();
         if (owner != null) data.addProperty("thrower", owner.getUUID().toString());
         String id = UUID.randomUUID().toString();
+        data.addProperty("sid", id);
         itemSends.put(id, new ItemSend(item.level().dimension(), item.getX(), item.getY(), item.getZ(), List.of(stack.copy()), System.currentTimeMillis() + 10_000));
         item.discard();
         NetworkSync.send(target.name(), "kw.items", data, id);
@@ -879,7 +893,10 @@ public final class Travel {
         if (server == null) return;
         server.execute(() -> {
             if (delivered) {
-                itemSends.remove(id);
+                // on the other server's socket, not yet in its world: kept until it says so
+                // (kw.items.ok), and dropped back here if it never does (review R3-10)
+                ItemSend s = itemSends.get(id);
+                if (s != null) itemSends.put(id, new ItemSend(s.dim(), s.x(), s.y(), s.z(), s.stacks(), System.currentTimeMillis() + 20_000));
                 return;
             }
             ItemSend s = itemSends.remove(id);
@@ -916,16 +933,24 @@ public final class Travel {
         if (level == null) level = server.overworld();
         level.getChunk(BlockPos.containing(at.x(), at.y(), at.z())); // loaded, so the items are kept
         if (d.get("extra") instanceof JsonObject x) Compat.restore(server, x); // a thrown backpack's contents
+        JsonArray lost = new JsonArray();
         for (JsonElement e : d.getAsJsonArray("items")) {
             CompoundTag raw = decode(e.getAsString());
             ItemStack st = ItemStack.parseOptional(level.registryAccess(), raw);
             if (st.isEmpty()) {
-                KronwerkeCore.LOGGER.warn("An item thrown through the portal from {} is unknown here and was lost: {}", from, raw.getString("id"));
+                KronwerkeCore.LOGGER.warn("An item thrown through the portal from {} is unknown here and goes back: {}", from, raw.getString("id"));
+                lost.add(raw.getString("id"));
                 continue;
             }
             ItemEntity ie = new ItemEntity(level, at.x(), at.y() + 0.5, at.z(), st, 0, 0.1, 0);
             ie.setPickUpDelay(10);
             level.addFreshEntity(ie);
+        }
+        if (d.has("sid")) {
+            JsonObject ok = new JsonObject();
+            ok.addProperty("sid", str(d, "sid"));
+            ok.add("lost", lost);
+            NetworkSync.send(from, "kw.items.ok", ok, null);
         }
     }
 

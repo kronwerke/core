@@ -70,12 +70,24 @@ public final class Crossing {
      * A portal block wants to send an entity across (from the portal mixins). True when the
      * crossing is taken over here (or refused), so the block returns no destination.
      */
+    /** When a rider may be told again that the portal does not take their mount. */
+    private static final java.util.Map<java.util.UUID, Long> rideHint = new java.util.HashMap<>();
+
     public static boolean portal(ServerLevel level, Entity e, BlockPos pos, boolean end) {
         ResourceKey<Level> to = end
                 ? (level.dimension() == Level.END ? Level.OVERWORLD : Level.END)
                 : (level.dimension() == Level.NETHER ? Level.OVERWORLD : Level.NETHER);
         if (Dimensions.here(to)) return false;
-        if (!(e instanceof ServerPlayer p)) return true; // animals, items and carts stay on this side
+        if (!(e instanceof ServerPlayer p)) {
+            // a horse, boat or cart with a player on it stays too: tell the rider why (R2-06)
+            for (Entity rider : e.getPassengers()) {
+                if (rider instanceof ServerPlayer rp && rideHint.getOrDefault(rp.getUUID(), 0L) < level.getGameTime()) {
+                    rideHint.put(rp.getUUID(), level.getGameTime() + 100);
+                    rp.displayClientMessage(Text.t("portal.ride", "Steig erst ab: das Portal nimmt nur dich mit, kein Reittier und kein Boot.").withStyle(ChatFormatting.GRAY), true);
+                }
+            }
+            return true; // animals, items and carts stay on this side
+        }
         if (Travel.busy(p.getUUID())) return true;
         if (!CommonHooks.onTravelToDimension(p, to)) return true; // a stage lock said no, and told the player
         NetworkSync.Peer host = Dimensions.host(to);
@@ -176,13 +188,18 @@ public final class Crossing {
                 return false;
             });
         }
+        heldAt.keySet().removeIf(id -> !holds.containsKey(id));
         if (holds.isEmpty()) return;
         long now = System.currentTimeMillis();
         for (var it = holds.entrySet().iterator(); it.hasNext(); ) {
             var en = it.next();
             Hold h = en.getValue();
-            if (h.notBefore() > now) continue;
             ServerPlayer p = s.getPlayerList().getPlayer(en.getKey());
+            if (p != null && !p.isDeadOrDying() && !Role.main()) {
+                Vec3 at = heldAt.computeIfAbsent(en.getKey(), k -> p.position());
+                if (p.position().distanceToSqr(at) > 2.25) p.teleportTo(at.x, at.y, at.z);
+            }
+            if (h.notBefore() > now) continue;
             if (p == null || p.isDeadOrDying()) continue; // still on the death screen, or gone: wait
             if (Travel.busy(p.getUUID())) continue;
             NetworkSync.Peer peer = NetworkSync.peer(h.peer());
@@ -410,9 +427,31 @@ public final class Crossing {
 
     // ---- small things ----
 
-    /** A spot on this server where a player waits for a moment: the overworld spawn. */
+    /**
+     * A spot on this server where a player waits for a moment. On the End server that is
+     * the End's own platform, not an overworld nobody plays; elsewhere the overworld spawn.
+     * Wherever it is, a waiting player cannot walk off, build or be hurt (held()), so
+     * nothing happens there that would be lost (review R2-07).
+     */
     private static AwayData.Back holding(MinecraftServer s) {
+        if (Dimensions.dimensionServer() && Dimensions.here(Level.END)) {
+            ServerLevel end = s.getLevel(Level.END);
+            if (end != null) {
+                net.minecraft.world.level.levelgen.feature.EndPlatformFeature.createEndPlatform(end, ServerLevel.END_SPAWN_POINT.below(), true);
+                BlockPos at = ServerLevel.END_SPAWN_POINT;
+                return new AwayData.Back(Level.END.location().toString(), at.getX() + 0.5, at.getY(), at.getZ() + 0.5, 90);
+            }
+        }
         return Travel.spawn(s);
+    }
+
+    /** Where held players were put, so they stay there. */
+    private static final java.util.Map<UUID, Vec3> heldAt = new java.util.HashMap<>();
+
+    /** Whether the player waits here for a move to another server. */
+    public static boolean held(UUID id) {
+        // on main the waiting room is the real world: there a player plays on while waiting
+        return !Role.main() && holds.containsKey(id);
     }
 
     /** main: where a player who leaves for the End comes back if the End goes down: their bed, or the spawn. */

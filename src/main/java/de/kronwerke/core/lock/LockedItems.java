@@ -139,8 +139,12 @@ public final class LockedItems {
 
     /** Attacking with a locked weapon in hand: the audit moves it within a tick, the hit does not land. */
     public static void onAttack(net.neoforged.neoforge.event.entity.player.AttackEntityEvent event) {
-        if (event.getEntity() instanceof ServerPlayer player && !(player instanceof net.neoforged.neoforge.common.util.FakePlayer)
-                && isLocked(player, player.getMainHandItem())) {
+        if (!(event.getEntity() instanceof ServerPlayer player)) return;
+        if (player instanceof net.neoforged.neoforge.common.util.FakePlayer) {
+            if (lockedForServer(player.getMainHandItem())) event.setCanceled(true);
+            return;
+        }
+        if (isLocked(player, player.getMainHandItem())) {
             event.setCanceled(true);
             audit(player);
         }
@@ -149,10 +153,15 @@ public final class LockedItems {
     /** Using, placing or hitting with a locked item in hand. */
     public static void onInteract(PlayerInteractEvent event) {
         if (!(event.getEntity() instanceof ServerPlayer player)) return;
-        // machines with a fake player (deployers, placers): their owner's stages are not theirs,
-        // and a machine must never stay locked out after the stage opened for everyone
-        if (player instanceof net.neoforged.neoforge.common.util.FakePlayer) return;
         if (!(event instanceof ICancellableEvent cancellable)) return;
+        // machines with a fake player (deployers, placers, mob crushers) have no stages of
+        // their own: they go by the stages open on the server. Once a stage opened for
+        // everyone they are never locked out, and before that they cannot use its tools,
+        // weapons or wands either (review R2-05)
+        if (player instanceof net.neoforged.neoforge.common.util.FakePlayer) {
+            if (lockedForServer(player.getItemInHand(event.getHand()))) cancellable.setCanceled(true);
+            return;
+        }
         if (isLocked(player, player.getItemInHand(event.getHand()))) {
             cancellable.setCanceled(true);
             audit(player);
@@ -175,6 +184,26 @@ public final class LockedItems {
         };
         player.displayClientMessage(Component.translatableWithFallback("kronwerke.locked." + what, fallback, item, stage)
                 .withStyle(ChatFormatting.GRAY), true);
+    }
+
+    /** Whether an item belongs to a Kronwerke stage the server has not opened yet. */
+    static boolean lockedForServer(ItemStack stack) {
+        if (!CHAPTERS || stack.isEmpty()) return false;
+        int open = MachineLocks.appliedStage();
+        if (open < 1) return false; // locks are off, or not loaded yet
+        Set<ResourceLocation> stages = StageManager.get().itemStagesIndexView().get(BuiltInRegistries.ITEM.getKey(stack.getItem()));
+        if (stages == null) return false;
+        int need = Integer.MAX_VALUE;
+        for (ResourceLocation s : stages) {
+            if (s.getNamespace().equals("kronwerke") && s.getPath().startsWith("stage")) {
+                try {
+                    need = Math.min(need, Integer.parseInt(s.getPath().substring(5)));
+                } catch (NumberFormatException ignored) {
+                    // a stage of another kind
+                }
+            }
+        }
+        return need != Integer.MAX_VALUE && need > open;
     }
 
     /** The first stage that unlocks the item and the player does not have. */

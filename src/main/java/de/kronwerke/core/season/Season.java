@@ -78,6 +78,9 @@ public final class Season extends SavedData {
     /** Resets every goal and opens the season. */
     public void start() {
         GoalManager gm = GoalManager.get();
+        // the launcher's backup runs later and would already see the reset: Core first keeps
+        // its own copy of the goals, the obelisk and the season as they are now (review R2-03)
+        keepCopy();
         de.kronwerke.core.link.NetworkSync.requestBackup("season start");
         // the beta's play time says nothing about the season's players: the first goal is
         // scaled from the expected count and again after the first day (GoalManager.activate)
@@ -102,6 +105,34 @@ public final class Season extends SavedData {
         server.getPlayerList().broadcastSystemMessage(Text.t("season.resume", "Die Season geht weiter.")
                 .withStyle(ChatFormatting.GOLD), false);
         KronwerkeCore.LOGGER.info("Season {} resumed", number);
+    }
+
+    /**
+     * Writes every dirty saved data and copies Kronwerke's own files (goals, obelisk, season,
+     * slots) to kronwerke/season-backups/<time>/, before a start resets them. Putting them
+     * back: stop the server and copy them into world/data.
+     */
+    private void keepCopy() {
+        try {
+            server.overworld().getDataStorage().save();
+            java.nio.file.Path data = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("data");
+            java.nio.file.Path to = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).resolve("kronwerke").resolve("season-backups")
+                    .resolve("season-" + number + "-" + java.time.LocalDateTime.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss")));
+            java.nio.file.Files.createDirectories(to);
+            int n = 0;
+            try (var files = java.nio.file.Files.list(data)) {
+                for (java.nio.file.Path f : (Iterable<java.nio.file.Path>) files::iterator) {
+                    String name = f.getFileName().toString();
+                    if (name.startsWith("kronwerke") && name.endsWith(".dat")) {
+                        java.nio.file.Files.copy(f, to.resolve(name));
+                        n++;
+                    }
+                }
+            }
+            KronwerkeCore.LOGGER.info("Kept a copy of {} Kronwerke files before the season start in {}", n, to);
+        } catch (java.io.IOException | RuntimeException e) {
+            KronwerkeCore.LOGGER.error("Could not keep a copy before the season start: {}", e.toString());
+        }
     }
 
     /** Back to preparation, without touching any progress. */

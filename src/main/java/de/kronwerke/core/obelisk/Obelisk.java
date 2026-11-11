@@ -656,6 +656,19 @@ public final class Obelisk {
         }
     }
 
+    /** The streak before today's gift set it: last day, length, when (seconds). For /kw undo. */
+    private final java.util.Map<java.util.UUID, int[]> streakBefore = new java.util.HashMap<>();
+
+    /**
+     * /kw undo took back the gift that set today's streak (within its ten seconds): the day
+     * does not count (review R2-13).
+     */
+    public void undoStreak(java.util.UUID player) {
+        int[] b = streakBefore.remove(player);
+        if (b == null || System.currentTimeMillis() / 1000 - b[2] > 15) return;
+        data().setStreak(player, b[0], b[1]);
+    }
+
     /**
      * The daily offering: the first deposit of a player each day counts for their streak. A
      * streak of seven lights an ember that follows the player around the obelisk.
@@ -666,6 +679,7 @@ public final class Obelisk {
         int lastDay = d.streakDay(player.getUUID());
         if (lastDay == day) return;
         int length = lastDay == day - 1 ? d.streak(player.getUUID()) + 1 : 1;
+        streakBefore.put(player.getUUID(), new int[]{lastDay, d.streak(player.getUUID()), (int) (System.currentTimeMillis() / 1000)});
         d.setStreak(player.getUUID(), day, length);
         Component msg = length == 1
                 ? Text.t("obelisk.tithe_first", "Tagesgabe. Komm morgen wieder, dann zählt die Serie.")

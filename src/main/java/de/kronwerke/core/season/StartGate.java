@@ -34,13 +34,29 @@ public final class StartGate {
         if (!s.gateClosed()) return null;
         if (server.getPlayerList().isOp(profile) || s.gateAllows(profile)) return null;
         if (s.beta() && de.kronwerke.core.slot.SlotManager.get().hasOwnPlace(profile.getId())) return null;
-        String[] when = when(KronwerkeConfig.SEASON_START.get().trim());
+        String start = KronwerkeConfig.SEASON_START.get().trim();
+        if (passed(start)) {
+            // the team starts a little late: no date in the past on the screen (review R3-15)
+            return Component.empty()
+                    .append(Component.literal(KronwerkeConfig.SEASON_NAME.get()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                    .append("\n\n")
+                    .append(Text.t("gate.soon", "Gleich geht es los. Versuch es in ein paar Minuten noch einmal.").withStyle(ChatFormatting.WHITE));
+        }
+        String[] when = when(start);
         return Component.empty()
                 .append(Component.literal(KronwerkeConfig.SEASON_NAME.get()).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
                 .append("\n\n")
                 .append(Text.t("gate.start", "Startet " + when[0] + ".", when[0], when[1]).withStyle(ChatFormatting.WHITE))
                 .append("\n")
                 .append(Text.t("gate.listed", "Du stehst auf der Whitelist, bis dann!").withStyle(ChatFormatting.GRAY));
+    }
+
+    static boolean passed(String iso) {
+        try {
+            return !LocalDateTime.parse(iso).atZone(KronwerkeConfig.zone()).toInstant().isAfter(java.time.Instant.now());
+        } catch (DateTimeParseException e) {
+            return false;
+        }
     }
 
     private static final DateTimeFormatter DE = DateTimeFormatter.ofPattern("'am' EEEE, d. MMMM yyyy, 'um' H 'Uhr'", Locale.GERMAN);

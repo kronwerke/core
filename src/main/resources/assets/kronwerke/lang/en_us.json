@@ -231,7 +231,7 @@
   "kronwerke.season.caught_up": "New season: your stages start at 1 again.",
   "kronwerke.season.start": "The season begins. The obelisk is empty, every goal starts over.",
   "kronwerke.slots.confirm": "Is this the right account? %s still has to join the Kronwerke Discord afterwards, or the place is gone again.",
-  "kronwerke.slots.discord": "Inviting goes through Discord: /whitelist add in the Kronwerke Discord.",
+  "kronwerke.slots.discord": "Places are managed in Discord: /whitelist verwalten.",
   "kronwerke.slots.full": "You have no free place left.",
   "kronwerke.slots.full_n": "You have no free place left (%s).",
   "kronwerke.slots.has_place": "%s already has a place.",
@@ -264,5 +264,6 @@
   "kronwerke.undo.none": "Nothing to give back: only gifts from the last ten seconds, and not when they filled or paused the goal.",
   "kronwerke.season.resume": "The season goes on.",
   "kronwerke.travel.busy": "You are on your way, one moment.",
-  "kronwerke.travel.pull": "Your data is still on its way from %s. Try again in a few seconds."
+  "kronwerke.travel.pull": "Your data is still on its way from %s. Try again in a few seconds.",
+  "kronwerke.gate.soon": "Starting any moment now. Try again in a few minutes."
 }

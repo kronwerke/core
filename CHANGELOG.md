@@ -11,6 +11,18 @@ Round 2 and 3 of the production review.
 - A frozen traveller's refused pickup of a locked item is not turned back on. (R3-09)
 - Boss scaling counts its extra attacks by game time, so a reloaded boss keeps them. (R2-11)
 - The tag index keeps entities in the order they were added, like vanilla's lookup. (R2-15)
+- Machines with a fake player (deployers, placers, mob crushers) go by the stages open on the server: they cannot use a later stage's tools and weapons, and are never locked out once a stage is open. (R2-05)
+- A pipe or farm feeding the obelisk is told in chat when it has been quiet for ten seconds, or once a minute while it runs, not every three seconds; the boss bar is sent at most once a second. (R2-08)
+- /kw undo of the gift that started today's streak takes the day back. (R2-13)
+- After the planned start time the start gate says "Gleich geht es los" instead of a time in the past. (R3-15)
+- A rider in a Nether or End portal is told to get off, as at the mining portal. (R2-06)
+- A player waiting on the Nether or End server for main (main restarting, a respawn on main) cannot walk off, build or be hurt; on the End server they wait on the End's platform, not in an overworld nobody plays. (R2-07)
+- A season start first copies Kronwerke's own data (goals, obelisk, season, slots) to `kronwerke/season-backups/`, since the launcher's backup runs after the reset. (R2-03)
+- Quest progress from a side world goes to main only when it changed; otherwise a short question, and main answers only with news. Members' quest books are resynced only after a merge that changed something. (R2-14)
+- With slots managed in Discord the slot menu has no "Entfernen" and the server refuses a removal from there, like an invite. (R3-07)
+- Bans, pardons, kicks and operator changes made in game count on every server of the network (without selectors). (R3-05)
+- Waystones of the Nether and End servers show on every server, and choosing one moves the player there, as main's already did. (R3-06)
+- An item thrown through the mining portal counts as delivered when the other server has it in its world (`kw.items.ok`); if that answer does not come, it drops back out of the portal here. Items unknown there come back. (R3-10)
 
 ## 0.30.0
 

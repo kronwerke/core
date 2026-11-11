@@ -225,7 +225,7 @@
   "kronwerke.season.caught_up": "Neue Season: deine Stufen starten wieder bei 1.",
   "kronwerke.season.start": "Die Season beginnt. Der Obelisk ist leer, alle Ziele starten von vorn.",
   "kronwerke.slots.confirm": "Ist das das richtige Konto? %s muss danach noch dem Kronwerke-Discord beitreten, sonst ist der Platz wieder weg.",
-  "kronwerke.slots.discord": "Einladen geht über Discord: /whitelist add im Kronwerke-Discord.",
+  "kronwerke.slots.discord": "Plätze verwaltest du im Discord: /whitelist verwalten.",
   "kronwerke.slots.full": "Du hast keinen freien Platz mehr.",
   "kronwerke.slots.full_n": "Du hast keinen freien Platz mehr (%s).",
   "kronwerke.slots.has_place": "%s hat schon einen Platz.",
@@ -258,5 +258,6 @@
   "kronwerke.undo.none": "Nichts zum Zurückgeben: nur Gaben der letzten zehn Sekunden, und nicht, wenn das Ziel damit voll oder angehalten ist.",
   "kronwerke.season.resume": "Die Season geht weiter.",
   "kronwerke.travel.busy": "Du bist gerade unterwegs, gleich geht es weiter.",
-  "kronwerke.travel.pull": "Deine Daten kommen gerade noch aus %s. Versuch es in ein paar Sekunden noch einmal."
+  "kronwerke.travel.pull": "Deine Daten kommen gerade noch aus %s. Versuch es in ein paar Sekunden noch einmal.",
+  "kronwerke.gate.soon": "Gleich geht es los. Versuch es in ein paar Minuten noch einmal."
 }

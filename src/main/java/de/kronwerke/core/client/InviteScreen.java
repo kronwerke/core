@@ -95,7 +95,8 @@ public final class InviteScreen extends KwScreen {
         }
         int y = listY();
         for (KwNetwork.Entry e : data.entries()) {
-            addRenderableWidget(FlatButton.confirm(left + w - 12 - 76, y + 3, 76, tr("invite.remove", "Entfernen"), tr("invite.sure", "Sicher?"), FlatButton.Style.DANGER, () -> send("revoke", e.name())).tip(tr("invite.remove_tip", "Nimmt %s von der Whitelist", e.name()), tr("invite.remove_tip2", "Der Platz wird wieder frei")));
+            // removing goes through Discord when inviting does (review R3-07)
+            if (data.extra().canInvite()) addRenderableWidget(FlatButton.confirm(left + w - 12 - 76, y + 3, 76, tr("invite.remove", "Entfernen"), tr("invite.sure", "Sicher?"), FlatButton.Style.DANGER, () -> send("revoke", e.name())).tip(tr("invite.remove_tip", "Nimmt %s von der Whitelist", e.name()), tr("invite.remove_tip2", "Der Platz wird wieder frei")));
             y += ROW_H;
             fetchSkin(e);
         }

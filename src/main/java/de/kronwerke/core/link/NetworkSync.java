@@ -68,6 +68,7 @@ public final class NetworkSync {
     // ---- life ----
 
     public static void start(MinecraftServer s) {
+        Moderation.start(s);
         server = s;
         bus = Bus.fromLauncher(m -> s.execute(() -> handle(m)), () -> s.execute(NetworkSync::resync));
         if (bus != null) bus.start();
@@ -186,6 +187,10 @@ public final class NetworkSync {
                 if ((topic.startsWith("player.") || topic.startsWith("kw.items")) && m.get("data") instanceof JsonObject d) {
                     if (!d.has("id") && !str(m, "id").isEmpty()) d.addProperty("id", str(m, "id"));
                     de.kronwerke.core.portal.Travel.onMessage(str(m, "from"), topic, d);
+                    return;
+                }
+                if (topic.equals(Moderation.TOPIC) && m.get("data") instanceof JsonObject d) {
+                    Moderation.onMessage(str(m, "from"), d);
                     return;
                 }
                 if (topic.equals(de.kronwerke.core.share.Share.TOPIC) && m.get("data") instanceof JsonObject d) {

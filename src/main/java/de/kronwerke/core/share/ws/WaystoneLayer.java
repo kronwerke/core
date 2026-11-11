@@ -32,10 +32,13 @@ import java.util.Set;
 import java.util.UUID;
 
 /**
- * Waystones between servers. On a side world, main's waystones are in the list too (the player
- * file already knows which ones a player has found); choosing one moves the player home, standing
- * at that waystone. They are kept in the side world's list with a dimension of their own
- * ({@code kronwerke:remote/...}), so even without this layer a jump there could only fail.
+ * Waystones between servers. Main and the Nether and End servers each send their own
+ * waystones to the others (the mining world's do not travel, that world resets); every
+ * server shows them in its list (the player file already knows which ones a player has
+ * found), and choosing one moves the player to that server, standing at that waystone.
+ * They are kept with a dimension of their own ({@code kronwerke:remote/<server>/...}), so
+ * even without this layer a jump there could only fail. Before, only main sent its list,
+ * so a Nether hub never showed up in the overworld (review R3-06).
  */
 public final class WaystoneLayer implements Layer {
     private static final String REMOTE = "remote/";
@@ -59,11 +62,19 @@ public final class WaystoneLayer implements Layer {
         return d.getNamespace().equals(KronwerkeCore.MOD_ID) && d.getPath().startsWith(REMOTE);
     }
 
-    /** A side world: the player chose one of main's waystones. */
+    /** The server a remote waystone stands on; null for the old form, which is main's. */
+    static String serverOf(Waystone w) {
+        String[] parts = w.getDimension().location().getPath().split("/");
+        return parts.length >= 4 ? parts[1] : null;
+    }
+
+    /** The player chose a waystone on another server. */
     public static void travel(ServerPlayer p, Waystone w) {
         JsonObject arrive = new JsonObject();
         arrive.addProperty("waystone", w.getWaystoneUid().toString());
-        if (!Travel.moveTo(p, arrive)) {
+        String at = serverOf(w);
+        boolean moved = at == null ? Travel.moveTo(p, arrive) : Travel.moveTo(p, at, arrive);
+        if (!moved) {
             p.sendSystemMessage(de.kronwerke.core.Text.t("portal.nowhere", "Die andere Welt ist gerade nicht erreichbar."));
         }
     }
@@ -71,8 +82,12 @@ public final class WaystoneLayer implements Layer {
     @Override
     public void tick(MinecraftServer server) {
         if (++ticks % 100 != 0) return;
-        if (Role.main()) send(server, false);
-        else if (!received) ask();
+        if (sends()) send(server, false);
+        if (!Role.main() && !received) ask();
+    }
+
+    private static boolean sends() {
+        return Role.main() || de.kronwerke.core.portal.Dimensions.dimensionServer();
     }
 
     private void send(MinecraftServer server, boolean always) {
@@ -98,9 +113,9 @@ public final class WaystoneLayer implements Layer {
 
     @Override
     public void onTell(MinecraftServer server, String from, JsonObject data) {
-        if (Role.main()) {
-            // a side world asks for the list (it just started)
-            send(server, true);
+        if (!data.has("w")) {
+            // another server asks for the list (it just started)
+            if (sends()) send(server, true);
             return;
         }
         CompoundTag all;
@@ -120,14 +135,19 @@ public final class WaystoneLayer implements Layer {
             if (here.isPresent() && !isRemote(here.get())) continue;
             ResourceLocation d = w.getDimension().location();
             impl.setDimension(ResourceKey.create(Registries.DIMENSION,
-                    ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, REMOTE + d.getNamespace() + "/" + d.getPath())));
+                    ResourceLocation.fromNamespaceAndPath(KronwerkeCore.MOD_ID, REMOTE + from + "/" + d.getNamespace() + "/" + d.getPath())));
             seen.add(w.getWaystoneUid());
             if (here.isPresent()) manager.updateWaystone(impl);
             else manager.addWaystone(impl);
         }
         List<Waystone> gone = new ArrayList<>();
+        // only this sender's: the other servers' lists come on their own. The old form
+        // without a server name was main's.
+        boolean fromMain = de.kronwerke.core.link.NetworkSync.peer(from) != null && "main".equals(de.kronwerke.core.link.NetworkSync.peer(from).role());
         manager.getWaystones().forEach(w -> {
-            if (isRemote(w) && !seen.contains(w.getWaystoneUid())) gone.add(w);
+            if (!isRemote(w) || seen.contains(w.getWaystoneUid())) return;
+            String at = serverOf(w);
+            if (from.equals(at) || (at == null && fromMain)) gone.add(w);
         });
         for (Waystone w : gone) manager.removeWaystone(w);
     }
@@ -135,9 +155,9 @@ public final class WaystoneLayer implements Layer {
     /** main: where a player who chose this waystone on a side world arrives. */
     @Override
     public AwayData.Back arrive(MinecraftServer server, JsonObject arrive) {
-        if (!Role.main() || !arrive.has("waystone")) return null;
+        if (!arrive.has("waystone")) return null;
         Optional<Waystone> w = WaystoneManagerImpl.get(server).getWaystoneById(UUID.fromString(arrive.get("waystone").getAsString()));
-        if (w.isEmpty()) return null;
+        if (w.isEmpty() || isRemote(w.get())) return null;
         ServerLevel level = server.getLevel(w.get().getDimension());
         if (level == null) return null;
         Optional<TeleportDestination> to = w.get().resolveDestination(level);
@@ -147,12 +167,9 @@ public final class WaystoneLayer implements Layer {
         return new AwayData.Back(dim.location().toString(), t.location().x, t.location().y, t.location().z, t.direction().toYRot());
     }
 
-    /** A side world asks main for the list until it has it once. */
+    /** A side world asks the others for their lists until it has one. */
     private void ask() {
-        for (String p : Share.peers()) {
-            NetworkSync.Peer q = NetworkSync.peer(p);
-            if (q != null && q.role().equals("main")) Share.tell(this, p, new JsonObject());
-        }
+        for (String p : Share.peers()) Share.tell(this, p, new JsonObject());
     }
 
     @Override

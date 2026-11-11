@@ -33,6 +33,8 @@ import java.util.UUID;
  */
 public final class QuestLayer implements Layer {
     private static final int EVERY = 200;
+    /** A side world: the hash of what it last sent per team, and of main's last answer. */
+    private final java.util.Map<UUID, Integer> sentHash = new java.util.HashMap<>(), mainHash = new java.util.HashMap<>();
 
     /** Not main: progress that came with a player, applied once they are in. */
     private final Map<UUID, String> waiting = new HashMap<>();
@@ -121,6 +123,7 @@ public final class QuestLayer implements Layer {
 
     /** Takes the other side's progress into this team: the larger of each, every reward claimed on either. */
     private void merge(TeamData into, String snbt) {
+        String before = into.serializeNBT().toString();
         TeamData other = new TeamData(into.getTeamId(), file());
         try {
             other.deserializeNBT(SNBTCompoundTag.of(TagParser.parseTag(snbt)));
@@ -130,6 +133,8 @@ public final class QuestLayer implements Layer {
         into.mergeData(other);
         into.mergeClaimedRewards(other);
         into.clearCachedProgress();
+        // nothing new: no save, and no full resync of every member's quest book (review R2-14)
+        if (into.serializeNBT().toString().equals(before)) return;
         into.markDirty();
         SyncTeamDataMessage sync = new SyncTeamDataMessage(into);
         // through Architectury, which FTB's packets are registered with; NeoForge's own sender cannot encode them
@@ -164,14 +169,23 @@ public final class QuestLayer implements Layer {
         // a side world: what its players did goes to main, main answers with the team's whole progress
         String main = mainPeer();
         if (main == null) return;
+        // only a changed team goes out; otherwise a short question whether main has news
+        java.util.Set<UUID> teams = new java.util.HashSet<>();
         for (ServerPlayer p : server.getPlayerList().getPlayers()) {
             TeamData t = teamOf(p);
-            if (t == null) continue;
+            if (t == null || !teams.add(t.getTeamId())) continue;
+            String snbt = t.serializeNBT().toString();
             JsonObject m = new JsonObject();
-            m.addProperty("t", "merge");
             m.addProperty("gen", sideGen.getOrDefault(t.getTeamId(), 0));
             m.addProperty("uuid", p.getUUID().toString());
-            m.addProperty("snbt", t.serializeNBT().toString());
+            m.addProperty("have", mainHash.getOrDefault(t.getTeamId(), 0));
+            if (snbt.hashCode() != sentHash.getOrDefault(t.getTeamId(), 0)) {
+                m.addProperty("t", "merge");
+                m.addProperty("snbt", snbt);
+                sentHash.put(t.getTeamId(), snbt.hashCode());
+            } else {
+                m.addProperty("t", "poll");
+            }
             Share.tell(this, main, m);
         }
     }
@@ -191,25 +205,29 @@ public final class QuestLayer implements Layer {
     @Override
     public void onTell(MinecraftServer server, String from, JsonObject d) {
         UUID id = UUID.fromString(d.get("uuid").getAsString());
-        String snbt = d.get("snbt").getAsString();
+        String snbt = d.has("snbt") ? d.get("snbt").getAsString() : "";
         switch (d.get("t").getAsString()) {
-            case "merge" -> {
+            case "merge", "poll" -> {
                 if (!Role.main()) return;
                 TeamData t = teamOf(id);
                 if (t == null) return;
                 int theirs = d.has("gen") ? d.get("gen").getAsInt() : 0;
-                if (theirs >= mainGen(t.getTeamId())) merge(t, snbt); // older than a reset here: dropped
+                if (!snbt.isEmpty() && theirs >= mainGen(t.getTeamId())) merge(t, snbt); // older than a reset here: dropped
+                String now = t.serializeNBT().toString();
+                // the side world has main's state already: no answer (an older side world sends no "have")
+                if (d.has("have") && d.get("have").getAsInt() == now.hashCode() && theirs == mainGen(t.getTeamId())) return;
                 JsonObject back = new JsonObject();
                 back.addProperty("t", "team");
                 back.addProperty("gen", mainGen(t.getTeamId()));
                 back.addProperty("uuid", id.toString());
-                back.addProperty("snbt", t.serializeNBT().toString());
+                back.addProperty("snbt", now);
                 Share.tell(this, from, back);
             }
             case "team" -> {
                 ServerPlayer p = server.getPlayerList().getPlayer(id);
                 TeamData t = p == null ? null : teamOf(p);
                 if (t == null) return;
+                mainHash.put(t.getTeamId(), snbt.hashCode());
                 int gen = d.has("gen") ? d.get("gen").getAsInt() : 0;
                 if (gen > sideGen.getOrDefault(t.getTeamId(), 0)) {
                     sideGen.put(t.getTeamId(), gen);
