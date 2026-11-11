@@ -114,6 +114,10 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteractPlain);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onRightClick);
 
+        if (ModList.get().isLoaded("botania") && ModList.get().isLoaded("curios")) {
+            de.kronwerke.core.perf.TiaraWearers.register();
+        }
+
         if (ModList.get().isLoaded("chapters")) {
             // after Chapters, which refuses the pickup of every locked item
             NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, LockedItems::onPickup);

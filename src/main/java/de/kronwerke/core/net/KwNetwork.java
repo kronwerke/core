@@ -364,6 +364,9 @@ public final class KwNetwork {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.gift(payload));
         });
         r.playToServer(ActionPayload.TYPE, ActionPayload.CODEC, KwNetwork::onAction);
+        r.playToClient(LockHintPayload.TYPE, LockHintPayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.LockHints.receive(payload));
+        });
         r.playToClient(de.kronwerke.core.portal.TravelPayload.TYPE, de.kronwerke.core.portal.TravelPayload.CODEC, (payload, ctx) -> {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.TravelOverlay.receive(payload));
         });

@@ -23,6 +23,8 @@ public final class ClientSetup {
         // the rank icons' resource pack, always on (see RanksPack)
         modBus.addListener(RanksPack::onFind);
         TravelOverlay.register();
+        // why a machine, altar or ritual did not craft: over its window or over the block
+        LockHints.register();
         // the pack's key layout for instances that never got Default Options' keybindings.txt
         DefaultKeys.register();
         KeyDump.register();

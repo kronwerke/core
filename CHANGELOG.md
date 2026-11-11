@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.29.0
+
+- `/kw admin lag [seconds]` (15 by default, on every server): for that long the server times every entity tick, every machine tick and every chunk tick and adds them up per chunk. Then it names the ten costliest chunks with milliseconds per tick, split into entities, machines and chunk ticks, the four biggest causes in each, the FTB Chunks team that claimed it and whether a chunk loader keeps it loaded. A click on a line puts the teleport there into the chat box. The report also goes into the log. Outside a scan nothing is timed.
+- Why a machine did not craft shows where the player looks: as a banner over the machine's own window when it is open (whichever mod made it), otherwise as text floating over the machine, altar or ritual block for five seconds, for everyone within 8 blocks. The text names what is locked and from which stage ("Steel Ingot gibt es hier erst ab Stufe 3"). Players without Core get the action bar as before.
+- Botania's Flügel Tiara check runs only for players who wear one or still have its flight (Kristi's idea): the wearers are kept in a set that follows Curios' change event, the login and a check every five seconds.
+
 ## 0.28.0
 
 - Tag index for command selectors (`[performance] tagIndex`, on): a selector with a positive tag, like `@e[type=marker,tag=x]`, looks only at the entities that carry that tag instead of every entity of the dimension. Incendium and Tool Trims run about ten such selectors every tick; with 50 players in the Nether they were 15 percent of the tick. Type, box, limit and every other part of the selector are tested as before, so the result is the same. The index follows the entities the level tracks, and every entity's tag set reports its changes (commands, NBT, mods). `/kw admin tagindex` compares the index with a full scan, on every server.

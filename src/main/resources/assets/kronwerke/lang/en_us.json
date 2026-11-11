@@ -158,6 +158,8 @@
   "kronwerke.locks.reload": "The recipes of stage %s are loading. This takes a few seconds, then JEI rebuilds.",
   "kronwerke.machinelock.grid": "You can make this from %s on.",
   "kronwerke.machinelock.machine": "This machine makes that from %s on.",
+  "kronwerke.machinelock.grid_item": "You can make %s from %s on.",
+  "kronwerke.machinelock.machine_item": "%s comes out of here from %s on.",
   "kronwerke.machinelock.named": "%s: %s",
   "kronwerke.network.direct": "You reach this world only through kronwerke.net.",
   "kronwerke.network.main_only": "That only works in the main world.",

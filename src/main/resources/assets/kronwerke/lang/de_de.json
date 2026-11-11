@@ -152,6 +152,8 @@
   "kronwerke.locks.reload": "Die Rezepte von Stufe %s werden geladen. Das dauert ein paar Sekunden, danach baut sich JEI neu auf.",
   "kronwerke.machinelock.grid": "Das kannst du erst ab %s herstellen.",
   "kronwerke.machinelock.machine": "Diese Maschine stellt das erst ab %s her.",
+  "kronwerke.machinelock.grid_item": "%s kannst du erst ab %s herstellen.",
+  "kronwerke.machinelock.machine_item": "%s gibt es hier erst ab %s.",
   "kronwerke.machinelock.named": "%s: %s",
   "kronwerke.network.direct": "Diese Welt erreichst du nur über kronwerke.net.",
   "kronwerke.network.main_only": "Das geht nur in der Hauptwelt.",

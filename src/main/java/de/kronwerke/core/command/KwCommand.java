@@ -49,7 +49,27 @@ public final class KwCommand {
             c.getSource().sendSuccess(() -> de.kronwerke.core.Text.t("network.side", "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
                     de.kronwerke.core.link.NetworkSync.ownLabel()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
             return 1;
-        }).then(Commands.literal("admin").requires(s -> s.hasPermission(2)).then(loadtest()).then(tagIndex())));
+        }).then(Commands.literal("admin").requires(s -> s.hasPermission(2)).then(loadtest()).then(tagIndex()).then(lag())));
+    }
+
+    /** Times entities, machines and chunk ticks per chunk for a few seconds and names the costliest chunks. */
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> lag() {
+        return Commands.literal("lag")
+                .executes(c -> lagScan(c, 15))
+                .then(Commands.argument("seconds", IntegerArgumentType.integer(3, 120)).executes(c -> lagScan(c, IntegerArgumentType.getInteger(c, "seconds"))));
+    }
+
+    private static int lagScan(CommandContext<CommandSourceStack> c, int seconds) {
+        CommandSourceStack src = c.getSource();
+        boolean started = de.kronwerke.core.perf.LagScan.start(src.getServer(), seconds, lines -> {
+            for (net.minecraft.network.chat.Component l : lines) src.sendSuccess(() -> l, false);
+        });
+        if (!started) {
+            src.sendFailure(net.minecraft.network.chat.Component.literal("Es läuft schon ein Lag-Scan."));
+            return 0;
+        }
+        ok(c, "Lag-Scan läuft " + seconds + " Sekunden. Das Ergebnis kommt hierher und ins Log.");
+        return 1;
     }
 
     /** Compares the tag index with a full scan of every dimension. */
@@ -231,6 +251,7 @@ public final class KwCommand {
                             return 1;
                         }))
                         .then(tagIndex())
+                        .then(lag())
                         .then(Commands.literal("dirty")
                                 .then(Commands.literal("start").executes(c -> { de.kronwerke.core.perf.DirtyChunks.start(); ok(c, "Zähle, wer Chunks als geändert markiert."); return 1; }))
                                 .then(Commands.literal("stop").executes(c -> { de.kronwerke.core.perf.DirtyChunks.stop(); ok(c, "Zählen gestoppt."); return 1; }))

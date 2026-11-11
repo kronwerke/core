@@ -314,18 +314,30 @@ public final class MachineLocks {
         }
         if (hit == null) return null;
         if (actor != null && hasStage(actor, hit.stage())) return hit.holder(); // the bypass: crafts as if open
-        Component msg = message(hit.stage(), actor != null && ActingContext.inGrid());
+        Component what = resultName(hit, sl);
+        Component msg = message(hit.stage(), actor != null && ActingContext.inGrid(), what);
         if (actor != null) {
             toldPlayerAt.put(actor.getUUID(), now);
-            actor.displayClientMessage(msg, true);
+            // over the window the player works in (a machine, a crafting grid); the action bar
+            // when no window is open (an altar, a ritual) or the client has no Core
+            boolean window = actor.containerMenu != actor.inventoryMenu || ActingContext.inGrid();
+            if (window && actor.connection.hasChannel(de.kronwerke.core.net.LockHintPayload.TYPE)) {
+                net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(actor, new de.kronwerke.core.net.LockHintPayload(BlockPos.ZERO, true, msg));
+            } else {
+                actor.displayClientMessage(msg, true);
+            }
         } else {
             toldAt.put(at.asLong(), now);
             if (toldAt.size() > 4096) toldAt.clear();
             // named, and only for who stands at it: a hall of machines must not talk to everyone
             Component machine = sl.getBlockState(at).getBlock().getName().copy().withStyle(ChatFormatting.WHITE);
             Component named = Component.translatableWithFallback("kronwerke.machinelock.named", "%s: %s", machine, msg).withStyle(ChatFormatting.GRAY);
+            de.kronwerke.core.net.LockHintPayload hint = new de.kronwerke.core.net.LockHintPayload(at, false, msg);
             for (ServerPlayer p : sl.players()) {
-                if (p.blockPosition().distSqr(at) <= 6 * 6) p.displayClientMessage(named, true);
+                if (p.blockPosition().distSqr(at) > 8 * 8) continue;
+                // over the machine's own window or floating over the block; the action bar without Core
+                if (p.connection.hasChannel(de.kronwerke.core.net.LockHintPayload.TYPE)) net.neoforged.neoforge.network.PacketDistributor.sendToPlayer(p, hint);
+                else p.displayClientMessage(named, true);
             }
         }
         return null;
@@ -347,11 +359,27 @@ public final class MachineLocks {
         return hasStage(p, appliedStage + 1);
     }
 
-    private static Component message(int need, boolean grid) {
+    private static Component message(int need, boolean grid, Component what) {
         Component stage = LockedItems.stageName(ResourceLocation.fromNamespaceAndPath("kronwerke", "stage" + need))
                 .copy().withStyle(ChatFormatting.YELLOW);
+        if (what != null) {
+            return grid
+                    ? Component.translatableWithFallback("kronwerke.machinelock.grid_item", "%s kannst du erst ab %s herstellen.", what, stage).withStyle(ChatFormatting.GRAY)
+                    : Component.translatableWithFallback("kronwerke.machinelock.machine_item", "%s gibt es hier erst ab %s.", what, stage).withStyle(ChatFormatting.GRAY);
+        }
         return grid
                 ? Component.translatableWithFallback("kronwerke.machinelock.grid", "Das kannst du erst ab %s herstellen.", stage).withStyle(ChatFormatting.GRAY)
                 : Component.translatableWithFallback("kronwerke.machinelock.machine", "Diese Maschine stellt das erst ab %s her.", stage).withStyle(ChatFormatting.GRAY);
+    }
+
+    /** The name of what the held back recipe makes, or null when it makes no item (fluids, chemicals). */
+    @SuppressWarnings({"rawtypes"})
+    private static Component resultName(Held hit, ServerLevel level) {
+        try {
+            net.minecraft.world.item.ItemStack out = ((Recipe) hit.holder().value()).getResultItem(level.registryAccess());
+            return out.isEmpty() ? null : out.getHoverName().copy().withStyle(ChatFormatting.WHITE);
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 }
