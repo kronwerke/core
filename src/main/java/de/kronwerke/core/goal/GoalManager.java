@@ -446,6 +446,10 @@ public final class GoalManager {
                 if (isHeld(g)) announceHold(g);
                 if (done(g) >= total(g)) complete(g);
                 refreshBossBar();
+                if (server != null) {
+                    ServerPlayer depositor = server.getPlayerList().getPlayer(who);
+                    if (depositor != null) de.kronwerke.core.steps.FirstSteps.deposited(depositor);
+                }
                 return take;
             }
         }

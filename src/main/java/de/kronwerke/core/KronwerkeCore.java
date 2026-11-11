@@ -114,6 +114,9 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteractPlain);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onRightClick);
 
+        // the first steps in the quest book check what the player really did
+        de.kronwerke.core.steps.FirstSteps.register();
+
         if (ModList.get().isLoaded("botania") && ModList.get().isLoaded("curios")) {
             de.kronwerke.core.perf.TiaraWearers.register();
         }

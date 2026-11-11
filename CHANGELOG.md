@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.30.0
+
+- The first steps in the quest book check what the player really did. Core gives hidden advancements (`kronwerke:steps/claimed`, `team`, `obelisk`, `deposited`) when the player's team claimed a chunk, the player is in a team, stood at the obelisk (within 16 blocks) or deposited something; the quests use them instead of a tick box. They show nowhere else.
+
 ## 0.29.0
 
 - `/kw admin lag [seconds]` (15 by default, on every server): for that long the server times every entity tick, every machine tick and every chunk tick and adds them up per chunk. Then it names the ten costliest chunks with milliseconds per tick, split into entities, machines and chunk ticks, the four biggest causes in each, the FTB Chunks team that claimed it and whether a chunk loader keeps it loaded. A click on a line puts the teleport there into the chat box. The report also goes into the log. Outside a scan nothing is timed.
