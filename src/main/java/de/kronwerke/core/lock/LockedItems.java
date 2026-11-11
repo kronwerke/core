@@ -118,6 +118,8 @@ public final class LockedItems {
     public static void onPickup(ItemEntityPickupEvent.Pre event) {
         if (!(event.getPlayer() instanceof ServerPlayer player)) return;
         if (event.canPickup() != TriState.FALSE) return;
+        // refused by the travel freeze: the inventory has left already, the item would be lost
+        if (de.kronwerke.core.portal.Travel.frozen(player)) return;
         ItemStack stack = event.getItemEntity().getItem();
         if (!isLocked(player, stack)) return;
         if (hasRoom(player.getInventory(), stack)) {

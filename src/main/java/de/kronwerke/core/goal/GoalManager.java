@@ -443,8 +443,9 @@ public final class GoalManager {
                 } else {
                     feedback(g, it, shown, who, name, take, announce);
                 }
+                // a held goal waits for the event even when the last piece filled it
                 if (isHeld(g)) announceHold(g);
-                if (done(g) >= total(g)) complete(g);
+                else if (done(g) >= total(g)) complete(g);
                 refreshBossBar();
                 if (server != null) {
                     ServerPlayer depositor = server.getPlayerList().getPlayer(who);
@@ -554,7 +555,8 @@ public final class GoalManager {
         server.getPlayerList().broadcastSystemMessage(Text.t("goal.release", "Der Obelisk nimmt wieder an. Macht %s voll!",
                 g.name().withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
         de.kronwerke.core.obelisk.Obelisk.get().onRelease(g);
-        refreshBossBar();
+        // a goal that was filled while held completes now
+        check(g);
     }
 
     /**

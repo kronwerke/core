@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.31.0
+
+Round 2 and 3 of the production review.
+
+- Reports from a side world to main (a logout there, a server stop, the checkpoint every 30 seconds) are delivered until main confirms it wrote them, also across a restart of either server: they wait in `kronwerke/home_reports.json` and go out again every ten seconds. A player main thinks is away on a side world that is up waits a moment at the login while main asks that server for their newest state ("Deine Daten kommen gerade noch aus dem Nether"); after its answer, or 20 seconds without one, they come in. Main writes who is away at once, not at the next autosave. Checkpoints carry the backpack contents of the same moment. (R3-01)
+- After a pause the season goes on with "Season fortsetzen" (`/kw admin season resume`): same number, nothing reset. Once a season has run, a start always needs `confirm`, paused or not, and the panel's "Neue Season" needs the new number typed. (R3-02)
+- During the travel freeze the hub's actions (deposits) and commands do nothing. (R2-01)
+- A heavy last item no longer fills a goal past its hold: before the event a deposit stops short of the total, and if a single piece fills it, the goal waits full at the hold until the event. (R2-02)
+- A frozen traveller's refused pickup of a locked item is not turned back on. (R3-09)
+- Boss scaling counts its extra attacks by game time, so a reloaded boss keeps them. (R2-11)
+- The tag index keeps entities in the order they were added, like vanilla's lookup. (R2-15)
+
 ## 0.30.0
 
 - The first steps in the quest book check what the player really did. Core gives hidden advancements (`kronwerke:steps/claimed`, `team`, `obelisk`, `deposited`) when the player's team claimed a chunk, the player is in a team, stood at the obelisk (within 16 blocks) or deposited something; the quests use them instead of a tick box. They show nowhere else.

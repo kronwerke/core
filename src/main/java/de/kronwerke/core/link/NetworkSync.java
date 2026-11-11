@@ -534,7 +534,8 @@ public final class NetworkSync {
      * home (it used to overwrite the player on main with the side world's old copy).
      */
     public static Component refuseLogin(net.minecraft.server.MinecraftServer s, com.mojang.authlib.GameProfile profile) {
-        if (Role.main() || KronwerkeConfig.DIRECT_JOIN.get()) return null;
+        if (Role.main()) return de.kronwerke.core.portal.Travel.holdLogin(profile);
+        if (KronwerkeConfig.DIRECT_JOIN.get()) return null;
         if (s.getPlayerList().isOp(profile)) return null;
         if (de.kronwerke.core.portal.Travel.expected(profile.getId())) return null;
         KronwerkeCore.LOGGER.info("{} tried to join {} directly; turned away", profile.getName(), Role.server());

@@ -156,6 +156,16 @@ public final class KwCommand {
                                 .then(Commands.literal("start").executes(c -> seasonStart(c, false))
                                         .then(Commands.literal("confirm").executes(c -> seasonStart(c, true))))
                                 .then(Commands.literal("pause").executes(c -> { de.kronwerke.core.season.Season.get().pause(); ok(c, "Zurück in der Vorbereitung."); return 1; }))
+                                .then(Commands.literal("resume").executes(c -> {
+                                    var season = de.kronwerke.core.season.Season.get();
+                                    if (season.running() || season.number() == 0) {
+                                        fail(c, season.running() ? "Die Season läuft schon." : "Es gab noch keine Season. Starten: /kw admin season start");
+                                        return 0;
+                                    }
+                                    season.resume();
+                                    ok(c, "Season " + season.number() + " läuft wieder, alles ist erhalten.");
+                                    return 1;
+                                }))
                                 .then(Commands.literal("json").executes(KwCommand::seasonJson)))
                         .then(Commands.literal("gate")
                                 .executes(KwCommand::gateInfo)
@@ -434,9 +444,10 @@ public final class KwCommand {
      */
     private static int seasonStart(CommandContext<CommandSourceStack> c, boolean confirmed) {
         var s = de.kronwerke.core.season.Season.get();
-        if (s.running() && !confirmed) {
-            fail(c, "Season " + s.number() + " läuft. Ein Neustart setzt alle Ziele, Ranglisten, Startpakete und Serien zurück. "
-                    + "Wenn das wirklich gewollt ist: /kw admin season start confirm");
+        // once a season has run, a start always wipes it: running or paused
+        if (s.number() > 0 && !confirmed) {
+            fail(c, (s.running() ? "Season " + s.number() + " läuft." : "Season " + s.number() + " ist pausiert. Fortsetzen ohne Verlust: /kw admin season resume.")
+                    + " Ein Neustart setzt alle Ziele, Ranglisten, Startpakete und Serien zurück. Wenn das wirklich gewollt ist: /kw admin season start confirm");
             return 0;
         }
         s.start();

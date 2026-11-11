@@ -24,8 +24,29 @@ public final class AwayData extends SavedData {
     private final Map<UUID, Back> back = new HashMap<>();
     private final Map<UUID, Resume> resume = new HashMap<>();
 
+    private MinecraftServer server;
+
     public static AwayData get(MinecraftServer s) {
-        return s.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);
+        AwayData d = s.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);
+        d.server = s;
+        return d;
+    }
+
+    /**
+     * Written at once on every change, not only at the next autosave: if main crashed in
+     * between it would forget who is away, and the side world's reports for them would be
+     * ignored as coming from a stranger (review R3-01). The file is tiny.
+     */
+    private void changed() {
+        setDirty();
+        if (server == null) return;
+        try {
+            java.io.File f = server.getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                    .resolve("data").resolve(NAME + ".dat").toFile();
+            save(f, server.registryAccess());
+        } catch (RuntimeException e) {
+            de.kronwerke.core.KronwerkeCore.LOGGER.warn("Could not save who is away: {}", e.toString());
+        }
     }
 
     public void leave(UUID id, String server, JsonObject b) {
@@ -36,7 +57,7 @@ public final class AwayData extends SavedData {
             back.remove(id);
         }
         resume.remove(id);
-        setDirty();
+        changed();
     }
 
     public Back back(UUID id) {
@@ -48,19 +69,19 @@ public final class AwayData extends SavedData {
     }
 
     public void home(UUID id) {
-        if (where.remove(id) != null) setDirty();
+        if (where.remove(id) != null) changed();
     }
 
     public void resume(UUID id, String server, Back at) {
         if (at == null) return;
         resume.put(id, new Resume(server, at));
-        setDirty();
+        changed();
     }
 
     /** The resume for this login, once. */
     public Resume takeResume(UUID id) {
         Resume r = resume.remove(id);
-        if (r != null) setDirty();
+        if (r != null) changed();
         return r;
     }
 

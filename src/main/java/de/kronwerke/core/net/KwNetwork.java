@@ -507,6 +507,9 @@ public final class KwNetwork {
     private static void onAction(ActionPayload payload, IPayloadContext ctx) {
         ctx.enqueueWork(() -> {
             if (!(ctx.player() instanceof ServerPlayer p)) return;
+            // between the travel snapshot and the transfer nothing may move: a deposit now
+            // would count here and travel with the snapshot as well
+            if (de.kronwerke.core.portal.Travel.frozen(p)) return;
             if (!allowAction(p, false)) return; // a flood of menu packets: dropped
             if (!de.kronwerke.core.link.Role.main()) {
                 p.sendSystemMessage(de.kronwerke.core.Text.t("network.main_only", "Das geht nur in der Hauptwelt.").withStyle(net.minecraft.ChatFormatting.GRAY));

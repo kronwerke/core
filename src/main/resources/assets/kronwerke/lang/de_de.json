@@ -255,5 +255,8 @@
   "kronwerke.tag.c.ingots.steel": "Stahlbarren (alle Mods)",
   "kronwerke.ui.close": "Schließen (Esc)",
   "kronwerke.undo.done": "Zurückgegeben: %s.",
-  "kronwerke.undo.none": "Nichts zum Zurückgeben: nur Gaben der letzten zehn Sekunden, und nicht, wenn das Ziel damit voll oder angehalten ist."
+  "kronwerke.undo.none": "Nichts zum Zurückgeben: nur Gaben der letzten zehn Sekunden, und nicht, wenn das Ziel damit voll oder angehalten ist.",
+  "kronwerke.season.resume": "Die Season geht weiter.",
+  "kronwerke.travel.busy": "Du bist gerade unterwegs, gleich geht es weiter.",
+  "kronwerke.travel.pull": "Deine Daten kommen gerade noch aus %s. Versuch es in ein paar Sekunden noch einmal."
 }

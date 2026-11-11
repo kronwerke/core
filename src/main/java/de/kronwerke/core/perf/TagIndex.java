@@ -10,7 +10,7 @@ import java.util.Map;
 import java.util.Set;
 
 import de.kronwerke.core.config.KronwerkeConfig;
-import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceLinkedOpenHashSet;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -42,7 +42,7 @@ public final class TagIndex {
         void kronwerke$requiredTags(List<String> tags);
     }
 
-    private static final Map<ServerLevel, Map<String, ReferenceOpenHashSet<Entity>>> INDEX = new IdentityHashMap<>();
+    private static final Map<ServerLevel, Map<String, ReferenceLinkedOpenHashSet<Entity>>> INDEX = new IdentityHashMap<>();
 
     private TagIndex() {}
 
@@ -82,13 +82,13 @@ public final class TagIndex {
     }
 
     private static void add(ServerLevel level, String tag, Entity e) {
-        INDEX.computeIfAbsent(level, k -> new HashMap<>()).computeIfAbsent(tag, k -> new ReferenceOpenHashSet<>()).add(e);
+        INDEX.computeIfAbsent(level, k -> new HashMap<>()).computeIfAbsent(tag, k -> new ReferenceLinkedOpenHashSet<>()).add(e);
     }
 
     private static void remove(ServerLevel level, String tag, Entity e) {
-        Map<String, ReferenceOpenHashSet<Entity>> byTag = INDEX.get(level);
+        Map<String, ReferenceLinkedOpenHashSet<Entity>> byTag = INDEX.get(level);
         if (byTag == null) return;
-        ReferenceOpenHashSet<Entity> set = byTag.get(tag);
+        ReferenceLinkedOpenHashSet<Entity> set = byTag.get(tag);
         if (set == null) return;
         set.remove(e);
         if (set.isEmpty()) byTag.remove(tag);
@@ -96,7 +96,7 @@ public final class TagIndex {
 
     /** The entities of the level that carry the rarest of the tags (all of them must be carried). */
     public static Set<Entity> candidates(ServerLevel level, List<String> tags) {
-        Map<String, ReferenceOpenHashSet<Entity>> byTag = INDEX.get(level);
+        Map<String, ReferenceLinkedOpenHashSet<Entity>> byTag = INDEX.get(level);
         if (byTag == null) return Set.of();
         Set<Entity> best = null;
         for (String tag : tags) {
@@ -116,7 +116,7 @@ public final class TagIndex {
         int entities = 0, tagged = 0, missing = 0, stale = 0;
         List<String> examples = new ArrayList<>();
         for (ServerLevel level : server.getAllLevels()) {
-            Map<String, ReferenceOpenHashSet<Entity>> byTag = INDEX.getOrDefault(level, Map.of());
+            Map<String, ReferenceLinkedOpenHashSet<Entity>> byTag = INDEX.getOrDefault(level, Map.of());
             Set<Entity> seen = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
             for (Entity e : level.getAllEntities()) {
                 entities++;

@@ -94,6 +94,16 @@ public final class Season extends SavedData {
         KronwerkeCore.LOGGER.info("Season {} started", number);
     }
 
+    /** After a pause: the season runs again with everything it had, same number. */
+    public void resume() {
+        running = true;
+        gate = false;
+        setDirty();
+        server.getPlayerList().broadcastSystemMessage(Text.t("season.resume", "Die Season geht weiter.")
+                .withStyle(ChatFormatting.GOLD), false);
+        KronwerkeCore.LOGGER.info("Season {} resumed", number);
+    }
+
     /** Back to preparation, without touching any progress. */
     public void pause() {
         running = false;

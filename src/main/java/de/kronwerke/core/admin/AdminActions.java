@@ -61,8 +61,19 @@ public final class AdminActions {
         try {
             switch (op) {
                 case "season_start" -> {
+                    // after a first season the panel sends the number of the new one, typed by hand
+                    int next = Season.get().number() + 1;
+                    if (Season.get().running() || (Season.get().number() > 0 && !arg.trim().equals(Integer.toString(next)))) {
+                        KwNetwork.sendAdmin(p, Season.get().running() ? "Die Season läuft schon." : "Für eine neue Season die Nummer " + next + " eintippen. Fortsetzen ohne Verlust geht mit \"Season fortsetzen\".", true);
+                        return;
+                    }
                     Season.get().start();
                     KwNetwork.sendAdmin(p, "Season " + Season.get().number() + " läuft. Alle Ziele sind zurückgesetzt.", false);
+                }
+                case "season_resume" -> {
+                    if (Season.get().running() || Season.get().number() == 0) return;
+                    Season.get().resume();
+                    KwNetwork.sendAdmin(p, "Season " + Season.get().number() + " läuft wieder, alles ist erhalten.", false);
                 }
                 case "season_pause" -> {
                     Season.get().pause();

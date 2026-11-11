@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import de.kronwerke.core.KronwerkeCore;
 import de.kronwerke.core.Text;
+import net.minecraft.network.chat.Component;
 import de.kronwerke.core.link.NetworkSync;
 import de.kronwerke.core.link.Role;
 import net.minecraft.ChatFormatting;
@@ -138,6 +139,8 @@ public final class Travel {
         server = s;
         pending.clear();
         expected.clear();
+        pulls.clear();
+        if (!Role.main()) HomeReports.start(s);
         if (!Role.main() && !Dimensions.dimensionServer()) Hub.ensure(s);
         if (Dimensions.dimensionServer()) {
             // nobody plays this server's overworld: keep no chunks of it loaded for nothing
@@ -159,6 +162,14 @@ public final class Travel {
         if (e.getEntity() instanceof ServerPlayer p && frozen(p)) e.setCanceled(true);
     }
 
+    /** A frozen player runs no command: /kw deposit, /trash, a backpack command would act on what already travels. */
+    public static void onFrozenCommand(net.neoforged.neoforge.event.CommandEvent e) {
+        if (e.getParseResults().getContext().getSource().getEntity() instanceof ServerPlayer p && frozen(p)) {
+            e.setCanceled(true);
+            p.displayClientMessage(de.kronwerke.core.Text.t("travel.busy", "Du bist gerade unterwegs, gleich geht es weiter."), true);
+        }
+    }
+
     /** A frozen player picks nothing up: it would be lost with the transfer. */
     public static void onFrozenPickup(net.neoforged.neoforge.event.entity.player.ItemEntityPickupEvent.Pre e) {
         if (e.getPlayer() instanceof ServerPlayer p && frozen(p)) e.setCanPickup(net.neoforged.neoforge.common.util.TriState.FALSE);
@@ -169,6 +180,42 @@ public final class Travel {
         if (leaving.containsKey(id)) return true;
         for (Departure d : pending.values()) if (d.player().equals(id)) return true;
         return false;
+    }
+
+    // ---- main: a login while a side world may still hold the newest state ----
+
+    /** main: players whose side world was asked for its waiting report, and when. */
+    private static final Map<UUID, Long> pulls = new HashMap<>();
+
+    /**
+     * main, on the login screen: a player main thinks is away on a side world that is up may
+     * have a report on its way (main restarted, the report waits there). They wait a moment
+     * while main asks for it, instead of playing with an older copy (review R3-01). After the
+     * side world answered, or 20 seconds without an answer, they come in.
+     */
+    public static Component holdLogin(com.mojang.authlib.GameProfile profile) {
+        if (!Role.main() || server == null) return null;
+        UUID id = profile.getId();
+        AwayData away = AwayData.get(server);
+        String where = away.where(id);
+        if (where == null) return null;
+        NetworkSync.Peer peer = NetworkSync.peer(where);
+        if (peer == null || !peer.bus()) return null; // that server is gone: main's copy is all there is
+        Long asked = pulls.get(id);
+        long now = System.currentTimeMillis();
+        if (asked != null && (asked < 0 || now - asked > 20_000)) return null; // answered, or no answer in time
+        if (asked == null) {
+            pulls.put(id, now);
+            JsonObject d = new JsonObject();
+            d.addProperty("uuid", id.toString());
+            NetworkSync.send(where, "player.pull", d, null);
+        }
+        return Text.t("travel.pull", "Deine Daten kommen gerade noch aus %s. Versuch es in ein paar Sekunden noch einmal.", peer.label());
+    }
+
+    /** The side world has nothing waiting for the player: the next login goes through. */
+    private static void pullAnswered(String from, UUID id) {
+        if (pulls.containsKey(id)) pulls.put(id, -1L);
     }
 
     // ---- what others ask ----
@@ -366,6 +413,8 @@ public final class Travel {
             }
         }
         if (!Role.main() && tick % 600 == 0) checkpoints();
+        if (!Role.main() && tick % 20 == 0) HomeReports.tick();
+        if (Role.main() && !pulls.isEmpty() && tick % 20 == 0) pulls.values().removeIf(t -> now - t > 60_000);
         if (Role.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get()) && tick % 100 == 0) tiefgraeber();
         Crossing.tick(server);
         if (!evacuating.isEmpty() || evacuateUntil > 0) {
@@ -470,7 +519,8 @@ public final class Travel {
         Crossing.resume(p, data);
         JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
         if (extra != null) data.add("extra", extra);
-        NetworkSync.send(home.name(), "player.home", data, null);
+        // delivered until main confirms it wrote it, also across a main restart
+        HomeReports.report(id, "player.home", data);
     }
 
     /** A side world stops: everyone's state goes home now, while the bus is still there. */
@@ -480,6 +530,7 @@ public final class Travel {
             onLogout(p);
             leaving.put(p.getUUID(), "stop"); // their logout a moment later is not sent again
         }
+        HomeReports.stop(); // what main has not confirmed goes out again after the next start
     }
 
     private static void checkpoints() {
@@ -491,7 +542,11 @@ public final class Travel {
             data.addProperty("uuid", p.getUUID().toString());
             data.addProperty("nbt", encode(p.saveWithoutId(new CompoundTag())));
             progress(p, data);
-            NetworkSync.send(home.name(), "player.checkpoint", data, null);
+            // the backpack contents of the same moment, so a crash here restores both from
+            // one point in time (Compat only reads, nothing leaves this world)
+            JsonObject backpacks = Compat.collect(p);
+            if (backpacks != null) data.add("backpacks", backpacks);
+            HomeReports.report(p.getUUID(), "player.checkpoint", data);
         }
     }
 
@@ -505,7 +560,20 @@ public final class Travel {
                     case "player.handoff" -> handoff(from, d);
                     case "player.ready" -> ready(from, d);
                     case "player.home", "player.checkpoint" -> home(from, d, topic.equals("player.home"));
-                    case "player.claimed" -> expected.remove(UUID.fromString(str(d, "uuid")));
+                    case "player.claimed" -> {
+                        UUID id = UUID.fromString(str(d, "uuid"));
+                        expected.remove(id);
+                        if (!Role.main()) HomeReports.claimed(id);
+                    }
+                    case "player.ack" -> {
+                        if (!Role.main()) HomeReports.acked(UUID.fromString(str(d, "uuid")), d.get("rseq").getAsLong());
+                    }
+                    case "player.pull" -> {
+                        if (!Role.main()) HomeReports.pull(UUID.fromString(str(d, "uuid")));
+                    }
+                    case "player.none" -> {
+                        if (Role.main()) pullAnswered(from, UUID.fromString(str(d, "uuid")));
+                    }
                     case "player.cancel" -> cancelled(from, d);
                     case "kw.items" -> receiveItems(from, d);
                     default -> {
@@ -570,6 +638,19 @@ public final class Travel {
     private static void home(String from, JsonObject d, boolean final_) throws IOException {
         if (!Role.main()) return;
         UUID id = UUID.fromString(str(d, "uuid"));
+        homeApply(from, id, d, final_);
+        if (pulls.containsKey(id)) pulls.put(id, -1L); // a login that waited for this may go on
+        // written (or not wanted here): the side world stops sending it. An exception above
+        // leaves it unconfirmed, so it comes again.
+        if (d.has("rseq")) {
+            JsonObject a = new JsonObject();
+            a.addProperty("uuid", id.toString());
+            a.addProperty("rseq", d.get("rseq").getAsLong());
+            NetworkSync.send(from, "player.ack", a, null);
+        }
+    }
+
+    private static void homeApply(String from, UUID id, JsonObject d, boolean final_) throws IOException {
         if (server.getPlayerList().getPlayer(id) != null) return; // already back here: theirs wins
         AwayData away = AwayData.get(server);
         AwayData.Back b = away.back(id);
@@ -588,6 +669,7 @@ public final class Travel {
             Compat.restore(server, x);
             de.kronwerke.core.share.Share.unpack(id, x);
         }
+        if (d.get("backpacks") instanceof JsonObject bp) Compat.restore(server, bp);
         if (final_) {
             away.home(id);
             if (d.get("resume") instanceof JsonObject r) away.resume(id, from, Crossing.arrive(server, id, r, tag));
@@ -746,6 +828,8 @@ public final class Travel {
         undo.remove(id);
         Crossing.onLogin(p, a != null);
         if (a != null) {
+            // arriving with main's newer state: an older report from the last visit is void
+            if (!Role.main()) HomeReports.claimed(id);
             arrived.put(id, new Arrival(a.from(), System.currentTimeMillis() + 6_000));
             send(p, TravelPayload.ARRIVE, null);
             p.level().playSound(null, p.blockPosition(), SoundEvents.BEACON_ACTIVATE, SoundSource.PLAYERS, 0.8f, 1.4f);
@@ -755,6 +839,7 @@ public final class Travel {
             AwayData away = AwayData.get(server);
             AwayData.Back b = away.back(id);
             String was = away.where(id);
+            pulls.remove(id);
             if (b != null) {
                 away.home(id);
                 if (was != null) {

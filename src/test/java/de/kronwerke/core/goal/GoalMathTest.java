@@ -71,6 +71,21 @@ class GoalMathTest {
     }
 
     @Test
+    void heavyLastItemDoesNotSkipTheHold() {
+        // R2-02: 10,000 points, hold at 9,800, two hearts of 300 left after 9,400 light points.
+        // Both hearts at once used to fill the goal without a hold, so the event was skipped.
+        long total = 10_000, done = 9_400;
+        long take = GoalMath.take(2, 2, 300, total, done, 0.98, false);
+        assertEquals(1, take, "only the heart that stays below the total");
+        done += take * 300;
+        take = GoalMath.take(1, 1, 300, total, done, 0.98, false);
+        assertEquals(1, take, "the last heart still goes in, or the goal would stall below its hold");
+        done += take * 300;
+        assertTrue(GoalMath.held(total, done, 0.98, false), "a full goal before the event is held, not done");
+        check("heavy last", List.of(new Item("misc", 9_400, 1), new Item("heart", 2, 300)), 0.98);
+    }
+
+    @Test
     void shippedGoals() throws Exception {
         Path file = Path.of("../pack/config/kronwerke/goals.json");
         if (!Files.exists(file)) return; // the pack is not next to Core here

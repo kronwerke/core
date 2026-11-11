@@ -107,6 +107,19 @@ public final class AdminScreen extends KwScreen {
         if (data.seasonRunning()) {
             addRenderableWidget(FlatButton.confirm(cx, y, 170, "Zurück zur Vorbereitung", "Wirklich pausieren?", FlatButton.Style.NORMAL, () -> send("season_pause", ""))
                     .icon(new ItemStack(Items.CLOCK)).tip("Discord und Website zeigen wieder Work in Progress", "Der Fortschritt bleibt"));
+        } else if (data.seasonNumber() > 0) {
+            // paused: going on is the button; a new season needs its number typed
+            addRenderableWidget(FlatButton.of(cx, y, 170, "Season fortsetzen", () -> send("season_resume", ""))
+                    .icon(new ItemStack(Items.CLOCK)).tip("Season " + data.seasonNumber() + " läuft weiter", "Nichts wird zurückgesetzt"));
+            int next = data.seasonNumber() + 1;
+            seasonNo = new EditBox(font, cx + 180, y + 5, 24, 10, Component.literal("Nummer"));
+            seasonNo.setBordered(false);
+            seasonNo.setTextColor(Ui.TEXT);
+            seasonNo.setMaxLength(3);
+            seasonNo.setHint(Component.literal(Integer.toString(next)).withStyle(ChatFormatting.DARK_GRAY));
+            addRenderableWidget(seasonNo);
+            addRenderableWidget(FlatButton.confirm(cx + 208, y, 110, "Neue Season", "Alles auf null?", FlatButton.Style.DANGER, () -> send("season_start", seasonNo.getValue().trim()))
+                    .tip("Setzt jedes Ziel, jede Rangliste und jedes Kit zurück", "Erst " + next + " links eintippen, dann zweimal klicken"));
         } else {
             addRenderableWidget(FlatButton.confirm(cx, y, 170, "Season starten", "Sicher? Alles auf null", FlatButton.Style.PRIMARY, () -> send("season_start", ""))
                     .icon(new ItemStack(Items.NETHER_STAR)).tip("Setzt jedes Ziel, jede Rangliste und jedes Kit zurück", "Zweiter Klick startet"));
@@ -405,7 +418,7 @@ public final class AdminScreen extends KwScreen {
         wrapped(g, "Die Wand zeigt die fleißigsten Hände pro Ziel, eingraviert in Stein. Sie entsteht vor dir, in Blickrichtung.", cx, y + 12, cw, Ui.MUTED);
     }
 
-    private EditBox gateName, limit;
+    private EditBox gateName, limit, seasonNo;
 
     private void initServer() {
         var s = data.server();

@@ -97,9 +97,12 @@ public final class BossScaling {
         if (boss.tickCount % 40 == 0) apply(boss, n);
         // the interval in ticks, counted per boss: any value works, not only multiples of the check
         int interval = Math.max(20, KronwerkeConfig.BOSS_ATTACK_INTERVAL.get());
-        int last = boss.getPersistentData().getInt("kronwerke_attack");
-        if (n >= 2 && boss.tickCount - last >= interval) {
-            boss.getPersistentData().putInt("kronwerke_attack", boss.tickCount);
+        // game time, not tickCount: tickCount starts at 0 again when the boss is loaded, the
+        // stored value would then hold the extra attacks back for hours
+        long now = level.getGameTime();
+        long last = boss.getPersistentData().getLong("kronwerke_attack_at");
+        if (n >= 2 && (now - last >= interval || now < last)) {
+            boss.getPersistentData().putLong("kronwerke_attack_at", now);
             extraAttack(level, boss, near);
         }
     }

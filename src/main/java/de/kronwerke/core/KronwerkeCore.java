@@ -90,6 +90,7 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.portal.Travel::onTick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, de.kronwerke.core.portal.Travel::onFrozenDamage);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, de.kronwerke.core.portal.Travel::onFrozenPickup);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, de.kronwerke.core.portal.Travel::onFrozenCommand);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, de.kronwerke.core.portal.Ignite::onRightClick);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onBreak);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onPlace);

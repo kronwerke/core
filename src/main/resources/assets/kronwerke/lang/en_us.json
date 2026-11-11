@@ -261,5 +261,8 @@
   "kronwerke.tag.c.ingots.steel": "Steel Ingot (any mod)",
   "kronwerke.ui.close": "Close (Esc)",
   "kronwerke.undo.done": "Given back: %s.",
-  "kronwerke.undo.none": "Nothing to give back: only gifts from the last ten seconds, and not when they filled or paused the goal."
+  "kronwerke.undo.none": "Nothing to give back: only gifts from the last ten seconds, and not when they filled or paused the goal.",
+  "kronwerke.season.resume": "The season goes on.",
+  "kronwerke.travel.busy": "You are on your way, one moment.",
+  "kronwerke.travel.pull": "Your data is still on its way from %s. Try again in a few seconds."
 }
