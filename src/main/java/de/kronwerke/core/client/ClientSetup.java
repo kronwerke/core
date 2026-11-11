@@ -31,7 +31,11 @@ public final class ClientSetup {
         KeyDump.register();
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingOut e) -> ObeliskEffects.forget());
         // fills the creative tabs bit by bit after joining instead of all at once when the menu opens
-        NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> CreativePrewarm.reset());
+        // not on a move between the network's servers: the tabs are the same there, and filling
+        // them again stood the game still for a second or two right at the arrival
+        NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> {
+            if (!TravelOverlay.moving()) CreativePrewarm.reset();
+        });
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientTickEvent.Post e) -> {
             LanguageScreen.clientTick();
             de.kronwerke.core.camera.client.CameraShots.tick();

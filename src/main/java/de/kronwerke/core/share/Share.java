@@ -368,6 +368,13 @@ public final class Share {
     /** The autosave's chunks are written: the shared network's record follows, then the senders hear it is safe. */
     public static void onSaved() {
         if (server == null || data == null) return;
+        for (Layer l : layers.values()) {
+            try {
+                l.onSave(server);
+            } catch (RuntimeException | LinkageError e) {
+                error(l.name(), e);
+            }
+        }
         data.setDirty();
         server.overworld().getDataStorage().save();
         Map<String, JsonObject> per = new HashMap<>();

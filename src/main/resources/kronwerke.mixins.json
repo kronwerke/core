@@ -66,6 +66,7 @@
     "ReliquaryCharmTickMixin",
     "RouterSenderDimensionMixin",
     "MekTeleporterRemoteMixin",
+    "QioDriveNewMixin",
     "MekPortableTeleporterRemoteMixin",
     "SelectorParserTagsMixin",
     "SelectorTagIndexMixin",

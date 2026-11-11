@@ -46,6 +46,10 @@ public interface Layer {
         return null;
     }
 
+    /** The world is being saved: what the layer keeps in files of its own is written with it. */
+    default void onSave(MinecraftServer server) {
+    }
+
     /** A line for /kw share: what this layer is doing. */
     default String describe() {
         return "";

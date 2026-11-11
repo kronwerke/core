@@ -221,6 +221,7 @@ public final class Probe {
                 en.setValue(en.getValue() - 1);
             }
         }
+        reconnect(mc);
         readInput();
         if (wait > 0) {
             wait--;
@@ -237,6 +238,25 @@ public final class Probe {
                 KronwerkeCore.LOGGER.warn("Probe: {} failed", line, t);
             }
         }
+    }
+
+    private static long offlineSince;
+    private static boolean stayOut;
+
+    /** Back onto the server after a restart or a kick, 30 seconds later; not after "disconnect". */
+    private static void reconnect(Minecraft mc) {
+        boolean out = mc.level == null && (mc.screen instanceof TitleScreen || mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen);
+        if (!out || stayOut) {
+            offlineSince = 0;
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (offlineSince == 0) offlineSince = now;
+        if (now - offlineSince < 30_000) return;
+        offlineSince = now;
+        String addr = System.getProperty("kronwerke.camera.server", "127.0.0.1:25565");
+        event("reconnecting to " + addr);
+        ConnectScreen.startConnecting(new TitleScreen(), mc, ServerAddress.parseString(addr), new ServerData("Kronwerke", addr, ServerData.Type.OTHER), false, null);
     }
 
     private static String server(Minecraft mc) {
@@ -398,10 +418,12 @@ public final class Probe {
                 return null;
             case "connect": {
                 if (mc.level != null) return "still in a world: disconnect first";
+                stayOut = false;
                 ConnectScreen.startConnecting(new TitleScreen(), mc, ServerAddress.parseString(rest), new ServerData("Kronwerke", rest, ServerData.Type.OTHER), false, null);
                 return null;
             }
             case "disconnect":
+                stayOut = true;
                 if (mc.level != null) {
                     mc.level.disconnect();
                     mc.disconnect();

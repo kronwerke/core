@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.0
+
+- Mekanism's QIO is one storage on every server of the network. A dashboard, an exporter or a crafting window sees everything a frequency holds on any server, and what is taken comes from the server that has it, a split second later. The things stay in the drives they were put in: every server tells the others what its own drives hold, and each shows that through a drive that only shows (the mirror), so Mekanism itself counts, lists, filters and searches the whole storage. What is asked for lands in a small transit drive; what is not used after ten seconds, and what is put in where the real drives are full or missing, goes to a server with room. Before, everything a side world's drives held was sent to main, and a dashboard in the Nether showed nothing of main's.
+- The creative tabs are not filled again after a move between servers (one to two seconds of standstill right at the arrival).
+- The test player comes back by itself 30 seconds after a restart or a kick.
+
 ## 0.38.5
 
 - The chat stays while a player moves between the servers: the client empties it at every disconnect, so each move wiped what had just been said.
