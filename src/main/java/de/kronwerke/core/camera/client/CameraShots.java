@@ -55,6 +55,7 @@ public final class CameraShots {
             optionsSet = true;
             mc.options.pauseOnLostFocus = false;
             mc.options.hideGui = true;
+            mc.options.gamma().set(1.0); // "Bright": the grey boxes are lit evenly, no dark corners
         }
         String screen = mc.screen == null ? "-" : mc.screen.getClass().getSimpleName();
         if (!screen.equals(lastScreen)) {

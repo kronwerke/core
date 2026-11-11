@@ -4,6 +4,7 @@
   "package": "de.kronwerke.core.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "CameraLabelsMixin",
     "AccessoriesTickMixin",
     "ActingPlayerMixin",
     "ArsWeatherDirtyMixin",
