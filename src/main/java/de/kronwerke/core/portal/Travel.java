@@ -80,6 +80,8 @@ public final class Travel {
     private static final Map<UUID, Arrival> arrived = new HashMap<>();
     /** Who is leaving through a move, and to where, for the leave message. */
     private static final Map<UUID, String> leaving = new HashMap<>();
+    /** Who just left through a move and to where (the Arrival's "from"), for what runs after the logout. */
+    private static final Map<UUID, Arrival> movedOut = new HashMap<>();
     /** Item sends waiting for delivery, to drop them again if nobody took them. */
     private static final Map<String, ItemSend> itemSends = new HashMap<>();
     private static final Set<UUID> evacuating = new HashSet<>();
@@ -231,7 +233,23 @@ public final class Travel {
     }
 
     public static String leavingTo(UUID id) {
-        return leaving.get(id);
+        String to = leaving.get(id);
+        if (to != null) return to;
+        Arrival gone = movedOut.get(id);
+        return gone == null ? null : gone.from();
+    }
+
+    /**
+     * Whether the player's leaving (or coming) is a move inside the network: nobody is told
+     * then, as nobody is told when someone changes the dimension on one server.
+     */
+    public static boolean quietLeave(UUID id) {
+        String to = leavingTo(id);
+        return to != null && NetworkSync.peer(to) != null;
+    }
+
+    public static boolean quietJoin(UUID id) {
+        return expected(id);
     }
 
     // ---- the portal ----
@@ -412,6 +430,7 @@ public final class Travel {
         expected.values().removeIf(a -> a.until() < now);
         undo.values().removeIf(u -> u.until() < now);
         arrived.values().removeIf(a -> a.until() < now);
+        movedOut.values().removeIf(a -> a.until() < now);
         for (var it = itemSends.entrySet().iterator(); it.hasNext(); ) {
             var en = it.next();
             if (en.getValue().until() < now) {
@@ -422,7 +441,7 @@ public final class Travel {
         }
         if (!Role.main() && tick % 600 == 0) checkpoints();
         if (!Role.main() && tick % 20 == 0) HomeReports.tick();
-        if (Role.main() && tick % 40 == 0) checkUnderway();
+        if (tick % 40 == 0) checkUnderway();
         if (Role.main() && !pulls.isEmpty() && tick % 20 == 0) pulls.values().removeIf(t -> now - t > 60_000);
         if (Role.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get()) && tick % 100 == 0) tiefgraeber();
         Crossing.tick(server);
@@ -460,6 +479,7 @@ public final class Travel {
             if (adv != null) p.getAdvancements().award(adv, "travel");
         }
         progress(p, data);
+        de.kronwerke.core.goal.StageLink.pack(p, data);
         if (back != null) data.add("back", back);
         if (arrive != null) data.add("arrive", arrive);
         JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
@@ -487,12 +507,15 @@ public final class Travel {
             if (b != null) p.teleportTo(p.serverLevel(), b.get("x").getAsDouble(), b.get("y").getAsDouble(), b.get("z").getAsDouble(), b.get("yaw").getAsFloat(), 0);
         }
         leaving.put(p.getUUID(), dep.target());
-        if (Role.main()) underway.put(p.getUUID(), new Underway(p.getGameProfile().getName(), target.label().isEmpty() ? target.name() : target.label(), System.currentTimeMillis()));
+        underway.put(p.getUUID(), new Underway(p.getGameProfile().getName(), target.label().isEmpty() ? target.name() : target.label(), System.currentTimeMillis()));
         KronwerkeCore.LOGGER.info("{} moves to {} ({}:{})", p.getGameProfile().getName(), dep.target(), target.host(), target.port());
-        p.connection.send(new ClientboundTransferPacket(target.host(), target.port()));
+        // a client inside the container (the camera, the test player) stays on loopback, where its login is allowed
+        boolean local = p.connection.getRemoteAddress() instanceof java.net.InetSocketAddress ia && ia.getAddress() != null && ia.getAddress().isLoopbackAddress()
+                && (de.kronwerke.core.camera.Camera.is(p) || de.kronwerke.core.camera.Camera.isTester(p.getGameProfile()));
+        p.connection.send(new ClientboundTransferPacket(local ? "127.0.0.1" : target.host(), target.port()));
     }
 
-    /** main: players sent to another server, until that server lists them. */
+    /** Players sent to another server, until that server lists them. */
     private record Underway(String name, String to, long since) {}
 
     private static final Map<UUID, Underway> underway = new HashMap<>();
@@ -519,6 +542,9 @@ public final class Travel {
             KronwerkeCore.LOGGER.warn("{} was sent to {} 30 seconds ago and has not arrived there", u.name(), u.to());
             Component line = Text.t("travel.nowhere", "%s ist nach %s aufgebrochen, dort aber nicht angekommen. Beim nächsten Login kommt er wieder hier an.", u.name(), u.to()).withStyle(ChatFormatting.GRAY);
             for (ServerPlayer op : server.getPlayerList().getPlayers()) if (op.hasPermissions(2)) op.sendSystemMessage(line);
+            // the move itself was silent: now it is a leaving like any other, here and on the other servers
+            server.getPlayerList().broadcastSystemMessage(Component.translatable("multiplayer.player.left", u.name()).withStyle(ChatFormatting.YELLOW), false);
+            NetworkSync.leftNowhere(u.name(), e.getKey());
         }
     }
 
@@ -548,7 +574,11 @@ public final class Travel {
         UUID id = p.getUUID();
         inPortal.remove(id);
         if (NetworkSync.refused(id)) return; // turned away at the door: they were never here
-        if (leaving.remove(id) != null) return;
+        String movedTo = leaving.remove(id);
+        if (movedTo != null) {
+            movedOut.put(id, new Arrival(movedTo, System.currentTimeMillis() + 5_000));
+            return;
+        }
         if (Role.main() || p instanceof de.kronwerke.core.loadtest.LoadBot) return;
         NetworkSync.Peer home = NetworkSync.portalTarget();
         if (home == null) return;
@@ -673,6 +703,7 @@ public final class Travel {
             Compat.restore(server, x);
             de.kronwerke.core.share.Share.unpack(id, x);
         }
+        de.kronwerke.core.goal.StageLink.received(id, d);
         expected.put(id, new Arrival(from, System.currentTimeMillis() + 90_000));
         JsonObject r = withId(d);
         r.addProperty("uuid", id.toString());
@@ -871,6 +902,7 @@ public final class Travel {
         UUID id = p.getUUID();
         Arrival a = expected.remove(id);
         undo.remove(id);
+        de.kronwerke.core.goal.StageLink.onLogin(p);
         Crossing.onLogin(p, a != null);
         if (a != null) {
             // arriving with main's newer state: an older report from the last visit is void

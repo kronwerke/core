@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.38.0
+
+- A move between the servers of the network is silent. Before, the server a player left said "left the game" to everyone (the note that it was a move got lost on the way to the other servers) and the one they arrived on said "joined the game". Now nobody is told, as nobody is told when someone changes the dimension on one server; joining and leaving the network reads the same on every server, without a server's name in front. A move that ends nowhere (the client never arrives) is said as a leaving after 30 seconds.
+- The travel overlay no longer waits for every screen to close before it clears: a window that opened on arrival sat invisible under the stars until the player pressed Escape. Only the screens of the reconnect itself hold it back now.
+- A player's stages hold in every world of the network. Chapters keeps them in the player's FTB team, and every server has its own teams, so a stage given on main (by a goal, or all of them by the admin bypass) was unknown in the side worlds: whoever went to the mining world stood at stage 1 again. Now a player who moves takes their stages along, main sends the stages everybody has by now with its state and a side world gives them to whoever is there, and `/kw admin bypass` works in a side world (it threw there before): it sets the stages there and tells main, which keeps the list.
+- The test player: `KronwerkeTest` logs in like the camera (without a Mojang account, only over loopback), but is a player like any other. Its client (`-Dkronwerke.probe=true`, the camera bootstrap's tester mode) is driven by lines in `kronwerke/probe/in.txt` (chat, commands, keys, mouse, slots, pictures of the frame) and keeps a timeline of what a player would see: every screen, world and connection change, the travel overlay's phases, every chat line, and every time the game stood still with the code that held it up. A move sends a client on loopback to the other server's loopback address.
+
 ## 0.37.11
 
 - `/kw testworld use` clears the item's cooldown first: its hand never ticks, so the cooldown Create's belt sets after the first of its two clicks never ran out and the second click did nothing.

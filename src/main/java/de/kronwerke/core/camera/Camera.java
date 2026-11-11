@@ -46,6 +46,14 @@ public final class Camera {
     private Camera() {
     }
 
+    /** The test player: logs in like the camera (loopback only), but is a player like any other. */
+    public static final String TESTER = "KronwerkeTest";
+    public static final UUID TESTER_ID = UUIDUtil.createOfflinePlayerUUID(TESTER);
+
+    public static boolean isTester(GameProfile p) {
+        return p != null && TESTER.equals(p.getName()) && TESTER_ID.equals(p.getId());
+    }
+
     public static boolean is(GameProfile p) {
         return p != null && NAME.equals(p.getName()) && ID.equals(p.getId());
     }
@@ -56,9 +64,9 @@ public final class Camera {
 
     /** At the login: this name may skip Mojang's check only from inside the container. */
     public static boolean offlineLogin(SocketAddress from, String name) {
-        if (!NAME.equals(name) || !(from instanceof InetSocketAddress a)) return false;
+        if (!(NAME.equals(name) || TESTER.equals(name)) || !(from instanceof InetSocketAddress a)) return false;
         boolean local = a.getAddress() != null && a.getAddress().isLoopbackAddress();
-        if (local) KronwerkeCore.LOGGER.info("The camera logs in from {}", a);
+        if (local) KronwerkeCore.LOGGER.info("{} logs in from {}", name, a);
         return local;
     }
 

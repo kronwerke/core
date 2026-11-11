@@ -18,11 +18,11 @@ import net.minecraft.server.players.PlayerList;
 public abstract class CameraGateMixin {
     @Inject(method = "canPlayerLogin", at = @At("HEAD"), cancellable = true)
     private void kronwerke$cameraLogin(SocketAddress address, GameProfile profile, CallbackInfoReturnable<Component> cir) {
-        if (Camera.is(profile)) cir.setReturnValue(null);
+        if (Camera.is(profile) || Camera.isTester(profile)) cir.setReturnValue(null);
     }
 
     @Inject(method = "isWhiteListed", at = @At("HEAD"), cancellable = true)
     private void kronwerke$cameraListed(GameProfile profile, CallbackInfoReturnable<Boolean> cir) {
-        if (Camera.is(profile)) cir.setReturnValue(true);
+        if (Camera.is(profile) || Camera.isTester(profile)) cir.setReturnValue(true);
     }
 }

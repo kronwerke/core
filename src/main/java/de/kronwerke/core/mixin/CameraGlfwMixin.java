@@ -18,6 +18,6 @@ import de.kronwerke.core.camera.CameraClient;
 public class CameraGlfwMixin {
     @Inject(method = "_initGlfw", at = @At("HEAD"), remap = false)
     private static void kronwerke$nullPlatform(CallbackInfoReturnable<?> cir) {
-        if (CameraClient.ON) GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_NULL);
+        if (CameraClient.HEADLESS) GLFW.glfwInitHint(GLFW.GLFW_PLATFORM, GLFW.GLFW_PLATFORM_NULL);
     }
 }

@@ -22,6 +22,6 @@ public abstract class CameraQuietLeaveMixin {
     @WrapOperation(method = "removePlayerFromWorld", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/server/players/PlayerList;broadcastSystemMessage(Lnet/minecraft/network/chat/Component;Z)V"), require = 0)
     private void kronwerke$quietLeave(PlayerList list, Component msg, boolean overlay, Operation<Void> original) {
-        if (!Camera.is(player)) original.call(list, msg, overlay);
+        if (!Camera.is(player) && !de.kronwerke.core.portal.Travel.quietLeave(player.getUUID())) original.call(list, msg, overlay);
     }
 }

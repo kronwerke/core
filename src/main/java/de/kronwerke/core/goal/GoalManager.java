@@ -802,8 +802,25 @@ public final class GoalManager {
             activity().login(sp.getUUID(), System.currentTimeMillis());
             if (!barHidden.contains(sp.getUUID())) for (ServerBossEvent b : bars.values()) b.addPlayer(sp);
             giveStages(sp);
+            // the stages of the goals are what the goals and the bypass say, whatever a side
+            // world did meanwhile
+            StageLink.reconcile(sp, goalStages(), earnedStages(), data().hasBypass(sp.getUUID()));
             giveKits(sp);
         }
+    }
+
+    /** Every stage a goal grants. */
+    public java.util.Set<String> goalStages() {
+        java.util.Set<String> all = new java.util.LinkedHashSet<>();
+        for (Goal g : goals.values()) all.addAll(g.stages());
+        return all;
+    }
+
+    /** The stages everybody has by now: those of the goals that are done and out. */
+    public java.util.Set<String> earnedStages() {
+        java.util.Set<String> out = new java.util.LinkedHashSet<>();
+        for (Goal g : goals.values()) if (data().isRevealed(g.id())) out.addAll(g.stages());
+        return out;
     }
 
     public void onPlayerLeave(Player player) {

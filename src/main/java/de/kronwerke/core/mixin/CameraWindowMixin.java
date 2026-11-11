@@ -17,7 +17,7 @@ import de.kronwerke.core.camera.CameraClient;
 public class CameraWindowMixin {
     @Inject(method = "lambda$windowHandoff$0", at = @At(value = "INVOKE", target = "Lorg/lwjgl/glfw/GLFW;glfwCreateWindow(IILjava/lang/CharSequence;JJ)J"), require = 1)
     private static void kronwerke$osmesa(CallbackInfoReturnable<Long> cir) {
-        if (!CameraClient.ON) return;
+        if (!CameraClient.HEADLESS) return;
         GLFW.glfwWindowHint(GLFW.GLFW_CONTEXT_CREATION_API, GLFW.GLFW_OSMESA_CONTEXT_API);
         GLFW.glfwWindowHint(GLFW.GLFW_OPENGL_FORWARD_COMPAT, GLFW.GLFW_FALSE);
     }

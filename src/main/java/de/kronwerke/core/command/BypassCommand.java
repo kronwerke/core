@@ -48,7 +48,7 @@ public final class BypassCommand {
                 .requires(s -> s.hasPermission(2))
                 .executes(c -> {
                     ServerPlayer p = c.getSource().getPlayerOrException();
-                    return set(c, p, !data().hasBypass(p.getUUID()));
+                    return set(c, p, !has(p.getUUID()));
                 })
                 .then(Commands.literal("on")
                         .executes(c -> set(c, c.getSource().getPlayerOrException(), true))
@@ -72,8 +72,14 @@ public final class BypassCommand {
         return new ArrayList<>(all);
     }
 
+    private static boolean has(UUID id) {
+        return de.kronwerke.core.link.Role.main() ? data().hasBypass(id) : de.kronwerke.core.goal.StageLink.hasBypass(id);
+    }
+
     /** Turns the bypass on or off and returns the stages that were added or taken back. */
     static List<String> apply(MinecraftServer server, ServerPlayer player, boolean on) {
+        // a side world has no goals of its own: it sets the stages there and tells main
+        if (!de.kronwerke.core.link.Role.main()) return de.kronwerke.core.goal.StageLink.bypassHere(player, on);
         Set<String> earned = new HashSet<>();
         for (Goal g : GoalManager.get().allGoals()) {
             if (data().isCompleted(g.id())) earned.addAll(g.stages());
@@ -104,6 +110,10 @@ public final class BypassCommand {
     }
 
     private static int list(CommandContext<CommandSourceStack> c) {
+        if (!de.kronwerke.core.link.Role.main()) {
+            c.getSource().sendSuccess(() -> Component.literal("Die Liste führt der Hauptserver: /kw admin bypass list dort.").withStyle(ChatFormatting.GOLD), false);
+            return 0;
+        }
         List<String> names = data().bypassing().stream()
                 .map(u -> name(c, u))
                 .sorted()

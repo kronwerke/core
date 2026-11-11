@@ -35,6 +35,17 @@ public final class TravelOverlay {
     private TravelOverlay() {
     }
 
+    /** For the test player's timeline. */
+    public static String phaseName() {
+        return switch (phase) {
+            case CHARGE -> "charge";
+            case GO -> arrived ? "go+arrived" : "go";
+            case ARRIVING -> "arriving";
+            case FADE -> "fade";
+            default -> "off";
+        };
+    }
+
     public static void register() {
         NeoForge.EVENT_BUS.addListener((RenderGuiEvent.Post e) -> draw(e.getGuiGraphics()));
         NeoForge.EVENT_BUS.addListener((ScreenEvent.Render.Post e) -> draw(e.getGuiGraphics()));
@@ -101,7 +112,14 @@ public final class TravelOverlay {
                     long since = t - WHITE_MS;
                     if (since < 500) g.fill(0, 0, w, h, argb(1 - since / 500f, 0xffffff));
                 }
-                boolean ready = arrived && mc.level != null && mc.player != null && mc.screen == null;
+                // only the screens of the reconnect hold the arrival back: a window that opens
+                // on arrival (a mod's welcome, a book) sat under the stars before, until Escape
+                boolean loading = mc.screen instanceof net.minecraft.client.gui.screens.ReceivingLevelScreen
+                        || mc.screen instanceof net.minecraft.client.gui.screens.ConnectScreen
+                        || mc.screen instanceof net.minecraft.client.gui.screens.ProgressScreen
+                        || mc.screen instanceof net.minecraft.client.gui.screens.GenericMessageScreen
+                        || mc.screen instanceof net.minecraft.client.gui.screens.LevelLoadingScreen;
+                boolean ready = arrived && mc.level != null && mc.player != null && !loading;
                 if (ready && now - arrivedAt > 400) {
                     phase = ARRIVING;
                     start = now;

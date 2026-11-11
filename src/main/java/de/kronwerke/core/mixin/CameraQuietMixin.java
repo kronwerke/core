@@ -19,6 +19,6 @@ public abstract class CameraQuietMixin {
             target = "Lnet/minecraft/server/players/PlayerList;broadcastSystemMessage(Lnet/minecraft/network/chat/Component;Z)V"))
     private void kronwerke$quietJoin(PlayerList list, Component msg, boolean overlay, Operation<Void> original,
                                      @Local(argsOnly = true) ServerPlayer player) {
-        if (!Camera.is(player)) original.call(list, msg, overlay);
+        if (!Camera.is(player) && !de.kronwerke.core.portal.Travel.quietJoin(player.getUUID())) original.call(list, msg, overlay);
     }
 }

@@ -180,14 +180,10 @@ public final class NetworkSync {
                 String to = str(m, "to");
                 if (op.equals("join") && !str(m, "via").isEmpty()) return; // a move: the leave already said it
                 if (op.equals("leave") && to.equals(Role.server())) return; // coming here: the join says it
-                MutableComponent line = mark(str(m, "from"));
-                if (op.equals("leave") && !to.isEmpty()) {
-                    Peer target = peers.get(to);
-                    line.append(Text.t("network.moved", "%s geht nach %s", str(m, "player"), target == null ? to : target.label()).withStyle(ChatFormatting.YELLOW));
-                } else {
-                    line.append(Component.translatable(op.equals("join") ? "multiplayer.player.joined" : "multiplayer.player.left", str(m, "player")).withStyle(ChatFormatting.YELLOW));
-                }
-                server.getPlayerList().broadcastSystemMessage(line, false);
+                if (op.equals("leave") && !to.isEmpty()) return; // a move to another server: nobody left
+                // the network is one world to its players: the line reads as on the server it happened on
+                server.getPlayerList().broadcastSystemMessage(Component.translatable(op.equals("join") ? "multiplayer.player.joined" : "multiplayer.player.left",
+                        str(m, "player")).withStyle(ChatFormatting.YELLOW), false);
             }
             case "players" -> {
                 if (flag("tablist")) setRemote(str(m, "from"), remotes(str(m, "from"), m.getAsJsonArray("list")));
@@ -207,6 +203,10 @@ public final class NetworkSync {
                     de.kronwerke.core.tab.Tags.onMessage(d);
                     return;
                 }
+                if (topic.equals(de.kronwerke.core.goal.StageLink.TOPIC) && m.get("data") instanceof JsonObject d) {
+                    de.kronwerke.core.goal.StageLink.onBypassMessage(server, d);
+                    return;
+                }
                 if (topic.equals(Moderation.TOPIC) && m.get("data") instanceof JsonObject d) {
                     Moderation.onMessage(str(m, "from"), d);
                     return;
@@ -221,6 +221,7 @@ public final class NetworkSync {
                     streamers = s;
                     goalLine = str(d, "goal");
                     if (d.has("stage")) de.kronwerke.core.mobs.MobStages.setRemoteStage(d.get("stage").getAsInt());
+                    de.kronwerke.core.goal.StageLink.onState(server, d);
                     // main's list of hand-set tags: side worlds catch up after their own restart
                     if (d.get("tags") instanceof JsonObject tags) de.kronwerke.core.tab.Tags.onMessage(tags);
                 }
@@ -315,6 +316,15 @@ public final class NetworkSync {
         sendPlayers(null);
     }
 
+    /** A move that ended nowhere: the other servers hear that the player left. */
+    public static void leftNowhere(String name, UUID id) {
+        if (!on()) return;
+        JsonObject m = op("leave");
+        m.addProperty("player", name);
+        m.addProperty("uuid", id.toString());
+        bus.send(m);
+    }
+
     public static void onLeave(ServerPlayer p) {
         if (refused.remove(p.getUUID()) || !on()) return;
         JsonObject m = op("leave");
@@ -377,6 +387,12 @@ public final class NetworkSync {
         d.add("streamers", s);
         d.addProperty("goal", TabList.goalLine());
         d.addProperty("stage", de.kronwerke.core.mobs.MobStages.stage());
+        try {
+            var gm = de.kronwerke.core.goal.GoalManager.get();
+            de.kronwerke.core.goal.StageLink.state(d, gm.earnedStages(), gm.progressData().bypassing());
+        } catch (RuntimeException ignored) {
+            // goals not loaded yet
+        }
         d.add("tags", de.kronwerke.core.tab.Tags.toJson());
         JsonObject m = op("send");
         m.addProperty("to", "*");
