@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.1
+
+- Modular Routers' Sender Module Mk3 does not send into a dimension on another server ("bad dimension"); the items stay in the router.
+
 ## 0.36.0
 
 - An animal, item, cart or any other entity that a mod sends into a dimension played on another server stays where it is. Each server still has its own copy of every dimension, which nobody can visit, so whatever went there was lost. Portals already kept everything but players on their side; this covers mods' own teleports.

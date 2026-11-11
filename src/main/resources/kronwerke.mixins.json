@@ -59,6 +59,7 @@
     "RecipeManagerLocksMixin",
     "RecipesForClientsMixin",
     "ReliquaryCharmTickMixin",
+    "RouterSenderDimensionMixin",
     "SelectorParserTagsMixin",
     "SelectorTagIndexMixin",
     "ServerPlayerRespawnInvoker",
