@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.38.5
+
+- The chat stays while a player moves between the servers: the client empties it at every disconnect, so each move wiped what had just been said.
+- Anyone who just arrived from another server is left alone by a Mekanism teleporter whose other end is on another server, until they step out of its frame. main puts a player who comes home where they left, and for one who left through a teleporter that is inside its frame: the test player came home through the Farmwelt's portal and was sent straight back.
+
 ## 0.38.4
 
 - A player who comes out of a Mekanism teleporter from another server is not sent straight back: Mekanism keeps arrivals from bouncing by a list in the teleporter that it clears of everyone who is not standing there, and a player from another server is not standing there yet for seconds. On the real servers the test player went back and forth between main and the Farmwelt until one teleporter was removed.
