@@ -76,7 +76,15 @@ public final class LoadTest {
             double tx = spawn.getX() + 0.5 + Math.cos(angle) * dist, tz = spawn.getZ() + 0.5 + Math.sin(angle) * dist;
             forget(server, profile.getId()); // a bot never brings a position from an earlier run
             LoadBot bot = new LoadBot(server, level, profile, traveller, spawn.getX(), spawn.getZ(), radius, speed, flyY, tx, tz);
+            bot.moveTo(spawn.getX() + 0.5, flyY, spawn.getZ() + 0.5, 0, 0);
+            // a player without saved data joins in the overworld whatever level it was made for;
+            // on a Nether or End server that put the bots into an overworld nobody generated
+            if (level.dimension() != net.minecraft.world.level.Level.OVERWORLD) arriveIn(server, bot);
             server.getPlayerList().placeNewPlayer(new BotConnection(), bot, CommonListenerCookie.createInitial(profile, false));
+            if (bot.serverLevel() != level) {
+                KronwerkeCore.LOGGER.warn("Load test: {} joined in {} instead of {}, moving it", name, bot.serverLevel().dimension().location(), level.dimension().location());
+                bot.teleportTo(level, spawn.getX() + 0.5, flyY, spawn.getZ() + 0.5, 0, 0);
+            }
             bot.setGameMode(GameType.CREATIVE);
             bot.getAbilities().flying = true;
             bot.setInvulnerable(true);
@@ -149,8 +157,9 @@ public final class LoadTest {
     /** Removes every bot and deletes its player files. */
     public static int stop(MinecraftServer server) {
         PENDING.clear();
-        ChunkPos at = new ChunkPos(server.overworld().getSharedSpawnPos());
-        server.overworld().getChunkSource().removeRegionTicket(TICKET, at, 4, at);
+        ServerLevel level = home(server);
+        ChunkPos at = new ChunkPos(center(level));
+        level.getChunkSource().removeRegionTicket(TICKET, at, 4, at);
         List<LoadBot> bots = new ArrayList<>(BOTS);
         BOTS.clear();
         for (LoadBot bot : bots) {
@@ -159,6 +168,21 @@ public final class LoadTest {
         }
         KronwerkeCore.LOGGER.info("Load test: {} bots removed", bots.size());
         return bots.size();
+    }
+
+    /**
+     * Writes the bot's player file before it joins, so the join reads its dimension and
+     * position from there like it does for a real player arriving from another server.
+     */
+    private static void arriveIn(MinecraftServer server, LoadBot bot) {
+        Path file = server.getWorldPath(LevelResource.PLAYER_DATA_DIR).resolve(bot.getUUID() + ".dat");
+        try {
+            net.minecraft.nbt.CompoundTag tag = net.minecraft.nbt.NbtUtils.addCurrentDataVersion(bot.saveWithoutId(new net.minecraft.nbt.CompoundTag()));
+            Files.createDirectories(file.getParent());
+            net.minecraft.nbt.NbtIo.writeCompressed(tag, file);
+        } catch (IOException | RuntimeException e) {
+            KronwerkeCore.LOGGER.warn("Load test: could not write the player file of {}: {}", bot.getGameProfile().getName(), e.toString());
+        }
     }
 
     private static void forget(MinecraftServer server, UUID id) {

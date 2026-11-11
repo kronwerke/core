@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.27.3
+
+- Load test on a Nether or End server: the bots join in that dimension. A player without saved data joins in the overworld whatever level it was made for, so the bots stood in the dimension server's own overworld, which nobody generated; they now get a player file with their dimension and position before they join, as a real player arriving from another server does. `loadtest stop` releases the spawn ticket in the bots' dimension, not in the overworld.
+
 ## 0.27.2
 
 - The weeping well guard asks whether each chunk is loaded (`getChunkNow`). 0.27.1 still used `hasChunksAt`, which on a server only says that a ticket will keep the chunk loaded, so chunks still on their way from disk passed and Malum waited for them on the server thread: with 50 players in a pregenerated Nether, 57 percent of the time in ticks over half a second, and stalls of up to 58 seconds.
