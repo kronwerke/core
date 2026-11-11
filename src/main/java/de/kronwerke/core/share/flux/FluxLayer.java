@@ -247,8 +247,18 @@ public final class FluxLayer implements Layer {
         };
     }
 
+    /**
+     * Whether a server of that role made the network with this number: its block, or the block
+     * an older Core gave every server from its role's name (main 351, the farm world 364), in
+     * which the test networks of November 2026 were made.
+     */
+    private static boolean made(String role, int id) {
+        int b = id / SIDE_IDS;
+        return b == block(role) || b == 4 + Math.floorMod(role.hashCode(), 500);
+    }
+
     private static boolean mine(int id) {
-        return id / SIDE_IDS == block(Role.role());
+        return made(Role.role(), id);
     }
 
     private void keepIdsApart() {
@@ -331,7 +341,7 @@ public final class FluxLayer implements Layer {
     private static String ownerOf(int id) {
         for (String peer : Share.peers()) {
             var q = de.kronwerke.core.link.NetworkSync.peer(peer);
-            if (q != null && block(q.role()) == id / SIDE_IDS) return peer;
+            if (q != null && made(q.role(), id)) return peer;
         }
         return null;
     }
@@ -367,7 +377,7 @@ public final class FluxLayer implements Layer {
             de.kronwerke.core.KronwerkeCore.LOGGER.warn("Shared network: Flux definitions from {}, which is not a server of the network here", from);
             return;
         }
-        int theirs = block(sender.role());
+        String theirs = sender.role();
         CompoundTag list;
         try {
             list = TagParser.parseTag(text);
@@ -379,7 +389,7 @@ public final class FluxLayer implements Layer {
         try {
             for (String k : list.getAllKeys()) {
                 int id = Integer.parseInt(k);
-                if (id / SIDE_IDS != theirs) continue; // only its own
+                if (!made(theirs, id) || mine(id)) continue; // only its own
                 seen.add(id);
                 CompoundTag t = list.getCompound(k);
                 FluxNetwork n = nets.get(id);
@@ -397,9 +407,9 @@ public final class FluxLayer implements Layer {
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
-        lastHeard = from + " (" + sender.role() + ", block " + theirs + ") " + list.getAllKeys().size() + " networks, " + seen.size() + " of its own";
+        lastHeard = from + " (" + sender.role() + ", block " + block(theirs) + ") " + list.getAllKeys().size() + " networks, " + seen.size() + " of its own";
         for (FluxNetwork n : new ArrayList<>(nets.values())) {
-            if (n.getNetworkID() / SIDE_IDS == theirs && !seen.contains(n.getNetworkID())) {
+            if (made(theirs, n.getNetworkID()) && !mine(n.getNetworkID()) && !seen.contains(n.getNetworkID())) {
                 heard.remove(n.getNetworkID());
                 FluxNetworkData.getInstance().deleteNetwork(n);
             }
