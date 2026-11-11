@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.28.0
+
+- Tag index for command selectors (`[performance] tagIndex`, on): a selector with a positive tag, like `@e[type=marker,tag=x]`, looks only at the entities that carry that tag instead of every entity of the dimension. Incendium and Tool Trims run about ten such selectors every tick; with 50 players in the Nether they were 15 percent of the tick. Type, box, limit and every other part of the selector are tested as before, so the result is the same. The index follows the entities the level tracks, and every entity's tag set reports its changes (commands, NBT, mods). `/kw admin tagindex` compares the index with a full scan, on every server.
+
 ## 0.27.3
 
 - Load test on a Nether or End server: the bots join in that dimension. A player without saved data joins in the overworld whatever level it was made for, so the bots stood in the dimension server's own overworld, which nobody generated; they now get a player file with their dimension and position before they join, as a real player arriving from another server does. `loadtest stop` releases the spawn ticket in the bots' dimension, not in the overworld.

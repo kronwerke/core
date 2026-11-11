@@ -49,7 +49,12 @@ public final class KwCommand {
             c.getSource().sendSuccess(() -> de.kronwerke.core.Text.t("network.side", "Du bist in %s. Season, Ziele und Plätze gibt es in der Hauptwelt.",
                     de.kronwerke.core.link.NetworkSync.ownLabel()).withStyle(net.minecraft.ChatFormatting.GRAY), false);
             return 1;
-        }).then(Commands.literal("admin").requires(s -> s.hasPermission(2)).then(loadtest())));
+        }).then(Commands.literal("admin").requires(s -> s.hasPermission(2)).then(loadtest()).then(tagIndex())));
+    }
+
+    /** Compares the tag index with a full scan of every dimension. */
+    private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> tagIndex() {
+        return Commands.literal("tagindex").executes(c -> { ok(c, de.kronwerke.core.perf.TagIndex.check(c.getSource().getServer())); return 1; });
     }
 
     /** The load test, on main and on every side world (bots in the side world's own dimension). */
@@ -225,6 +230,7 @@ public final class KwCommand {
                             ok(c, "Creative tabs: " + total + " ms in total, slowest:\n" + String.join("\n", lines.subList(0, Math.min(12, lines.size()))));
                             return 1;
                         }))
+                        .then(tagIndex())
                         .then(Commands.literal("dirty")
                                 .then(Commands.literal("start").executes(c -> { de.kronwerke.core.perf.DirtyChunks.start(); ok(c, "Zähle, wer Chunks als geändert markiert."); return 1; }))
                                 .then(Commands.literal("stop").executes(c -> { de.kronwerke.core.perf.DirtyChunks.stop(); ok(c, "Zählen gestoppt."); return 1; }))

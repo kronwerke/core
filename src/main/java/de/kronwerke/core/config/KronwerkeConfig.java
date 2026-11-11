@@ -45,6 +45,7 @@ public final class KronwerkeConfig {
     }
     public static final ModConfigSpec.BooleanValue CLEAN_CHUNK_LOADS;
     public static final ModConfigSpec.BooleanValue SPREAD_AUTOSAVE;
+    public static final ModConfigSpec.BooleanValue TAG_INDEX;
     public static final ModConfigSpec.BooleanValue CLEAN_LIGHT_UPDATES;
     public static final ModConfigSpec.DoubleValue AUTOSAVE_MS_PER_TICK;
     public static final ModConfigSpec.DoubleValue TNT_MS_PER_TICK;
@@ -243,6 +244,8 @@ public final class KronwerkeConfig {
                 .defineInRange("tntMsPerTick", 25.0, 0.0, 1000.0);
         CHEAP_TNT_EXPOSURE = b.comment("How much of a primed TNT an explosion sees (only its knockback depends on it) is checked with one ray from its centre instead of 27 over its box. Half covered TNT is then pushed fully or not at all. In a heap of thousands of TNT this is most of the explosion time.")
                 .define("cheapTntExposure", true);
+        TAG_INDEX = b.comment("Command selectors with a tag (@e[tag=x], datapacks run many of them every tick) look only at the entities that carry the tag instead of every entity of the dimension. The result is the same; /kw admin tagindex compares the index with a full scan.")
+                .define("tagIndex", true);
         GOAL_PAUSE_TICKS = b.comment("After a mob decided not to flee (rabbits, cats, foxes, villagers) or a baby not to follow its parent, how many ticks until it asks again. Both search every entity around, which made crowded pens expensive. 0 asks every time like vanilla.")
                 .defineInRange("goalPauseTicks", 5, 0, 40);
         b.pop();
