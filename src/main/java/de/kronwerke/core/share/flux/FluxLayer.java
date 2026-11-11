@@ -28,9 +28,10 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Flux Networks between servers. main's networks exist on the other servers too, with the same
- * number, name, colour, owner, members and password, so a plug on main and a point on the mining
- * world can be on one network. Networks are made and changed on main; the other servers follow.
+ * Flux Networks between servers. A network made on any server exists on all the others too,
+ * with the same number, name, colour, owner, members and password, so a plug on main and a
+ * point on the mining world can be on one network. A change or a deletion made on another
+ * server than the one the network was made on goes there first and from there to everyone.
  * <p>
  * Energy: what a server's plugs have left after its own points, and what its storages hold, goes
  * to the points of the other server that still want energy; what plugs have left beyond that fills
@@ -103,12 +104,15 @@ public final class FluxLayer implements Layer {
     public void tick(MinecraftServer server) {
         ticks++;
         if (ticks == 1 && !Role.main()) keepIdsApart();
-        if (Role.main() && ticks % 40 == 0) sendDefinitions(false);
+        if (ticks % 40 == 0) {
+            sendDefinitions(false);
+            forwardChanges();
+        }
 
         JsonObject state = new JsonObject();
         Map<Integer, Sum> mine = new HashMap<>();
         for (FluxNetwork n : all().values()) {
-            if (n.getNetworkID() >= SIDE_IDS || !n.isValid()) continue;
+            if (!n.isValid()) continue;
             Sum s = sum(n);
             if (s.plug() == 0 && s.store() == 0 && s.want() == 0 && s.room() == 0) continue;
             mine.put(n.getNetworkID(), s);
@@ -226,13 +230,33 @@ public final class FluxLayer implements Layer {
         return left;
     }
 
-    // ---- network definitions, main to the others ----
+    // ---- network definitions, from the server a network was made on to the others ----
+
+    /**
+     * Every server makes its networks in a block of numbers of its own (main below one million,
+     * the mining world from one million, the Nether from two, the End from three), so a network
+     * made anywhere can exist everywhere under its number.
+     */
+    private static int block(String role) {
+        return switch (role) {
+            case "main" -> 0;
+            case "mining" -> 1;
+            case "nether" -> 2;
+            case "end" -> 3;
+            default -> 4 + Math.floorMod(role.hashCode(), 500);
+        };
+    }
+
+    private static boolean mine(int id) {
+        return id / SIDE_IDS == block(Role.role());
+    }
 
     private void keepIdsApart() {
         try {
             FluxNetworkData d = FluxNetworkData.getInstance();
-            if (uniqueId.getInt(d) < SIDE_IDS) {
-                uniqueId.setInt(d, SIDE_IDS);
+            int from = SIDE_IDS * block(Role.role());
+            if (uniqueId.getInt(d) < from) {
+                uniqueId.setInt(d, from);
                 d.setDirty();
             }
         } catch (IllegalAccessException e) {
@@ -240,15 +264,20 @@ public final class FluxLayer implements Layer {
         }
     }
 
+    private static CompoundTag definition(FluxNetwork n) {
+        CompoundTag t = new CompoundTag();
+        n.writeCustomTag(t, (byte) 1);
+        t.remove("connections");
+        t.remove("statistics");
+        return t;
+    }
+
+    /** The networks made on this server, to all the others. */
     private void sendDefinitions(boolean always) {
         CompoundTag list = new CompoundTag();
         for (FluxNetwork n : all().values()) {
-            if (n.getNetworkID() >= SIDE_IDS || !n.isValid()) continue;
-            CompoundTag t = new CompoundTag();
-            n.writeCustomTag(t, (byte) 1);
-            t.remove("connections");
-            t.remove("statistics");
-            list.put(Integer.toString(n.getNetworkID()), t);
+            if (!mine(n.getNetworkID()) || !n.isValid()) continue;
+            list.put(Integer.toString(n.getNetworkID()), definition(n));
         }
         String text = list.toString();
         long now = System.currentTimeMillis();
@@ -261,8 +290,71 @@ public final class FluxLayer implements Layer {
         for (String peer : Share.peers()) Share.tell(this, peer, m);
     }
 
-    /** Not main: main's networks as they are now; the ones main no longer has go. */
-    private void applyDefinitions(String text) {
+    /** Networks of other servers as they were last heard, to notice what a player changed or deleted here. */
+    private final Map<Integer, String> heard = new HashMap<>();
+
+    /**
+     * A network of another server that a player changed here (name, colour, members, password)
+     * or deleted here: the server it was made on is told, does the same and tells everyone.
+     */
+    private void forwardChanges() {
+        Int2ObjectOpenHashMap<FluxNetwork> nets = all();
+        for (var it = heard.entrySet().iterator(); it.hasNext(); ) {
+            var en = it.next();
+            int id = en.getKey();
+            String owner = ownerOf(id);
+            if (owner == null) continue;
+            FluxNetwork n = nets.get(id);
+            JsonObject m = new JsonObject();
+            m.addProperty("id", id);
+            if (n == null || !n.isValid()) {
+                m.addProperty("t", "delete");
+                it.remove();
+            } else {
+                String now = definition(n).toString();
+                if (now.equals(en.getValue())) continue;
+                en.setValue(now);
+                m.addProperty("t", "edit");
+                m.addProperty("def", now);
+            }
+            Share.tell(this, owner, m);
+        }
+    }
+
+    /** The server whose block the number is in, when it is up. */
+    private static String ownerOf(int id) {
+        for (String peer : Share.peers()) {
+            var q = de.kronwerke.core.link.NetworkSync.peer(peer);
+            if (q != null && block(q.role()) == id / SIDE_IDS) return peer;
+        }
+        return null;
+    }
+
+    /** The owner: what a player changed on another server. */
+    private void changed(JsonObject data) {
+        int id = data.get("id").getAsInt();
+        if (!mine(id)) return;
+        FluxNetwork n = all().get(id);
+        if (n == null) return;
+        try {
+            if (data.get("t").getAsString().equals("delete")) {
+                FluxNetworkData.getInstance().deleteNetwork(n);
+            } else {
+                ((Map<?, ?>) members.get(n)).clear();
+                n.readCustomTag(TagParser.parseTag(data.get("def").getAsString()), (byte) 1);
+            }
+        } catch (IllegalAccessException | com.mojang.brigadier.exceptions.CommandSyntaxException e) {
+            throw new IllegalStateException(e);
+        }
+        FluxNetworkData.getInstance().setDirty();
+        sendDefinitions(true);
+    }
+
+    /** Another server's networks as they are now; the ones it no longer has go. */
+    private void applyDefinitions(String from, String text) {
+        var sender = de.kronwerke.core.link.NetworkSync.peer(from);
+        if (sender == null) return;
+        int theirs = block(sender.role());
         CompoundTag list;
         try {
             list = TagParser.parseTag(text);
@@ -274,6 +366,7 @@ public final class FluxLayer implements Layer {
         try {
             for (String k : list.getAllKeys()) {
                 int id = Integer.parseInt(k);
+                if (id / SIDE_IDS != theirs) continue; // only its own
                 seen.add(id);
                 CompoundTag t = list.getCompound(k);
                 FluxNetwork n = nets.get(id);
@@ -285,12 +378,17 @@ public final class FluxLayer implements Layer {
                     ((Map<?, ?>) members.get(n)).clear();
                     n.readCustomTag(t, (byte) 1);
                 }
+                // as this server writes it down itself, so only a real change here reads as one
+                heard.put(id, definition(n).toString());
             }
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
         for (FluxNetwork n : new ArrayList<>(nets.values())) {
-            if (n.getNetworkID() < SIDE_IDS && !seen.contains(n.getNetworkID())) FluxNetworkData.getInstance().deleteNetwork(n);
+            if (n.getNetworkID() / SIDE_IDS == theirs && !seen.contains(n.getNetworkID())) {
+                heard.remove(n.getNetworkID());
+                FluxNetworkData.getInstance().deleteNetwork(n);
+            }
         }
         FluxNetworkData.getInstance().setDirty();
     }
@@ -303,12 +401,14 @@ public final class FluxLayer implements Layer {
         for (String k : state.keySet()) m.put(Integer.parseInt(k), state.getAsJsonObject(k));
         boolean fresh = !peers.containsKey(from);
         peers.put(from, new Peer(m, System.nanoTime()));
-        if (fresh && Role.main()) sendDefinitions(true);
+        if (fresh) sendDefinitions(true);
     }
 
     @Override
     public void onTell(MinecraftServer server, String from, JsonObject data) {
-        if (!Role.main() && data.get("t").getAsString().equals("defs")) applyDefinitions(data.get("defs").getAsString());
+        String t = data.get("t").getAsString();
+        if (t.equals("defs")) applyDefinitions(from, data.get("defs").getAsString());
+        else if (t.equals("edit") || t.equals("delete")) changed(data);
     }
 
     @Override

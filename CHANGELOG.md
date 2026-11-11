@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.2
+
+- Flux Networks: a network made on any server exists on all of them. Before, only main's networks went to the others; one made in the Nether or the mining world stayed there, and the list on main never showed it. Every server makes its networks in a block of numbers of its own, tells the others, and a change or a deletion made elsewhere goes to the server the network was made on and from there to everyone.
+
 ## 0.39.1
 
 - Taking something out of a QIO window that only another server has takes one click, as always: the click that came too early is done again as soon as the things are here (seen on the real servers with 0.39.0: the first click asked for the cobblestone on main and gave nothing, the second took it).
