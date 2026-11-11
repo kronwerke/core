@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.3
+
+- The test player's clicks go the screen's own way (the camera's window has no display and reports no size, so the mouse handler's sums came out as nothing), and its standstill records are shorter.
+
 ## 0.38.2
 
 - JEI stays up while a player moves between the servers of the network. It stopped at the logout and built everything again at the login, which stood the whole client still in the middle of the travel animation (25 seconds on the test client, most of the time of a move). The pack and its recipes are the same on every server, so on a move JEI is kept; a server with a different number of recipes makes it start again as before. Enchantments and the other data-driven registries are sent anew by every server: an object of the old connection that JEI still holds is found by its name when it is sent to the server.
