@@ -22,7 +22,9 @@ import java.util.List;
  * deposit, the whitelist for streamers, the admin panel for the team.
  */
 public final class KwHubScreen extends KwScreen {
-    private static final int LEFT_W = 168, ROW = 30, FOOT = 46;
+    private static final int LEFT_W = 168, FOOT = 46;
+    /** Rows of the stage path: 30 high, less on a small window so all five stages fit above the buttons. */
+    private int ROW = 30;
     private KwNetwork.HubPayload data;
     private int selected = -1, scroll, itemsH, listTop, listBottom;
 
@@ -84,6 +86,8 @@ public final class KwHubScreen extends KwScreen {
             bx -= 84;
             addRenderableWidget(FlatButton.of(bx, y, 84, "Whitelist", () -> send("menu")).icon(new ItemStack(Items.PLAYER_HEAD)).tip(tr("hub.whitelist_tip", "Deine Plätze und wer drin ist")));
         }
+        int n = Math.max(1, data.goals().size());
+        ROW = Math.max(20, Math.min(30, (top + h - FOOT - 4 - (top + HEAD + 22)) / n));
         listTop = top + HEAD + 70;
         listBottom = top + h - FOOT - 6;
     }
@@ -174,7 +178,7 @@ public final class KwHubScreen extends KwScreen {
             else if (hover) g.fill(x0, ry, x0 + LEFT_W - 6, ry + ROW, 0x30FFFFFF);
             // the path between the rings
             if (i + 1 < goals.size()) {
-                g.fill(rx - 1, ry + ROW / 2 + 10, rx + 1, ry + ROW + ROW / 2 - 10, done ? Ui.GOLD_DARK : Ui.BORDER);
+                g.fill(rx - 1, ry + ROW / 2 + 9, rx + 1, ry + ROW + ROW / 2 - 9, done ? Ui.GOLD_DARK : Ui.BORDER);
             }
             int colour = done ? Ui.GOLD : gv.active() ? Ui.GOLD : Ui.DIM;
             int cy = ry + ROW / 2;
