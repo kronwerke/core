@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.33.0
+
+- A singleplayer or LAN world plays like a normal modpack: every stage opens at the first login, machines craft everything, the first steps that need the obelisk count as done, and a one time message says that the obelisk, the season and the whitelist only exist on the server. A world the game runs itself is told apart from a real server by where it runs (the client's integrated server).
+
 ## 0.32.1
 
 - A move from main that arrives nowhere (the client could not connect to the other server) is told to the team online after 30 seconds and logged. The player's next login on main brings them back as before.

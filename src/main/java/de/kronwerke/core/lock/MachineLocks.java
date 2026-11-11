@@ -74,6 +74,8 @@ public final class MachineLocks {
     }
 
     public static boolean on() {
+        // a singleplayer world has every stage open: nothing is held back there
+        if (de.kronwerke.core.single.Singleplayer.ON) return false;
         return KronwerkeConfig.SPEC.isLoaded() && KronwerkeConfig.MACHINE_LOCKS.get();
     }
 

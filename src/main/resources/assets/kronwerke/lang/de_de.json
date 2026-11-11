@@ -261,5 +261,6 @@
   "kronwerke.travel.pull": "Deine Daten kommen gerade noch aus %s. Versuch es in ein paar Sekunden noch einmal.",
   "kronwerke.gate.soon": "Gleich geht es los. Versuch es in ein paar Minuten noch einmal.",
   "kronwerke.admin.side": "Hier in %s nur die Spieler. Season, Ziele und Plätze verwaltest du in der Hauptwelt.",
-  "kronwerke.travel.nowhere": "%s ist nach %s aufgebrochen, dort aber nicht angekommen. Beim nächsten Login kommt er wieder hier an."
+  "kronwerke.travel.nowhere": "%s ist nach %s aufgebrochen, dort aber nicht angekommen. Beim nächsten Login kommt er wieder hier an.",
+  "kronwerke.single.hello": "Einzelspielerwelt: Alle Stufen sind offen, du spielst das Pack frei. Obelisk, Season und Whitelist gibt es nur auf dem Kronwerke-Server."
 }

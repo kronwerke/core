@@ -197,7 +197,10 @@ public class KronwerkeCore {
             de.kronwerke.core.portal.Travel.onLogin(sp);
             return;
         }
-        if (Role.main()) {
+        if (de.kronwerke.core.single.Singleplayer.ON) {
+            // a world of its own: the whole pack is open, no season, no obelisk
+            de.kronwerke.core.single.Singleplayer.onLogin(sp);
+        } else if (Role.main()) {
             de.kronwerke.core.season.Season.get().catchUp(sp);
             GoalManager.get().onPlayerJoin(sp);
             Obelisk.get().onJoin(sp);

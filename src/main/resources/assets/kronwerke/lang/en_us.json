@@ -267,5 +267,6 @@
   "kronwerke.travel.pull": "Your data is still on its way from %s. Try again in a few seconds.",
   "kronwerke.gate.soon": "Starting any moment now. Try again in a few minutes.",
   "kronwerke.admin.side": "Here in %s only the players. Season, goals and places are managed in the main world.",
-  "kronwerke.travel.nowhere": "%s set off for %s but did not arrive there. Their next login brings them back here."
+  "kronwerke.travel.nowhere": "%s set off for %s but did not arrive there. Their next login brings them back here.",
+  "kronwerke.single.hello": "Singleplayer world: every stage is open, you play the pack freely. The obelisk, the season and the whitelist only exist on the Kronwerke server."
 }
