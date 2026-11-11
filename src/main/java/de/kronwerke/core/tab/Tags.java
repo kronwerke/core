@@ -41,7 +41,10 @@ public final class Tags {
         public MutableComponent badge() {
             Style s = Style.EMPTY.withColor(ChatFormatting.WHITE);
             if (own) s = s.withFont(OWN_FONT);
-            return Component.literal(String.valueOf(glyph)).withStyle(s).append(Component.literal(" ").withStyle(Style.EMPTY));
+            // icon and space side by side under an empty root: as a child of the icon the space (and
+            // whatever is appended after the badge) would inherit the icon's font, which has no
+            // other glyph, and show as a box
+            return Component.empty().append(Component.literal(String.valueOf(glyph)).withStyle(s)).append(Component.literal(" "));
         }
     }
 

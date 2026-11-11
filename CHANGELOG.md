@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.37.10
+
+- The Omi tag no longer shows a box between its icon and the name: the space after the icon inherited the icon's own font, which has no space. The same went for a name appended to the badge in `/kwtag list`.
+
 ## 0.37.9
 
 - The screenshot world no longer comes with the pack. `/kw testworld pull [ref]` fetches the scenes from the `shots-world` branch of the pack repository into `kronwerke/shots/world`, `/kw testworld apply [name]` builds them, one file per tick, and writes what a failed command answered into a `.log` next to its file. A changed scene needs no pack update and no restart. `/kw testworld` and `/kw testworld rebuild` use these scenes when they are there.
