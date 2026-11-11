@@ -288,6 +288,7 @@ public final class FluxLayer implements Layer {
         m.addProperty("t", "defs");
         m.addProperty("defs", text);
         for (String peer : Share.peers()) Share.tell(this, peer, m);
+        sentCount++;
     }
 
     /** Networks of other servers as they were last heard, to notice what a player changed or deleted here. */
@@ -351,9 +352,16 @@ public final class FluxLayer implements Layer {
     }
 
     /** Another server's networks as they are now; the ones it no longer has go. */
+    private int sentCount, heardCount;
+    private String lastHeard = "nothing";
+
     private void applyDefinitions(String from, String text) {
+        heardCount++;
         var sender = de.kronwerke.core.link.NetworkSync.peer(from);
-        if (sender == null) return;
+        if (sender == null) {
+            de.kronwerke.core.KronwerkeCore.LOGGER.warn("Shared network: Flux definitions from {}, which is not a server of the network here", from);
+            return;
+        }
         int theirs = block(sender.role());
         CompoundTag list;
         try {
@@ -384,6 +392,7 @@ public final class FluxLayer implements Layer {
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
+        lastHeard = from + " (" + sender.role() + ", block " + theirs + ") " + list.getAllKeys().size() + " networks, " + seen.size() + " of its own";
         for (FluxNetwork n : new ArrayList<>(nets.values())) {
             if (n.getNetworkID() / SIDE_IDS == theirs && !seen.contains(n.getNetworkID())) {
                 heard.remove(n.getNetworkID());
@@ -439,6 +448,12 @@ public final class FluxLayer implements Layer {
     public String describe() {
         int shared = 0;
         for (Peer p : peers.values()) shared += p.nets().size();
-        return all().size() + " networks here, " + shared + " busy on other servers, " + moved + " FE moved since start";
+        StringBuilder ids = new StringBuilder();
+        for (FluxNetwork n : all().values()) {
+            if (ids.length() > 80) break;
+            ids.append(ids.length() == 0 ? "" : ",").append(n.getNetworkID()).append(mine(n.getNetworkID()) ? "" : "*").append(n.isValid() ? "" : "!");
+        }
+        return all().size() + " networks here [" + ids + "] (* made elsewhere), " + shared + " busy on other servers, " + moved + " FE moved since start, definitions "
+                + sentCount + " sent, " + heardCount + " heard, last from " + lastHeard + ", this is " + Role.role() + " (block " + block(Role.role()) + ")";
     }
 }
