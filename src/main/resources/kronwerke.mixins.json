@@ -61,6 +61,7 @@
     "RadiationMobDoseMixin",
     "RadiationNearbyMixin",
     "RadiationScanMixin",
+    "RadiationTagsCopyMixin",
     "RecipeManagerLocksMixin",
     "RecipesForClientsMixin",
     "ReliquaryCharmTickMixin",
