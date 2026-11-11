@@ -1,0 +1,142 @@
+package de.kronwerke.core.camera.client;
+
+import java.awt.Graphics2D;
+import java.awt.RenderingHints;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+
+import javax.imageio.ImageIO;
+
+import com.mojang.blaze3d.platform.NativeImage;
+
+import de.kronwerke.core.KronwerkeCore;
+import de.kronwerke.core.camera.CameraClient;
+import de.kronwerke.core.camera.ShotPartPayload;
+import de.kronwerke.core.camera.ShotPayload;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.ConnectScreen;
+import net.minecraft.client.gui.screens.DisconnectedScreen;
+import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+import net.minecraft.client.Screenshot;
+import net.neoforged.neoforge.network.PacketDistributor;
+
+/**
+ * The camera client's side: waits until the world around it has rendered, takes the frame
+ * without HUD, scales it down (the frame is rendered larger, so the scaling smooths the
+ * edges), and sends it to the server as PNG. Also keeps the camera connected.
+ */
+public final class CameraShots {
+    private static ShotPayload job;
+    private static int waited;
+    private static boolean optionsSet;
+    private static long offlineSince;
+    private static String lastScreen = "";
+
+    private CameraShots() {
+    }
+
+    public static void request(ShotPayload p) {
+        if (!CameraClient.ON) return;
+        job = p;
+        waited = 0;
+        Minecraft mc = Minecraft.getInstance();
+        mc.options.hideGui = true;
+        mc.options.fov().set(Math.max(30, Math.min(110, p.fov())));
+    }
+
+    /** Every client tick, camera only. */
+    public static void tick() {
+        if (!CameraClient.ON) return;
+        Minecraft mc = Minecraft.getInstance();
+        if (!optionsSet) {
+            optionsSet = true;
+            mc.options.pauseOnLostFocus = false;
+            mc.options.hideGui = true;
+        }
+        String screen = mc.screen == null ? "-" : mc.screen.getClass().getSimpleName();
+        if (!screen.equals(lastScreen)) {
+            lastScreen = screen;
+            KronwerkeCore.LOGGER.info("Camera screen: {}", screen);
+        }
+        reconnect(mc);
+        if (job == null || mc.level == null || mc.player == null) return;
+        waited++;
+        // the sections around the camera have to be built first; at most 30 seconds
+        boolean ready = mc.levelRenderer.hasRenderedAllSections() && waited >= job.settleTicks();
+        if (!ready && waited < 600) return;
+        ShotPayload p = job;
+        job = null;
+        try {
+            send(p, png(capture(mc), p.width(), p.height()));
+        } catch (IOException | RuntimeException e) {
+            KronwerkeCore.LOGGER.warn("The camera could not take shot {}: {}", p.id(), e.toString());
+        }
+    }
+
+    private static BufferedImage capture(Minecraft mc) {
+        try (NativeImage img = Screenshot.takeScreenshot(mc.getMainRenderTarget())) {
+            int w = img.getWidth(), h = img.getHeight();
+            BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int abgr = img.getPixelRGBA(x, y);
+                    int r = abgr & 0xFF, g = (abgr >> 8) & 0xFF, b = (abgr >> 16) & 0xFF;
+                    out.setRGB(x, y, (r << 16) | (g << 8) | b);
+                }
+            }
+            return out;
+        }
+    }
+
+    /** Crops to the wanted aspect, scales down in halving steps, and encodes as PNG. */
+    static byte[] png(BufferedImage src, int width, int height) throws IOException {
+        double want = (double) width / height;
+        int w = src.getWidth(), h = src.getHeight();
+        int cw = w, ch = h;
+        if ((double) w / h > want) cw = (int) Math.round(h * want);
+        else ch = (int) Math.round(w / want);
+        BufferedImage img = src.getSubimage((w - cw) / 2, (h - ch) / 2, cw, ch);
+        while (img.getWidth() / 2 >= width && img.getHeight() / 2 >= height) img = scale(img, img.getWidth() / 2, img.getHeight() / 2);
+        if (img.getWidth() != width || img.getHeight() != height) img = scale(img, width, height);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ImageIO.write(img, "png", out);
+        return out.toByteArray();
+    }
+
+    private static BufferedImage scale(BufferedImage in, int w, int h) {
+        BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = out.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.drawImage(in, 0, 0, w, h, null);
+        g.dispose();
+        return out;
+    }
+
+    private static void send(ShotPayload p, byte[] png) {
+        int total = (png.length + ShotPartPayload.MAX - 1) / ShotPartPayload.MAX;
+        for (int i = 0; i < total; i++) {
+            int from = i * ShotPartPayload.MAX;
+            byte[] part = java.util.Arrays.copyOfRange(png, from, Math.min(png.length, from + ShotPartPayload.MAX));
+            PacketDistributor.sendToServer(new ShotPartPayload(p.id(), i, total, part));
+        }
+    }
+
+    /** Back onto the server after a restart or a kick, every 30 seconds. */
+    private static void reconnect(Minecraft mc) {
+        boolean out = mc.level == null && (mc.screen instanceof TitleScreen || mc.screen instanceof DisconnectedScreen);
+        if (!out) {
+            offlineSince = 0;
+            return;
+        }
+        long now = System.currentTimeMillis();
+        if (offlineSince == 0) offlineSince = now;
+        if (now - offlineSince < 30_000) return;
+        offlineSince = now;
+        String addr = System.getProperty("kronwerke.camera.server", "127.0.0.1:25565");
+        ConnectScreen.startConnecting(new TitleScreen(), mc, ServerAddress.parseString(addr), new ServerData("Kronwerke", addr, ServerData.Type.OTHER), false, null);
+    }
+}

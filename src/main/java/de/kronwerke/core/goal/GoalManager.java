@@ -797,6 +797,7 @@ public final class GoalManager {
     }
 
     public void onPlayerJoin(Player player) {
+        if (de.kronwerke.core.camera.Camera.is(player)) return; // the camera plays no part in goals
         if (player instanceof ServerPlayer sp) {
             activity().login(sp.getUUID(), System.currentTimeMillis());
             if (!barHidden.contains(sp.getUUID())) for (ServerBossEvent b : bars.values()) b.addPlayer(sp);
@@ -806,6 +807,7 @@ public final class GoalManager {
     }
 
     public void onPlayerLeave(Player player) {
+        if (de.kronwerke.core.camera.Camera.is(player)) return;
         if (player instanceof ServerPlayer sp) {
             activity().logout(sp.getUUID(), System.currentTimeMillis());
             for (ServerBossEvent b : bars.values()) b.removePlayer(sp);

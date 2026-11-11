@@ -68,6 +68,7 @@ public class KronwerkeCore {
             }
             if (Role.main() && e.getServer().getTickCount() % 1200 == 600) GoalManager.get().minute();
             if (Role.main() && e.getServer().getTickCount() % 20 == 7) GoalManager.get().flushBatches();
+            de.kronwerke.core.camera.CameraCommand.tick(e.getServer());
         });
 
         NeoForge.EVENT_BUS.addListener(this::onRegisterCommands);
@@ -160,6 +161,7 @@ public class KronwerkeCore {
         if (Role.main()) KwCommand.register(event.getDispatcher());
         else KwCommand.registerSide(event.getDispatcher());
         de.kronwerke.core.tab.TagCommand.register(event.getDispatcher());
+        de.kronwerke.core.camera.CameraCommand.register(event.getDispatcher());
         BypassCommand.register(event.getDispatcher());
         de.kronwerke.core.share.ShareCommand.register(event.getDispatcher());
         de.kronwerke.core.portal.MoveCommand.register(event.getDispatcher());
@@ -194,6 +196,12 @@ public class KronwerkeCore {
     private void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (!(event.getEntity() instanceof net.minecraft.server.level.ServerPlayer sp)) return;
         if (NetworkSync.refuse(sp)) return;
+        if (de.kronwerke.core.camera.Camera.is(sp)) {
+            // the camera: spectator, no kit, no goals, no network join message
+            de.kronwerke.core.camera.Camera.onJoin(sp);
+            TabList.onJoin(sp);
+            return;
+        }
         if (sp instanceof de.kronwerke.core.loadtest.LoadBot) {
             // a load test's bot leaves no trace in the season: no kit, no activity, no join message
             de.kronwerke.core.portal.Travel.onLogin(sp);

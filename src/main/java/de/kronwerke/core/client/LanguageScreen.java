@@ -38,7 +38,7 @@ public final class LanguageScreen extends KwScreen {
     }
 
     public static void clientTick() {
-        if (!pending) return;
+        if (!pending || de.kronwerke.core.camera.CameraClient.ON) return;
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null) return;
         if (mc.screen != null) {

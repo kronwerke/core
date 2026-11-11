@@ -33,6 +33,7 @@ public final class ClientSetup {
         NeoForge.EVENT_BUS.addListener((ClientPlayerNetworkEvent.LoggingIn e) -> CreativePrewarm.reset());
         NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.client.event.ClientTickEvent.Post e) -> {
             LanguageScreen.clientTick();
+            de.kronwerke.core.camera.client.CameraShots.tick();
             CreativePrewarm.tick();
         });
         // the overworld builds up to 608, so its clouds move up from vanilla's 192

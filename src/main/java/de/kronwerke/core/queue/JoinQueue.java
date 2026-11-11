@@ -141,6 +141,7 @@ public final class JoinQueue {
 
     /** Who never waits: operators, owners, streamers, and players the network already counts. */
     static boolean bypass(GameProfile p) {
+        if (de.kronwerke.core.camera.Camera.is(p)) return true;
         Long left = leftAt.get(p.getId());
         if (left != null && System.currentTimeMillis() - left < 180_000) return true;
         if (server.getPlayerList().isOp(p)) return true;

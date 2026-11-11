@@ -368,6 +368,14 @@ public final class KwNetwork {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.ObeliskEffects.gift(payload));
         });
         r.playToServer(ActionPayload.TYPE, ActionPayload.CODEC, KwNetwork::onAction);
+        // the camera client (see camera/Camera)
+        r.playToClient(de.kronwerke.core.camera.ShotPayload.TYPE, de.kronwerke.core.camera.ShotPayload.CODEC, (payload, ctx) -> {
+            if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.camera.client.CameraShots.request(payload));
+        });
+        r.playToServer(de.kronwerke.core.camera.ShotPartPayload.TYPE, de.kronwerke.core.camera.ShotPartPayload.CODEC, (payload, ctx) ->
+                ctx.enqueueWork(() -> {
+                    if (ctx.player() instanceof net.minecraft.server.level.ServerPlayer sp) de.kronwerke.core.camera.Camera.onPart(payload, sp);
+                }));
         r.playToClient(LockHintPayload.TYPE, LockHintPayload.CODEC, (payload, ctx) -> {
             if (FMLEnvironment.dist.isClient()) ctx.enqueueWork(() -> de.kronwerke.core.client.LockHints.receive(payload));
         });

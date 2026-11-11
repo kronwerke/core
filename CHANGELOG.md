@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.37.0
+
+- The camera: a Minecraft client without a screen (kronwerke/camera) that takes the quest book's pictures on the real server. With `-Dkronwerke.camera=true` the client runs on GLFW's null platform with an OSMesa context (rendering on the CPU, no X server, no GPU), hides HUD, signs and the floating labels of the screenshot world, keeps itself connected, and on the server's word takes a picture once the world around it has rendered, scales it down and sends it back as PNG.
+- The server lets the player `KronwerkeCam` in without a Mojang account, but only over loopback; from outside that name goes through the normal login and gets the real account's UUID. The camera passes the whitelist, the start gate and the queue, counts as no active player, gets no kit, is always a spectator, and joins and leaves without a chat line.
+- `/kw cam` (status), `/kw cam watch` (look through the camera), `/kw cam shot <name> <pos> <yaw> <pitch> [fov] [width height]`, `/kw cam run [prefix]` (every shot of `data/kronwerke/shots/shots.json`), `/kw cam stop`. Pictures go to `kronwerke/shots/<name>.png`.
+- The language picker no longer opens on the camera.
+
 ## 0.36.2
 
 - Entities also stay when they are teleported into the level of a dimension on another server (`/tp` and mods that copy an entity into another level instead of calling changeDimension). Found in the live test of 0.36.1: a pig sent with `/tp` into the Nether vanished into main's copy of it.
