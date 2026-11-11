@@ -41,8 +41,8 @@ public final class FluxLayer implements Layer {
     /** Networks made on a side world get numbers from here, so they never meet main's. */
     private static final int SIDE_IDS = 1_000_000;
     private static final long FRESH_NS = 2_000_000_000L;
-    /** Points ask for one tick; a give takes a few ticks to arrive, so it brings a few ticks' worth. */
-    private static final int TICKS_AHEAD = 4;
+    /** Points ask for one tick; gives go a few times a second (Share paces them), so one brings what they need until the next. */
+    private static final int TICKS_AHEAD = 12;
 
     private final Field networks, uniqueId, members, desired;
     private final Constructor<ServerFluxNetwork> make;
@@ -63,6 +63,32 @@ public final class FluxLayer implements Layer {
         this.members = members;
         this.desired = desired;
         this.make = make;
+        instance = this;
+    }
+
+    private static FluxLayer instance;
+
+    /**
+     * FluxRemoteDemandMixin: what the other servers' points and storages of this network still
+     * want. A plug only takes in what its network asks for (Flux's buffer limiter, the sum of
+     * what the points and storages here request), so a network with its generators on one
+     * server and its machines on another took in nothing at all: plug on main, point in the
+     * farm world, 0 FE (seen on the real servers). The demand of the other servers is added to
+     * the limiter after Flux has worked it out, the plugs fill for it, and {@link #give} sends
+     * what they hold.
+     */
+    public static long remoteWant(int id) {
+        FluxLayer l = instance;
+        if (l == null) return 0;
+        long now = System.nanoTime(), sum = 0;
+        for (Peer p : l.peers.values()) {
+            if (now - p.at() > FRESH_NS) continue;
+            JsonObject o = p.nets().get(id);
+            if (o == null) continue;
+            sum += Math.min(o.get("want").getAsLong(), Long.MAX_VALUE / 64) * TICKS_AHEAD + Math.min(o.get("room").getAsLong(), Long.MAX_VALUE / 8);
+            if (sum < 0 || sum > Long.MAX_VALUE / 4) return Long.MAX_VALUE / 4;
+        }
+        return sum;
     }
 
     public static FluxLayer create() {

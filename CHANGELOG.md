@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.6
+
+- Flux Networks: energy flows from a plug on one server to a point on another. A plug only takes in what its own network asks for, so with the generators at home and the machines in the farm world it took in nothing (seen on the real servers: plug on main, point in the farm world, both on the same network, 0 FE). The demand of the same network on the other servers now counts.
+- The shared network keeps up with steady flows. Everything given stays in the outbox until the other server has saved (thousands of entries after a few minutes of energy flowing, 5749 seen in the farm world), and every channel of every layer went through all of them every tick to see whether something of its own was still on its way. That is now one lookup, and the same channel gives a few larger amounts a second instead of a small one every other tick.
+
 ## 0.39.5
 
 - The /kw hub opens on every server. In the farm world, the Nether and the End it only said that season, goals and places are in the main world; now main builds the hub for the player who asked and the side world shows it, with the same goals, numbers and rank. Giving to the goal and the whitelist still need the main world and say so in the hub's own line.

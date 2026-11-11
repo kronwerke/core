@@ -156,11 +156,11 @@ public final class Share {
     /** Whether something of this layer and tag is still on its way to that server. */
     public static boolean busy(Layer l, String peer, String tag) {
         if (data == null) return true;
-        for (ShareData.Entry e : data.outbox) {
-            // placed there already (only waiting to be written there): not on its way any more
-            if (e.peer.equals(peer) && e.layer.equals(l.name()) && e.tag.equals(tag) && !e.acked) return true;
-        }
-        return false;
+        String key = l.name() + "|" + peer + "|" + tag;
+        // a steady flow goes in a few larger gives a second instead of one every other tick:
+        // every give is kept until the other server has saved, see flying()
+        if (System.currentTimeMillis() - lastGive.getOrDefault(key, 0L) < PACE_MS) return true;
+        return flying().contains(key);
     }
 
     /** When the last give of this layer and tag to that server was answered (System.nanoTime), or 0. */
@@ -178,11 +178,37 @@ public final class Share {
      * is in the outbox: placed there, or back here through {@link Layer#refund}. Call
      * {@link #canGive} first; when this still returns false, put it back yourself.
      */
+    /**
+     * What is on its way right now, as layer|peer|tag, looked up once a tick. The outbox also
+     * holds everything that is placed on the other server and only waits for that server's next
+     * save, which with a steady flow of energy is thousands of entries (2240 on main three
+     * minutes after a start, seen on the real servers), and every layer asks {@link #busy} for
+     * every one of its channels every tick: going through all of them each time would cost
+     * more than the transfer itself.
+     */
+    private static final long PACE_MS = 400;
+    private static final Map<String, Long> lastGive = new HashMap<>();
+    private static final java.util.Set<String> flying = new java.util.HashSet<>();
+    private static int flyingTick = -1;
+
+    private static java.util.Set<String> flying() {
+        int tick = server == null ? 0 : server.getTickCount();
+        if (tick != flyingTick) {
+            flyingTick = tick;
+            flying.clear();
+            // placed there already (only waiting to be written there): not on its way any more
+            for (ShareData.Entry e : data.outbox) if (!e.acked) flying.add(e.layer + "|" + e.peer + "|" + e.tag);
+        }
+        return flying;
+    }
+
     public static boolean give(Layer l, String peer, String tag, JsonObject what) {
         if (!canGive(peer)) return false;
         String pe = epochs.get(peer);
         ShareData.Entry e = new ShareData.Entry(peer, pe, data.run, data.next(peer, pe), l.name(), tag, what);
         data.outbox.add(e);
+        flying().add(e.layer + "|" + e.peer + "|" + e.tag);
+        lastGive.put(e.layer + "|" + e.peer + "|" + e.tag, System.currentTimeMillis());
         data.setDirty();
         transmit(e);
         return true;
