@@ -99,6 +99,16 @@ public final class TravelOverlay {
         Minecraft mc = Minecraft.getInstance();
         long now = System.currentTimeMillis();
         long t = now - start;
+        // the move failed (the other server dropped the connection, or it never answered): the
+        // stars must not lie over "Connection Lost" and its button, or stay for good
+        if (mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen
+                || mc.screen instanceof net.minecraft.client.gui.screens.TitleScreen
+                || mc.screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
+                || (phase == GO && t > 90_000)) {
+            phase = OFF;
+            arrived = false;
+            return;
+        }
         int w = g.guiWidth(), h = g.guiHeight();
         RenderSystem.enableBlend();
         g.pose().pushPose();

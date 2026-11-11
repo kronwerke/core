@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.7
+
+- A move no longer ends in "Network Protocol Error" when the two servers do not have exactly the same recipes. JEI is kept across a move by skipping its stop; when the recipes differ JEI restarts itself, which is a stop and a start in one go, the stop was skipped again, and the start "from started to started" threw inside the handling of a packet, so the game dropped the connection. Seen on the real servers on 11.11.: the farm world had 45077 recipes and main 45078, the test player was thrown out of the farm world at every arrival and sent back there at every login. JEI is now stopped for real before such a start.
+- The travel animation ends when the move fails: it no longer lies over "Connection Lost", the title screen or the server list, and it ends by itself after 90 seconds.
+
 ## 0.39.6
 
 - Flux Networks: energy flows from a plug on one server to a point on another. A plug only takes in what its own network asks for, so with the generators at home and the machines in the farm world it took in nothing (seen on the real servers: plug on main, point in the farm world, both on the same network, 0 FE). The demand of the same network on the other servers now counts.
