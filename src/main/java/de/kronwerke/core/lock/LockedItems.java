@@ -159,6 +159,8 @@ public final class LockedItems {
         // everyone they are never locked out, and before that they cannot use its tools,
         // weapons or wands either (review R2-05)
         if (player instanceof net.neoforged.neoforge.common.util.FakePlayer) {
+            // the screenshot world builds scenes of every stage with its own hand
+            if (de.kronwerke.core.world.TestWorld.building()) return;
             if (lockedForServer(player.getItemInHand(event.getHand()))) cancellable.setCanceled(true);
             return;
         }

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.37.9
+
+- The screenshot world no longer comes with the pack. `/kw testworld pull [ref]` fetches the scenes from the `shots-world` branch of the pack repository into `kronwerke/shots/world`, `/kw testworld apply [name]` builds them, one file per tick, and writes what a failed command answered into a `.log` next to its file. A changed scene needs no pack update and no restart. `/kw testworld` and `/kw testworld rebuild` use these scenes when they are there.
+- `/kw testworld place <name> <pos> [rotation]` places a structure file of that folder (the Ponder scenes of Create, for one), turned like a structure block turns it.
+- `/kw testworld use <pos> <face> <item> [sneak]` uses a tool on a block the way a player would: the hammer that forms an Immersive Engineering multiblock. The stage locks do not apply to it.
+
 ## 0.37.0
 
 - The camera: a Minecraft client without a screen (kronwerke/camera) that takes the quest book's pictures on the real server. With `-Dkronwerke.camera=true` the client runs on GLFW's null platform with an OSMesa context (rendering on the CPU, no X server, no GPU), hides HUD, signs and the floating labels of the screenshot world, keeps itself connected, and on the server's word takes a picture once the world around it has rendered, scales it down and sends it back as PNG.

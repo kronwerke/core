@@ -108,7 +108,24 @@ public final class KwCommand {
                 .then(Commands.literal("team").requires(s -> s.hasPermission(2)).executes(KwCommand::team))
                 .then(Commands.literal("testworld").requires(s -> s.hasPermission(2)).executes(KwCommand::testworld)
                         .then(Commands.literal("back").executes(KwCommand::testworldBack))
-                        .then(Commands.literal("rebuild").executes(KwCommand::testworldRebuild)))
+                        .then(Commands.literal("rebuild").executes(KwCommand::testworldRebuild))
+                        .then(Commands.literal("apply").executes(c -> testworldApply(c, ""))
+                                .then(Commands.argument("name", StringArgumentType.word()).executes(c -> testworldApply(c, StringArgumentType.getString(c, "name")))))
+                        .then(Commands.literal("pull").requires(s -> s.hasPermission(4))
+                                .executes(c -> testworldPull(c, "shots-world"))
+                                .then(Commands.argument("ref", StringArgumentType.word()).executes(c -> testworldPull(c, StringArgumentType.getString(c, "ref")))))
+                        .then(Commands.literal("place")
+                                .then(Commands.argument("name", net.minecraft.commands.arguments.ResourceLocationArgument.id())
+                                        .then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
+                                                .executes(c -> testworldPlace(c, "none"))
+                                                .then(Commands.argument("rotation", StringArgumentType.word())
+                                                        .executes(c -> testworldPlace(c, StringArgumentType.getString(c, "rotation")))))))
+                        .then(Commands.literal("use")
+                                .then(Commands.argument("pos", net.minecraft.commands.arguments.coordinates.BlockPosArgument.blockPos())
+                                        .then(Commands.argument("face", StringArgumentType.word())
+                                                .then(Commands.argument("item", net.minecraft.commands.arguments.ResourceLocationArgument.id())
+                                                        .executes(c -> testworldUse(c, false))
+                                                        .then(Commands.literal("sneak").executes(c -> testworldUse(c, true))))))))
                 .then(Commands.literal("menu").executes(KwCommand::menu))
                 .then(Commands.literal("whitelist").executes(KwCommand::menu))
                 .then(Commands.literal("invite")
@@ -409,12 +426,91 @@ public final class KwCommand {
         return startBuild(c, true) < 0 ? 0 : 1;
     }
 
+    /** /kw testworld apply [name]: the scenes of kronwerke/shots/world in the server folder, no pack update needed. */
+    private static int testworldApply(CommandContext<CommandSourceStack> c, String name) {
+        var src = c.getSource();
+        if (de.kronwerke.core.world.TestWorld.level(src.getServer()) == null) {
+            fail(c, "Die Testwelt kronwerke:testworld gibt es nicht.");
+            return 0;
+        }
+        int n = de.kronwerke.core.world.TestWorld.apply(name,
+                msg -> src.sendSuccess(() -> Component.literal(msg).withStyle(ChatFormatting.GRAY), true));
+        if (n < 0) {
+            fail(c, "Nichts gefunden in kronwerke/shots/world" + (name.isEmpty() ? "." : ": " + name + ".mcfunction"));
+            return 0;
+        }
+        ok(c, n + " Datei(en) werden gebaut, eine pro Tick.");
+        return n;
+    }
+
+    /** /kw testworld pull [ref]: the scenes from the pack repository's shots-world branch into the server folder. */
+    private static int testworldPull(CommandContext<CommandSourceStack> c, String ref) {
+        var src = c.getSource();
+        boolean started = de.kronwerke.core.world.TestWorld.pull(src.getServer(), ref,
+                msg -> src.sendSuccess(() -> Component.literal(msg).withStyle(ChatFormatting.GRAY), true));
+        if (!started) {
+            fail(c, "Das ist kein Branch und kein Commit: " + ref);
+            return 0;
+        }
+        ok(c, "Die Testwelt wird geladen (" + ref + ").");
+        return 1;
+    }
+
+    /** /kw testworld place <name> <pos> [rotation]: a structure file of the test world's folder. */
+    private static int testworldPlace(CommandContext<CommandSourceStack> c, String rotation) throws CommandSyntaxException {
+        var pos = net.minecraft.commands.arguments.coordinates.BlockPosArgument.getLoadedBlockPos(c, "pos");
+        String name = net.minecraft.commands.arguments.ResourceLocationArgument.getId(c, "name").getPath();
+        net.minecraft.world.level.block.Rotation rot = switch (rotation) {
+            case "none" -> net.minecraft.world.level.block.Rotation.NONE;
+            case "clockwise_90" -> net.minecraft.world.level.block.Rotation.CLOCKWISE_90;
+            case "180" -> net.minecraft.world.level.block.Rotation.CLOCKWISE_180;
+            case "counterclockwise_90" -> net.minecraft.world.level.block.Rotation.COUNTERCLOCKWISE_90;
+            default -> null;
+        };
+        if (rot == null) {
+            fail(c, "Drehung: none, clockwise_90, 180 oder counterclockwise_90.");
+            return 0;
+        }
+        String problem = de.kronwerke.core.world.TestWorld.place(c.getSource().getLevel(), name, pos, rot);
+        if (problem == null) problem = "Keine Struktur " + name + " in kronwerke/shots/world/structures.";
+        if (!problem.isEmpty()) {
+            fail(c, problem);
+            return 0;
+        }
+        ok(c, name + " steht bei " + pos.toShortString() + ".");
+        return 1;
+    }
+
+    /** /kw testworld use <pos> <face> <item> [sneak]: a tool used on a block, in the dimension of whoever asks. */
+    private static int testworldUse(CommandContext<CommandSourceStack> c, boolean sneak) throws CommandSyntaxException {
+        var pos = net.minecraft.commands.arguments.coordinates.BlockPosArgument.getLoadedBlockPos(c, "pos");
+        var face = net.minecraft.core.Direction.byName(StringArgumentType.getString(c, "face"));
+        var id = net.minecraft.commands.arguments.ResourceLocationArgument.getId(c, "item");
+        var item = net.minecraft.core.registries.BuiltInRegistries.ITEM.getOptional(id);
+        if (face == null || item.isEmpty()) {
+            fail(c, face == null ? "Seite: north, south, east, west, up oder down." : "Kein Item " + id + ".");
+            return 0;
+        }
+        String result = de.kronwerke.core.world.TestWorld.use(c.getSource().getLevel(), pos, face, new ItemStack(item.get()), sneak);
+        boolean done = !result.equals("PASS") && !result.equals("FAIL");
+        if (done) ok(c, id + " auf " + pos.toShortString() + ": " + result);
+        else fail(c, id + " auf " + pos.toShortString() + ": " + result);
+        return done ? 1 : 0;
+    }
+
     private static int startBuild(CommandContext<CommandSourceStack> c, boolean clearMobs) {
         var src = c.getSource();
+        // the scenes of the server folder (/kw testworld pull) come before the ones a pack may carry
+        int files = de.kronwerke.core.world.TestWorld.apply("",
+                msg -> src.sendSuccess(() -> Component.literal(msg).withStyle(ChatFormatting.GRAY), false));
+        if (files >= 0) {
+            ok(c, "Die Szenen werden gebaut, eine Datei pro Tick (" + files + " Dateien).");
+            return files;
+        }
         int rows = de.kronwerke.core.world.TestWorld.build(src.getServer(), clearMobs,
                 msg -> src.sendSuccess(() -> Component.literal(msg).withStyle(ChatFormatting.GRAY), false));
         if (rows < 0) {
-            fail(c, "kronwerke:shots/rows.json fehlt. Das Pack erzeugt es mit tools/shots/build.py.");
+            fail(c, "Es gibt noch keine Szenen. /kw testworld pull lädt sie.");
             return -1;
         }
         ok(c, "Die Szenen werden gebaut, eine Reihe pro Tick (" + rows + " Reihen).");

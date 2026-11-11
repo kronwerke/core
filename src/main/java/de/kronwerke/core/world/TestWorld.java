@@ -90,8 +90,272 @@ public final class TestWorld {
         }
     }
 
-    /** One row per tick. */
+    // ---- scenes from the server folder -------------------------------------------------
+    //
+    // kronwerke/shots/world/<name>.mcfunction, plain commands. Trying a scene out this way
+    // needs no pack update and no restart: write the file, /kw testworld apply <name>, look.
+    // What a command answered when it failed is kept in <name>.log next to the file.
+
+    private static final Deque<java.nio.file.Path> files = new ArrayDeque<>();
+    private static Consumer<String> fileReport;
+    private static int filesTotal, commands, failed;
+
+    public static java.nio.file.Path worldDir() {
+        return de.kronwerke.core.camera.Camera.shotsDir().resolve("world");
+    }
+
+    /** Queues one file, or every file of the folder for an empty name. Returns the count, -1 when there is none. */
+    public static int apply(String name, Consumer<String> done) {
+        java.nio.file.Path dir = worldDir();
+        java.util.List<java.nio.file.Path> found = new java.util.ArrayList<>();
+        try {
+            if (name.isEmpty()) {
+                if (java.nio.file.Files.isDirectory(dir)) {
+                    try (var all = java.nio.file.Files.newDirectoryStream(dir, "*.mcfunction")) {
+                        for (var f : all) found.add(f);
+                    }
+                }
+            } else if (name.matches("[a-z0-9_.-]+") && java.nio.file.Files.isRegularFile(dir.resolve(name + ".mcfunction"))) {
+                found.add(dir.resolve(name + ".mcfunction"));
+            }
+        } catch (java.io.IOException ex) {
+            KronwerkeCore.LOGGER.warn("Could not list {}: {}", dir, ex.toString());
+        }
+        if (found.isEmpty()) return -1;
+        found.sort(null);
+        files.addAll(found);
+        filesTotal = files.size();
+        commands = failed = 0;
+        fileReport = done;
+        return found.size();
+    }
+
+    /** Collects what failed commands answer. */
+    private static final class Answers implements net.minecraft.commands.CommandSource {
+        final StringBuilder text = new StringBuilder();
+
+        @Override
+        public void sendSystemMessage(net.minecraft.network.chat.Component c) {
+            if (text.length() > 0) text.append(" | ");
+            text.append(c.getString());
+        }
+
+        @Override
+        public boolean acceptsSuccess() {
+            return false;
+        }
+
+        @Override
+        public boolean acceptsFailure() {
+            return true;
+        }
+
+        @Override
+        public boolean shouldInformAdmins() {
+            return false;
+        }
+    }
+
+    private static void run(MinecraftServer server, ServerLevel level, java.nio.file.Path file) {
+        java.util.List<String> lines;
+        try {
+            lines = java.nio.file.Files.readAllLines(file, StandardCharsets.UTF_8);
+        } catch (java.io.IOException ex) {
+            KronwerkeCore.LOGGER.warn("Could not read {}: {}", file, ex.toString());
+            return;
+        }
+        Answers out = new Answers();
+        var source = new net.minecraft.commands.CommandSourceStack(out, net.minecraft.world.phys.Vec3.ZERO,
+                net.minecraft.world.phys.Vec2.ZERO, level, 4, "Testwelt", net.minecraft.network.chat.Component.literal("Testwelt"), server, null);
+        java.util.List<String> log = new java.util.ArrayList<>();
+        int n = 0;
+        for (String raw : lines) {
+            n++;
+            String line = raw.strip();
+            if (line.startsWith("#area ")) {
+                // "#area x0 z0 x1 z1": load it, and take away what an earlier build summoned there
+                String[] a = line.split("\\s+");
+                try {
+                    int x0 = Integer.parseInt(a[1]), z0 = Integer.parseInt(a[2]), x1 = Integer.parseInt(a[3]), z1 = Integer.parseInt(a[4]);
+                    load(level, new Row(null, x0, z0, x1, z1));
+                    java.util.List<Entity> all = new java.util.ArrayList<>();
+                    for (Entity e : level.getAllEntities()) if (e != null) all.add(e);
+                    for (Entity e : all) {
+                        boolean inside = e.getX() >= x0 && e.getX() <= x1 + 1 && e.getZ() >= z0 && e.getZ() <= z1 + 1;
+                        if (inside && (e.getTags().contains("kw_shot") || e instanceof net.minecraft.world.entity.item.ItemEntity)) e.discard();
+                    }
+                } catch (RuntimeException ex) {
+                    log.add(n + ": " + line + " -> " + ex);
+                }
+                continue;
+            }
+            if (line.isEmpty() || line.startsWith("#")) continue;
+            out.text.setLength(0);
+            commands++;
+            try {
+                server.getCommands().performPrefixedCommand(source, line);
+            } catch (RuntimeException ex) {
+                out.text.append(ex);
+            }
+            if (out.text.length() > 0) {
+                failed++;
+                log.add(n + ": " + line + " -> " + out.text);
+            }
+        }
+        try {
+            String base = file.getFileName().toString();
+            java.nio.file.Files.write(file.resolveSibling(base.substring(0, base.length() - ".mcfunction".length()) + ".log"), log, StandardCharsets.UTF_8);
+        } catch (java.io.IOException ex) {
+            KronwerkeCore.LOGGER.warn("Could not write the log of {}: {}", file, ex.toString());
+        }
+    }
+
+    // ---- structures and the whole world from outside the pack ------------------------------
+
+    private static final java.util.Map<String, net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate> templates = new java.util.HashMap<>();
+
+    /**
+     * Places kronwerke/shots/world/structures/<name>.nbt, turned the way a structure block turns
+     * it. What it summons is tagged like everything else of the test world.
+     */
+    public static String place(ServerLevel level, String name, BlockPos pos, net.minecraft.world.level.block.Rotation rotation) {
+        var template = templates.get(name);
+        if (template == null) {
+            java.nio.file.Path root = worldDir().resolve("structures").normalize();
+            java.nio.file.Path file = root.resolve(name + ".nbt").normalize();
+            if (!file.startsWith(root) || !java.nio.file.Files.isRegularFile(file)) return null;
+            try {
+                var tag = net.minecraft.nbt.NbtIo.readCompressed(file, net.minecraft.nbt.NbtAccounter.unlimitedHeap());
+                template = level.getServer().getStructureManager().readStructure(tag);
+            } catch (java.io.IOException | RuntimeException ex) {
+                return "Die Struktur " + name + " ist nicht lesbar: " + ex;
+            }
+            templates.put(name, template);
+        }
+        var settings = new net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings()
+                .setRotation(rotation).setIgnoreEntities(false);
+        var box = template.getBoundingBox(settings, pos);
+        template.placeInWorld(level, pos, pos, settings, level.getRandom(), 2);
+        var area = new net.minecraft.world.phys.AABB(box.minX(), box.minY(), box.minZ(), box.maxX() + 1, box.maxY() + 1, box.maxZ() + 1);
+        for (Entity e : level.getEntities((Entity) null, area, x -> !(x instanceof net.minecraft.world.entity.player.Player))) e.addTag("kw_shot");
+        return "";
+    }
+
+    private static final java.util.regex.Pattern REF = java.util.regex.Pattern.compile("[0-9a-f]{7,40}|[a-z][a-z0-9_-]{0,40}");
+
+    /**
+     * Fetches the scenes: the branch or commit ref of the pack repository that holds them,
+     * unpacked into kronwerke/shots/world. The pack itself stays free of the test world, and a
+     * changed scene needs no pack update. False for a ref that is none.
+     */
+    public static boolean pull(MinecraftServer server, String ref, Consumer<String> done) {
+        if (!REF.matcher(ref).matches()) return false;
+        de.kronwerke.core.camera.ShotFiles.WORKER.execute(() -> {
+            String msg;
+            try {
+                msg = fetch("https://codeload.github.com/kronwerke/pack/zip/" + ref);
+            } catch (Exception ex) {
+                msg = "Laden fehlgeschlagen: " + ex;
+            }
+            String say = msg;
+            server.execute(() -> {
+                templates.clear();
+                done.accept(say);
+            });
+        });
+        return true;
+    }
+
+    private static String fetch(String url) throws Exception {
+        var client = java.net.http.HttpClient.newBuilder().followRedirects(java.net.http.HttpClient.Redirect.NORMAL)
+                .connectTimeout(java.time.Duration.ofSeconds(20)).build();
+        var response = client.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(url)).timeout(java.time.Duration.ofSeconds(180)).build(),
+                java.net.http.HttpResponse.BodyHandlers.ofInputStream());
+        if (response.statusCode() != 200) {
+            response.body().close();
+            return "Laden fehlgeschlagen: HTTP " + response.statusCode();
+        }
+        java.nio.file.Path dir = worldDir(), fresh = dir.resolveSibling("world.new");
+        deleteTree(fresh);
+        java.nio.file.Files.createDirectories(fresh);
+        int n = 0;
+        try (var zip = new java.util.zip.ZipInputStream(response.body())) {
+            for (java.util.zip.ZipEntry e; (e = zip.getNextEntry()) != null; ) {
+                String name = e.getName();
+                int cut = name.indexOf('/');       // the archive's own top folder
+                if (cut < 0 || e.isDirectory()) continue;
+                java.nio.file.Path out = fresh.resolve(name.substring(cut + 1)).normalize();
+                if (!out.startsWith(fresh) || out.equals(fresh)) continue;
+                java.nio.file.Files.createDirectories(out.getParent());
+                java.nio.file.Files.copy(zip, out, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                n++;
+            }
+        }
+        deleteTree(dir);
+        java.nio.file.Files.move(fresh, dir);
+        java.nio.file.Path shots = dir.resolve("shots.json");
+        if (java.nio.file.Files.isRegularFile(shots)) {
+            java.nio.file.Files.copy(shots, de.kronwerke.core.camera.Camera.shotsDir().resolve("shots.json"), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+        return "Testwelt geladen: " + n + " Dateien. /kw testworld apply baut sie.";
+    }
+
+    private static void deleteTree(java.nio.file.Path dir) throws java.io.IOException {
+        if (!java.nio.file.Files.exists(dir)) return;
+        try (var walk = java.nio.file.Files.walk(dir)) {
+            for (java.nio.file.Path f : (Iterable<java.nio.file.Path>) walk.sorted(java.util.Comparator.reverseOrder())::iterator) {
+                java.nio.file.Files.deleteIfExists(f);
+            }
+        }
+    }
+
+    private static boolean using;
+
+    /** True while the test world's own hand uses a tool: the stage locks do not apply to it. */
+    public static boolean building() {
+        return using;
+    }
+
+    /**
+     * A tool used on a block the way a player would: the hammer that forms a multiblock, a wrench,
+     * a wand. Returns what the game answered.
+     */
+    public static String use(ServerLevel level, BlockPos pos, net.minecraft.core.Direction face, net.minecraft.world.item.ItemStack stack, boolean sneak) {
+        var p = net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level);
+        p.setPos(pos.getX() + 0.5 + face.getStepX() * 1.5, pos.getY() + face.getStepY() * 1.5, pos.getZ() + 0.5 + face.getStepZ() * 1.5);
+        if (face.getAxis().isHorizontal()) p.setYRot(face.getOpposite().toYRot());
+        p.setXRot(face == net.minecraft.core.Direction.UP ? 90 : face == net.minecraft.core.Direction.DOWN ? -90 : 0);
+        p.setShiftKeyDown(sneak);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+        var at = net.minecraft.world.phys.Vec3.atCenterOf(pos).add(face.getStepX() * 0.5, face.getStepY() * 0.5, face.getStepZ() * 0.5);
+        using = true;
+        try {
+            var result = p.gameMode.useItemOn(p, level, stack, net.minecraft.world.InteractionHand.MAIN_HAND,
+                    new net.minecraft.world.phys.BlockHitResult(at, face, pos, false));
+            return result.toString();
+        } finally {
+            using = false;
+            p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, net.minecraft.world.item.ItemStack.EMPTY);
+            p.setShiftKeyDown(false);
+        }
+    }
+
+    /** One row per tick, then one file of the server folder per tick. */
     public static void tick(MinecraftServer server) {
+        if (queue.isEmpty() && !files.isEmpty()) {
+            ServerLevel level = level(server);
+            if (level == null) {
+                files.clear();
+                return;
+            }
+            run(server, level, files.poll());
+            if (files.isEmpty() && fileReport != null) {
+                fileReport.accept("Testwelt: " + filesTotal + " Dateien, " + commands + " Befehle, " + failed + " fehlgeschlagen"
+                        + (failed > 0 ? " (siehe die .log neben der Datei)." : "."));
+                fileReport = null;
+            }
+            return;
+        }
         if (queue.isEmpty()) return;
         ServerLevel level = level(server);
         if (level == null) {
