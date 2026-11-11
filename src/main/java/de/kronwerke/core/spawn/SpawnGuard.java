@@ -130,8 +130,21 @@ public final class SpawnGuard {
         return Math.abs(pos.getX() - o.getX()) <= r && Math.abs(pos.getY() - o.getY()) <= r && Math.abs(pos.getZ() - o.getZ()) <= r;
     }
 
+    /**
+     * The player's own things once more, a tick later. A placement that is refused here is undone
+     * on the server, stack and all, but the client has already taken one off the stack in the
+     * hand and nobody tells it otherwise: it showed 19 of 20 for good after one refused block at
+     * the obelisk (seen on the real servers), which reads as a lost item.
+     */
+    private static void resync(ServerPlayer p) {
+        p.server.tell(new net.minecraft.server.TickTask(p.server.getTickCount() + 1, () -> {
+            if (!p.hasDisconnected()) p.inventoryMenu.sendAllDataToRemote();
+        }));
+    }
+
     private static void tell(Entity entity) {
         if (entity instanceof ServerPlayer p) {
+            resync(p);
             int[] c = center(p.serverLevel());
             int out = radius() + 1 - Math.max(Math.abs(p.getBlockX() - c[0]), Math.abs(p.getBlockZ() - c[1]));
             p.displayClientMessage(Text.t("spawn.protected_where", "Der Spawn gehört allen. Bauen geht %s Blöcke weiter draußen (Schutzzone %s Blöcke um die Mitte).",
@@ -141,6 +154,7 @@ public final class SpawnGuard {
 
     private static void tellObelisk(Entity entity) {
         if (entity instanceof ServerPlayer p) {
+            resync(p);
             p.displayClientMessage(Text.t("spawn.obelisk_zone", "Am Obelisken gehen nur Einlässe, Trichter, Rohre und Bänder.").withStyle(ChatFormatting.RED), true);
         }
     }

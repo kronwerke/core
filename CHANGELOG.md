@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.9
+
+- A block that the spawn or the obelisk zone refuses no longer looks like a lost item. The server undid the placement, stack included, but the client had already taken one off the stack in the hand and kept showing one fewer for good (19 of 20 after one refused block at the obelisk, seen on the real servers). The player's inventory is sent once more a tick later.
+
 ## 0.39.8
 
 - JEI is also kept across a move when the two servers differ by a handful of recipes (up to 3, or one in 2000). After a restart the farm world had 45077 recipes and main 45078; with 0.39.7 that no longer drops the connection but still stopped the game for JEI's whole start at every move.
