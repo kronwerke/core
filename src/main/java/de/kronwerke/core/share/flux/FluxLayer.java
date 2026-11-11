@@ -103,7 +103,7 @@ public final class FluxLayer implements Layer {
     @Override
     public void tick(MinecraftServer server) {
         ticks++;
-        if (ticks == 1 && !Role.main()) keepIdsApart();
+        if (ticks == 1) keepIdsApart();
         if (ticks % 40 == 0) {
             sendDefinitions(false);
             forwardChanges();
@@ -254,10 +254,15 @@ public final class FluxLayer implements Layer {
     private void keepIdsApart() {
         try {
             FluxNetworkData d = FluxNetworkData.getInstance();
-            int from = SIDE_IDS * block(Role.role());
-            if (uniqueId.getInt(d) < from) {
-                uniqueId.setInt(d, from);
+            // the counter has to be inside this server's block: an older Core left the mining
+            // world's far above it, and what was made with such a number was nobody's network
+            int from = SIDE_IDS * block(Role.role()), now = uniqueId.getInt(d);
+            if (now < from || now >= from + SIDE_IDS) {
+                int last = from;
+                for (FluxNetwork n : all().values()) if (mine(n.getNetworkID())) last = Math.max(last, n.getNetworkID());
+                uniqueId.setInt(d, last);
                 d.setDirty();
+                KronwerkeCore.LOGGER.info("Shared network: Flux networks made here get numbers from {} (the counter was at {})", last + 1, now);
             }
         } catch (IllegalAccessException e) {
             throw new IllegalStateException(e);

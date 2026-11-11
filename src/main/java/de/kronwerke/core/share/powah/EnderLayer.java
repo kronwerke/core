@@ -143,6 +143,32 @@ public final class EnderLayer implements Layer {
         Map<String, JsonObject> m = new HashMap<>();
         for (String k : state.keySet()) m.put(k, state.getAsJsonObject(k));
         peers.put(from, new Peer(m, System.nanoTime()));
+        raise(m);
+    }
+
+    /**
+     * A channel is as large on every server as on the server where it is largest. In Powah a
+     * channel only gets room from energy cells put into an ender cell, and it never shrinks; the
+     * player does that once, at home, and a cell placed on another server must not be an empty
+     * shell that takes nothing (seen on the real servers: 0/0 FE in the farm world).
+     */
+    private void raise(Map<String, JsonObject> theirs) {
+        MinecraftServer server = net.neoforged.neoforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return;
+        boolean changed = false;
+        for (Map.Entry<String, JsonObject> e : theirs.entrySet()) {
+            long m = e.getValue().get("m").getAsLong();
+            try {
+                Energy mine = channel(server, e.getKey());
+                if (mine != null && m > mine.getCapacity()) {
+                    mine.setCapacity(m);
+                    changed = true;
+                }
+            } catch (RuntimeException x) {
+                // a key this Core does not read
+            }
+        }
+        if (changed) EnderNetwork.get(server).setDirty();
     }
 
     /** Into the channel, up to what it holds; the rest goes back. */

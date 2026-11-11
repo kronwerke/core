@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.4
+
+- Flux Networks: a network made in the farm world reaches the other servers. An older Core had left that world's number counter far above its block of numbers, so what was made there belonged to no server and was never sent (seen on the real servers: number 364540001 instead of 1000001). The counter is put back into the server's block at start.
+- Powah: an ender channel is as large on every server as on the one where it is largest. A channel only gets room from energy cells put into an ender cell, so a cell placed in the farm world showed 0/0 FE and took nothing while the same channel had room at home.
+
 ## 0.39.3
 
 - The farm world runs with 60 percent of the mob caps of the other servers (`mobs.capScale`, by the launcher's role), on top of ServerCore's own caps.
