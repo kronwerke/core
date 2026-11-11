@@ -28,6 +28,7 @@ import com.google.gson.JsonObject;
 public final class ShotFiles {
     /** Below the console's answer limit once base64 encoded. */
     private static final int PIECE = 185_000;
+    private static final int MIN_PIECE = 80_000;
 
     private ShotFiles() {
     }
@@ -65,13 +66,17 @@ public final class ShotFiles {
             all.write(b);
         }
         byte[] data = all.toByteArray();
-        int pieces = (data.length + PIECE - 1) / PIECE;
+        int size = data.length;
+        // pieces of equal size, and none tiny: the reader handles small answers differently
+        if (data.length < MIN_PIECE) data = Arrays.copyOf(data, MIN_PIECE);
+        int pieces = Math.max(1, (data.length + PIECE - 1) / PIECE);
+        int each = (data.length + pieces - 1) / pieces;
         for (int i = 0; i < pieces; i++) {
-            int from = i * PIECE;
-            Files.write(out.resolve(String.format("%03d.bin", i)), Arrays.copyOfRange(data, from, Math.min(data.length, from + PIECE)));
+            int from = i * each;
+            Files.write(out.resolve(String.format("%03d.bin", i)), Arrays.copyOfRange(data, from, Math.min(data.length, from + each)));
         }
         JsonObject o = new JsonObject();
-        o.addProperty("size", data.length);
+        o.addProperty("size", size);
         o.addProperty("pieces", pieces);
         o.add("files", index);
         Files.writeString(out.resolve("index.json"), o.toString(), StandardCharsets.UTF_8);
