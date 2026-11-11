@@ -203,6 +203,10 @@ public final class NetworkSync {
                     de.kronwerke.core.portal.Travel.onMessage(str(m, "from"), topic, d);
                     return;
                 }
+                if (topic.equals(de.kronwerke.core.tab.Tags.TOPIC) && m.get("data") instanceof JsonObject d) {
+                    de.kronwerke.core.tab.Tags.onMessage(d);
+                    return;
+                }
                 if (topic.equals(Moderation.TOPIC) && m.get("data") instanceof JsonObject d) {
                     Moderation.onMessage(str(m, "from"), d);
                     return;
@@ -217,6 +221,8 @@ public final class NetworkSync {
                     streamers = s;
                     goalLine = str(d, "goal");
                     if (d.has("stage")) de.kronwerke.core.mobs.MobStages.setRemoteStage(d.get("stage").getAsInt());
+                    // main's list of hand-set tags: side worlds catch up after their own restart
+                    if (d.get("tags") instanceof JsonObject tags) de.kronwerke.core.tab.Tags.onMessage(tags);
                 }
             }
             default -> {
@@ -329,6 +335,11 @@ public final class NetworkSync {
         if (Role.main()) sendState();
     }
 
+    /** After a tag changed: the other servers see the new rank in their tab list now, not in 30 seconds. */
+    public static void refreshPlayers() {
+        if (server != null) sendPlayers(null);
+    }
+
     private static void sendPlayers(UUID without) {
         if (!on()) return;
         JsonArray list = new JsonArray();
@@ -366,6 +377,7 @@ public final class NetworkSync {
         d.add("streamers", s);
         d.addProperty("goal", TabList.goalLine());
         d.addProperty("stage", de.kronwerke.core.mobs.MobStages.stage());
+        d.add("tags", de.kronwerke.core.tab.Tags.toJson());
         JsonObject m = op("send");
         m.addProperty("to", "*");
         m.addProperty("topic", "kw.state");

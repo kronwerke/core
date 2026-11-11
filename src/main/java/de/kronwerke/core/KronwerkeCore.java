@@ -158,6 +158,7 @@ public class KronwerkeCore {
     private void onRegisterCommands(RegisterCommandsEvent event) {
         if (Role.main()) KwCommand.register(event.getDispatcher());
         else KwCommand.registerSide(event.getDispatcher());
+        de.kronwerke.core.tab.TagCommand.register(event.getDispatcher());
         BypassCommand.register(event.getDispatcher());
         de.kronwerke.core.share.ShareCommand.register(event.getDispatcher());
         de.kronwerke.core.portal.MoveCommand.register(event.getDispatcher());

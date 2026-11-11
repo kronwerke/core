@@ -27,7 +27,8 @@ import java.util.Locale;
  */
 public final class TabList {
     private static final String[] RANKS = {"owner", "admin", "streamer", "member"};
-    private static final String[] GLYPHS = {"", "", "", ""};
+    /** The Nautical Ranks icon of each automatic rank, see {@link Tags}. */
+    private static final String[] ICONS = {"owner", "admin", "twitch", "member"};
     private static final ChatFormatting[] COLOURS = {ChatFormatting.GOLD, ChatFormatting.RED, ChatFormatting.LIGHT_PURPLE, ChatFormatting.WHITE};
 
     private static MinecraftServer server;
@@ -44,13 +45,21 @@ public final class TabList {
             String name = "kw_" + (char) ('a' + i) + "_" + RANKS[i];
             PlayerTeam team = board.getPlayerTeam(name);
             if (team == null) team = board.addPlayerTeam(name);
-            team.setPlayerPrefix(Component.literal(GLYPHS[i] + " ").withStyle(ChatFormatting.WHITE));
+            team.setPlayerPrefix(Tags.get(ICONS[i]).badge());
             team.setColor(COLOURS[i]);
             team.setDisplayName(Component.literal(RANKS[i]));
         }
+        Tags.load();
     }
 
+    /** The rank shown: a tag set by hand with /kwtag, else the automatic rank. */
     public static String rankOf(ServerPlayer player) {
+        String tag = Tags.of(player.getUUID());
+        return tag != null ? tag : autoRank(player);
+    }
+
+    /** owner, admin, streamer or member, from the config, the operator list and the slots. */
+    public static String autoRank(ServerPlayer player) {
         String name = player.getGameProfile().getName();
         for (String owner : KronwerkeConfig.OWNERS.get()) {
             if (owner.equalsIgnoreCase(name) || owner.equalsIgnoreCase(player.getUUID().toString())) return "owner"; // a uuid survives a rename
@@ -63,17 +72,41 @@ public final class TabList {
 
     public static void apply(ServerPlayer player) {
         if (server == null) return;
-        String rank = rankOf(player);
+        String rank = autoRank(player);
         Scoreboard board = server.getScoreboard();
+        PlayerTeam team = null;
         for (int i = 0; i < RANKS.length; i++) {
-            if (RANKS[i].equals(rank)) {
-                PlayerTeam team = board.getPlayerTeam("kw_" + (char) ('a' + i) + "_" + RANKS[i]);
-                if (team != null && board.getPlayersTeam(player.getScoreboardName()) != team) {
-                    board.addPlayerToTeam(player.getScoreboardName(), team);
-                }
-            }
+            if (!RANKS[i].equals(rank)) continue;
+            String tag = Tags.of(player.getUUID());
+            // a hand-set tag sorts with the player's automatic rank, so the tab list keeps its order
+            team = tag == null ? board.getPlayerTeam("kw_" + (char) ('a' + i) + "_" + RANKS[i])
+                    : tagTeam(board, "kw_" + (char) ('a' + i) + "_t_" + tag, Tags.get(tag));
+        }
+        if (team != null && board.getPlayersTeam(player.getScoreboardName()) != team) {
+            board.addPlayerToTeam(player.getScoreboardName(), team);
         }
         sendHeader(player);
+    }
+
+    private static PlayerTeam tagTeam(Scoreboard board, String name, Tags.Tag tag) {
+        PlayerTeam team = board.getPlayerTeam(name);
+        if (team == null) {
+            team = board.addPlayerTeam(name);
+            team.setDisplayName(Component.literal(tag.id()));
+        }
+        // every change goes out to all players, so only when it differs (this runs every two seconds)
+        if (!team.getPlayerPrefix().equals(tag.badge())) team.setPlayerPrefix(tag.badge());
+        if (team.getColor() != tag.colour()) team.setColor(tag.colour());
+        return team;
+    }
+
+    /** After a tag changed: everyone here at once, and the other servers' tab lists. */
+    public static void reapply() {
+        if (server == null) return;
+        server.execute(() -> {
+            for (ServerPlayer p : server.getPlayerList().getPlayers()) apply(p);
+            de.kronwerke.core.link.NetworkSync.refreshPlayers();
+        });
     }
 
     public static void onJoin(ServerPlayer player) {
@@ -114,12 +147,11 @@ public final class TabList {
                 .append(Component.literal(ping + " ms").withStyle(pingColour));
     }
 
-    /** A rank's glyph from the Nautical Ranks pack, for names that are not on a team here. */
+    /** A rank's or tag's icon, for names that are not on a team here (other servers, network chat). */
     public static MutableComponent badge(String rank) {
-        for (int i = 0; i < RANKS.length; i++) {
-            if (RANKS[i].equals(rank)) return Component.literal(GLYPHS[i] + " ").withStyle(ChatFormatting.WHITE);
-        }
-        return Component.literal(GLYPHS[3] + " ").withStyle(ChatFormatting.WHITE);
+        if ("streamer".equals(rank)) rank = "twitch";
+        Tags.Tag t = Tags.get(rank);
+        return (t != null ? t : Tags.get("member")).badge();
     }
 
     /** The running goal as one line ("id|title|state", state "held" or a percentage), or empty. main only; side worlds get it from main. */

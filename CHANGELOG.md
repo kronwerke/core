@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.34.0
+
+- Tags by hand: `/kwtag <player> <tag>` (also `/kw admin tag`) gives a player any icon of the Nautical Ranks pack (32 of them) or one of Kronwerke's own, with a fitting name colour. It changes at once in the tab list, in chat and above the head, without a relog, on every server of the network, and survives restarts (`config/kronwerke/tags.json`, main repeats the list to the side worlds). `/kwtag <player> auto` goes back to the automatic rank, `/kwtag list` shows who has one, `/kwtag tags` shows all. A tagged player keeps the place of their automatic rank in the tab list.
+- First own tag: Omi, in the style of the seav icons, turquoise, from Core's font `kronwerke:tags`.
+
 ## 0.33.0
 
 - A singleplayer or LAN world plays like a normal modpack: every stage opens at the first login, machines craft everything, the first steps that need the obelisk count as done, and a one time message says that the obelisk, the season and the whitelist only exist on the server. A world the game runs itself is told apart from a real server by where it runs (the client's integrated server).
