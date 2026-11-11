@@ -132,12 +132,17 @@ public final class Crossing {
 
     /** Entity.changeDimension of anything but a player into a dimension on another server: it stays. */
     public static boolean refuseEntity(Entity e, DimensionTransition t) {
-        if (e instanceof ServerPlayer || e.level().isClientSide() || t == null || t.newLevel() == null) return false;
-        if (Dimensions.here(t.newLevel().dimension())) return false;
+        return t != null && refuseEntity(e, t.newLevel());
+    }
+
+    /** Anything but a player that would go into the level of a dimension on another server: it stays. */
+    public static boolean refuseEntity(Entity e, ServerLevel to) {
+        if (e instanceof ServerPlayer || e.level().isClientSide() || to == null) return false;
+        if (Dimensions.here(to.dimension())) return false;
         long now = System.currentTimeMillis();
         if (now - refusedLogAt > 60_000) {
             refusedLogAt = now;
-            KronwerkeCore.LOGGER.info("{} at {} stays here: {} is played on another server", e.getType().getDescriptionId(), e.blockPosition(), t.newLevel().dimension().location());
+            KronwerkeCore.LOGGER.info("{} at {} stays here: {} is played on another server", e.getType().getDescriptionId(), e.blockPosition(), to.dimension().location());
         }
         return true;
     }

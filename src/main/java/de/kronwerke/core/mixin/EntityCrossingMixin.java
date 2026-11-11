@@ -6,7 +6,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import de.kronwerke.core.portal.Crossing;
+import java.util.Set;
+
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.RelativeMovement;
 import net.minecraft.world.level.portal.DimensionTransition;
 
 /**
@@ -14,11 +18,20 @@ import net.minecraft.world.level.portal.DimensionTransition;
  * another server stays where it is. This server still has its own copy of that dimension,
  * which nobody can visit: whatever went there would be lost. Players are moved to the right
  * server by {@link PlayerCrossingMixin}; portals already keep everything but players here.
+ * Both ways out are covered: changeDimension (portals, most mods) and teleportTo into another
+ * level, which copies the entity there directly (/tp, some mods).
  */
 @Mixin(Entity.class)
 public class EntityCrossingMixin {
     @Inject(method = "changeDimension", at = @At("HEAD"), cancellable = true)
     private void kronwerke$stay(DimensionTransition transition, CallbackInfoReturnable<Entity> cir) {
         if (Crossing.refuseEntity((Entity) (Object) this, transition)) cir.setReturnValue(null);
+    }
+
+    @Inject(method = "teleportTo(Lnet/minecraft/server/level/ServerLevel;DDDLjava/util/Set;FF)Z", at = @At("HEAD"), cancellable = true)
+    private void kronwerke$stayTp(ServerLevel level, double x, double y, double z, Set<RelativeMovement> rel, float yRot, float xRot,
+                                  CallbackInfoReturnable<Boolean> cir) {
+        Entity self = (Entity) (Object) this;
+        if (level != self.level() && Crossing.refuseEntity(self, level)) cir.setReturnValue(false);
     }
 }

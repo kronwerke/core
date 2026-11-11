@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.36.2
+
+- Entities also stay when they are teleported into the level of a dimension on another server (`/tp` and mods that copy an entity into another level instead of calling changeDimension). Found in the live test of 0.36.1: a pig sent with `/tp` into the Nether vanished into main's copy of it.
+
 ## 0.36.1
 
 - Modular Routers' Sender Module Mk3 does not send into a dimension on another server ("bad dimension"); the items stay in the router.
