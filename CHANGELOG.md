@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.38.1
+
+- The test player's pictures are JPEGs that fit through the console's API, its timeline keeps one line per standstill (the stacks go to `stalls.log`), `log REGEX` reads the client's own log, and one line takes several commands.
+
 ## 0.38.0
 
 - A move between the servers of the network is silent. Before, the server a player left said "left the game" to everyone (the note that it was a move got lost on the way to the other servers) and the one they arrived on said "joined the game". Now nobody is told, as nobody is told when someone changes the dimension on one server; joining and leaving the network reads the same on every server, without a server's name in front. A move that ends nowhere (the client never arrives) is said as a leaving after 30 seconds.

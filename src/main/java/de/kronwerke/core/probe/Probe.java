@@ -69,7 +69,7 @@ public final class Probe {
     private static final Path DIR = FMLPaths.GAMEDIR.get().resolve("kronwerke").resolve("probe");
     private static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
     /** A picture is padded to this size, so the console's API answers with a file and not inline. */
-    private static final int PAD = 75_000;
+    private static final int PAD = 75_000, MAX = 170_000;
 
     private static final Deque<String> queue = new ArrayDeque<>();
     private static final Deque<String> chat = new ArrayDeque<>();
@@ -81,7 +81,7 @@ public final class Probe {
     private static volatile long lastFrame = System.nanoTime();
     private static volatile Thread main;
     private static long frames, frameWindowStart = System.currentTimeMillis();
-    private static int fps;
+    private static int fps, lowFps = 999;
 
     private Probe() {
     }
@@ -122,6 +122,7 @@ public final class Probe {
             frameWindowStart = now;
             // while travelling the frame rate is the thing to know
             if (!"off".equals(TravelOverlay.phaseName())) event("fps " + fps);
+            if (fps < lowFps) lowFps = fps;
         }
     }
 
@@ -143,11 +144,16 @@ public final class Probe {
                 where.merge(signature(m.getStackTrace()), 1, Integer::sum);
             } else if (stallStart != 0) {
                 long took = System.currentTimeMillis() - stallStart;
-                if (took >= 250) {
-                    StringBuilder sb = new StringBuilder("STALL " + took + " ms");
-                    where.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(3)
-                            .forEach(en -> sb.append("\n      ").append(en.getValue()).append("x ").append(en.getKey()));
-                    event(sb.toString());
+                if (took >= 400) {
+                    var top = where.entrySet().stream().sorted((a, b) -> b.getValue() - a.getValue()).limit(4).toList();
+                    String first = top.isEmpty() ? "" : top.get(0).getKey();
+                    int cut = first.indexOf(" < ", first.indexOf(" < ") + 3);
+                    event("STALL " + took + " ms in " + (cut > 0 ? first.substring(0, cut) : first));
+                    if (took >= 1000) {
+                        StringBuilder sb = new StringBuilder(stamp() + " STALL " + took + " ms\n");
+                        for (var en : top) sb.append("  ").append(en.getValue()).append("x ").append(en.getKey()).append('\n');
+                        append("stalls.log", sb.toString());
+                    }
                 }
                 where.clear();
                 stallStart = 0;
@@ -167,7 +173,7 @@ public final class Probe {
                 continue;
             }
             sb.append(c.substring(c.lastIndexOf('.') + 1)).append('.').append(e.getMethodName()).append(':').append(e.getLineNumber());
-            if (++n >= 7) break;
+            if (++n >= 16) break;
             sb.append(" < ");
         }
         return sb.toString();
@@ -238,7 +244,9 @@ public final class Probe {
         if (!Files.exists(in)) return;
         try {
             Files.move(in, work, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            for (String l : Files.readAllLines(work, StandardCharsets.UTF_8)) if (!l.isBlank()) queue.addLast(l.strip());
+            for (String l : Files.readAllLines(work, StandardCharsets.UTF_8)) {
+                for (String part : l.split(" ;; ")) if (!part.isBlank()) queue.addLast(part.strip());
+            }
             Files.deleteIfExists(work);
         } catch (IOException e) {
             KronwerkeCore.LOGGER.warn("Probe: {}", e.toString());
@@ -271,6 +279,10 @@ public final class Probe {
      * connect HOST:PORT / disconnect
      * wait TICKS                before the next line
      * mark TEXT                 a line in the timeline
+     * log REGEX [n]             the last lines of the client's log that match
+     * </pre>
+     * Several commands fit in one line, separated by " ;; ".
+     * <pre>
      * </pre>
      */
     private static String run(Minecraft mc, String line) throws Exception {
@@ -376,6 +388,26 @@ public final class Probe {
             case "mark":
                 event("MARK " + rest);
                 return null;
+            case "log": {
+                // log REGEX [n]: the last lines of the client's own log that match
+                int sp = rest.lastIndexOf(' ');
+                int n = 15;
+                String re = rest;
+                if (sp > 0 && rest.substring(sp + 1).matches("[0-9]+")) {
+                    n = Integer.parseInt(rest.substring(sp + 1));
+                    re = rest.substring(0, sp);
+                }
+                java.util.regex.Pattern pat = java.util.regex.Pattern.compile(re);
+                Deque<String> hits = new ArrayDeque<>();
+                try (var lines = Files.lines(FMLPaths.GAMEDIR.get().resolve("logs/latest.log"), StandardCharsets.UTF_8)) {
+                    int max = n;
+                    lines.filter(l -> pat.matcher(l).find()).forEach(l -> {
+                        hits.addLast(l.length() > 300 ? l.substring(0, 300) : l);
+                        if (hits.size() > max) hits.removeFirst();
+                    });
+                }
+                return String.join("\n", hits);
+            }
             default:
                 return "unknown command";
         }
@@ -385,7 +417,9 @@ public final class Probe {
         StringBuilder sb = new StringBuilder();
         sb.append("screen=").append(mc.screen == null ? "-" : mc.screen.getClass().getName());
         if (mc.screen != null) sb.append(" title=\"").append(mc.screen.getTitle().getString()).append('"');
-        sb.append("\nserver=").append(server(mc)).append(" overlay=").append(TravelOverlay.phaseName()).append(" fps=").append(fps);
+        sb.append("\nserver=").append(server(mc)).append(" overlay=").append(TravelOverlay.phaseName()).append(" fps=").append(fps)
+                .append(" lowest=").append(lowFps);
+        lowFps = 999;
         if (mc.level != null && mc.player != null) {
             var pl = mc.player;
             sb.append("\nlevel=").append(mc.level.dimension().location())
@@ -519,12 +553,27 @@ public final class Probe {
             g.dispose();
             img = out;
         }
-        ByteArrayOutputStream bytes = new ByteArrayOutputStream();
-        ImageIO.write(img, "png", bytes);
-        int size = bytes.size();
-        while (bytes.size() < PAD) bytes.write(0);
-        Files.write(DIR.resolve(name + ".png"), bytes.toByteArray());
-        return name + ".png " + img.getWidth() + "x" + img.getHeight() + " " + size + " bytes";
+        // JPEG, and never more than the console's API passes on in one answer
+        byte[] data = null;
+        for (float q = 0.82f; q > 0.2f; q -= 0.15f) {
+            ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+            var writer = ImageIO.getImageWritersByFormatName("jpg").next();
+            var param = writer.getDefaultWriteParam();
+            param.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(q);
+            try (var ios = ImageIO.createImageOutputStream(bytes)) {
+                writer.setOutput(ios);
+                writer.write(null, new javax.imageio.IIOImage(img, null, null), param);
+            } finally {
+                writer.dispose();
+            }
+            data = bytes.toByteArray();
+            if (data.length <= MAX) break;
+        }
+        int size = data.length;
+        if (size < PAD) data = java.util.Arrays.copyOf(data, PAD);
+        Files.write(DIR.resolve(name + ".jpg"), data);
+        return name + ".jpg " + img.getWidth() + "x" + img.getHeight() + " " + size + " bytes";
     }
 
     // ---- the files ----
