@@ -422,6 +422,7 @@ public final class Travel {
         }
         if (!Role.main() && tick % 600 == 0) checkpoints();
         if (!Role.main() && tick % 20 == 0) HomeReports.tick();
+        if (Role.main() && tick % 40 == 0) checkUnderway();
         if (Role.main() && !pulls.isEmpty() && tick % 20 == 0) pulls.values().removeIf(t -> now - t > 60_000);
         if (Role.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get()) && tick % 100 == 0) tiefgraeber();
         Crossing.tick(server);
@@ -486,8 +487,39 @@ public final class Travel {
             if (b != null) p.teleportTo(p.serverLevel(), b.get("x").getAsDouble(), b.get("y").getAsDouble(), b.get("z").getAsDouble(), b.get("yaw").getAsFloat(), 0);
         }
         leaving.put(p.getUUID(), dep.target());
+        if (Role.main()) underway.put(p.getUUID(), new Underway(p.getGameProfile().getName(), target.label().isEmpty() ? target.name() : target.label(), System.currentTimeMillis()));
         KronwerkeCore.LOGGER.info("{} moves to {} ({}:{})", p.getGameProfile().getName(), dep.target(), target.host(), target.port());
         p.connection.send(new ClientboundTransferPacket(target.host(), target.port()));
+    }
+
+    /** main: players sent to another server, until that server lists them. */
+    private record Underway(String name, String to, long since) {}
+
+    private static final Map<UUID, Underway> underway = new HashMap<>();
+
+    /**
+     * main: a move that ends nowhere (the client could not connect to the other server) is
+     * told to the team online after 30 seconds and logged, so nobody wonders where someone
+     * went. Their next login on main brings them back as usual.
+     */
+    private static void checkUnderway() {
+        if (underway.isEmpty()) return;
+        java.util.Set<UUID> there = new java.util.HashSet<>();
+        for (var r : NetworkSync.remotePlayers()) there.add(r.uuid());
+        long now = System.currentTimeMillis();
+        for (var it = underway.entrySet().iterator(); it.hasNext(); ) {
+            var e = it.next();
+            if (there.contains(e.getKey()) || server.getPlayerList().getPlayer(e.getKey()) != null) {
+                it.remove();
+                continue;
+            }
+            if (now - e.getValue().since() < 30_000) continue;
+            it.remove();
+            Underway u = e.getValue();
+            KronwerkeCore.LOGGER.warn("{} was sent to {} 30 seconds ago and has not arrived there", u.name(), u.to());
+            Component line = Text.t("travel.nowhere", "%s ist nach %s aufgebrochen, dort aber nicht angekommen. Beim nächsten Login kommt er wieder hier an.", u.name(), u.to()).withStyle(ChatFormatting.GRAY);
+            for (ServerPlayer op : server.getPlayerList().getPlayers()) if (op.hasPermissions(2)) op.sendSystemMessage(line);
+        }
     }
 
     /** A side world: everyone goes home (before the world is reset). */

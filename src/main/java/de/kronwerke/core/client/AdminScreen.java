@@ -103,8 +103,18 @@ public final class AdminScreen extends KwScreen {
         return top + HEAD + 36;
     }
 
+    /**
+     * A vertical offset in the overview and server tabs, pressed together on a small window
+     * (240 pixels high at the GUI scale), so the last row stays above the footer.
+     */
+    private int s(int dy) {
+        double room = top + h - FOOT - 4 - 20 - y0(); // the lowest row is a button, 20 high
+        double k = Math.min(1.0, Math.max(0.6, room / 154.0));
+        return (int) Math.round(dy * k);
+    }
+
     private void initOverview() {
-        int y = y0() + 38;
+        int y = y0() + s(38);
         if (data.seasonRunning()) {
             addRenderableWidget(FlatButton.confirm(cx, y, 170, "Zurück zur Vorbereitung", "Wirklich pausieren?", FlatButton.Style.NORMAL, () -> send("season_pause", ""))
                     .icon(new ItemStack(Items.CLOCK)).tip("Discord und Website zeigen wieder Work in Progress", "Der Fortschritt bleibt"));
@@ -125,12 +135,12 @@ public final class AdminScreen extends KwScreen {
             addRenderableWidget(FlatButton.confirm(cx, y, 170, "Season starten", "Sicher? Alles auf null", FlatButton.Style.PRIMARY, () -> send("season_start", ""))
                     .icon(new ItemStack(Items.NETHER_STAR)).tip("Setzt jedes Ziel, jede Rangliste und jedes Kit zurück", "Zweiter Klick startet"));
         }
-        y = y0() + 80 + 26;
+        y = y0() + s(80 + 26);
         int bw = (cw - 12) / 3;
         addRenderableWidget(FlatButton.of(cx, y, bw, "Testwelt", () -> send("tw_go", "")).icon(new ItemStack(Items.GRASS_BLOCK)).tip("Teleportiert dich in die Testwelt"));
         addRenderableWidget(FlatButton.confirm(cx + bw + 6, y, bw, "Neu bauen", "Alles neu bauen?", FlatButton.Style.NORMAL, () -> send("tw_rebuild", "")).icon(new ItemStack(Items.STRUCTURE_BLOCK)).tip("Baut jede Szene neu, eine Reihe pro Tick"));
         addRenderableWidget(FlatButton.of(cx + 2 * (bw + 6), y, bw, "Zum Spawn", () -> send("tw_back", "")).icon(new ItemStack(Items.RED_BED)).tip("Zurück in die Oberwelt"));
-        y = y0() + 140 + 14;
+        y = y0() + s(140 + 14);
         KwNetwork.PlayerRow self = data.players().stream().filter(p -> p.name().equals(me())).findFirst().orElse(null);
         addRenderableWidget(FlatButton.of(cx, y, bw, self != null && self.bypass() ? "Bypass aus" : "Bypass an", () -> send("bypass", me())).icon(new ItemStack(Items.TRIPWIRE_HOOK)).tip("Mit Bypass ignorieren dich die Stufen-Sperren"));
         addRenderableWidget(FlatButton.of(cx + bw + 6, y, bw, self != null && self.creative() ? "Überleben" : "Kreativ", () -> send("mode", me())).icon(new ItemStack(Items.COMMAND_BLOCK)).tip("Wechselt deinen Spielmodus"));
@@ -208,10 +218,10 @@ public final class AdminScreen extends KwScreen {
     }
 
     private void initObelisk() {
-        int y = y0() + 36;
+        int y = y0() + s(36);
         addRenderableWidget(FlatButton.confirm(cx, y, 150, "Hier bauen", "An meiner Position?", FlatButton.Style.PRIMARY, () -> send("obelisk_here", "")).icon(new ItemStack(Items.AMETHYST_CLUSTER)).tip("Baut den Obelisken an deiner Position", "Ein alter wird vorher abgebaut"));
         addRenderableWidget(FlatButton.of(cx + 156, y, 130, "Abgaben im Chat", () -> send("obelisk_info", "")).icon(new ItemStack(Items.PAPER)).tip("Schreibt Position und Stand in den Chat"));
-        y = y0() + 70 + 36;
+        y = y0() + s(70 + 36);
         addRenderableWidget(FlatButton.confirm(cx, y, 150, "Rangliste hier", "Wand hier aufstellen?", FlatButton.Style.NORMAL, () -> send("board_here", "")).icon(new ItemStack(Items.CHISELED_DEEPSLATE)).tip("Stellt die Ranglisten-Wand vor dich"));
     }
 
@@ -358,10 +368,10 @@ public final class AdminScreen extends KwScreen {
                 ? "Season " + data.seasonNumber() + " läuft. Discord und Website zeigen den Obelisken live."
                 : "Vorbereitung: Discord und Website zeigen Work in Progress. Abgaben sind nur ein Test, der Start setzt alles zurück.",
                 cx, y + 12, cw, Ui.MUTED);
-        y = y0() + 80;
+        y = y0() + s(80);
         section(g, "Testwelt", y);
         g.drawString(font, Ui.fit(font, data.testWorldBuilt() ? "Gebaut, eine Szene pro Screenshot." : "Noch nicht gebaut, der erste Besuch baut sie.", cw), cx, y + 12, Ui.MUTED, false);
-        y = y0() + 140;
+        y = y0() + s(140);
         section(g, "Für mich", y);
     }
 
@@ -428,7 +438,7 @@ public final class AdminScreen extends KwScreen {
         int y = y0();
         section(g, "Bauen", y);
         wrapped(g, "Setzt den Obelisken mit Sockel, Säulen und Strahl an deine Position. Ein alter Obelisk wird vorher abgebaut.", cx, y + 12, cw, Ui.MUTED);
-        y = y0() + 70;
+        y = y0() + s(70);
         section(g, "Rangliste", y);
         wrapped(g, "Die Wand zeigt die fleißigsten Hände pro Ziel, eingraviert in Stein. Sie entsteht vor dir, in Blickrichtung.", cx, y + 12, cw, Ui.MUTED);
     }
@@ -437,7 +447,7 @@ public final class AdminScreen extends KwScreen {
 
     private void initServer() {
         var s = data.server();
-        int y = y0() + 12;
+        int y = y0() + s(12);
         addRenderableWidget(FlatButton.of(cx + cw - 172, y - 3, 84, s.gateOn() ? "Sperre aus" : "Sperre an", () -> send(s.gateOn() ? "gate_off" : "gate_on", ""))
                 .tip("Die Startsperre: bis zum Start nur Ops und die Liste"));
         addRenderableWidget(FlatButton.of(cx + cw - 84, y - 3, 84, s.beta() ? "Beta aus" : "Beta an", () -> send(s.beta() ? "beta_off" : "beta_on", ""))
@@ -450,7 +460,7 @@ public final class AdminScreen extends KwScreen {
         addRenderableWidget(gateName);
         addRenderableWidget(FlatButton.of(cx + 134, y + 25, 70, "Auf die Liste", () -> send("gate_allow", gateName.getValue().trim())));
         addRenderableWidget(FlatButton.of(cx + 208, y + 25, 70, "Von der Liste", () -> send("gate_deny", gateName.getValue().trim())));
-        y = y0() + 70;
+        y = y0() + s(70);
         limit = new EditBox(font, cx + cw - 120, y + 2, 30, 10, Component.literal("Limit"));
         limit.setBordered(false);
         limit.setTextColor(Ui.TEXT);
@@ -458,7 +468,7 @@ public final class AdminScreen extends KwScreen {
         limit.setValue(Integer.toString(s.queueLimit()));
         addRenderableWidget(limit);
         addRenderableWidget(FlatButton.of(cx + cw - 84, y - 3, 84, "Limit setzen", () -> send("queue_limit", limit.getValue().trim())).tip("Spieler im Netzwerk, ab dann wird gewartet"));
-        y = y0() + 108;
+        y = y0() + s(108);
         addRenderableWidget(FlatButton.confirm(cx + cw - 84, y - 3, 84, s.locksOn() ? "Sperren aus" : "Sperren an", "Rezepte neu laden?", FlatButton.Style.NORMAL,
                 () -> send(s.locksOn() ? "locks_off" : "locks_on", "")).tip("Maschinen stellen spätere Stufen nicht her", "Umschalten lädt alle Rezepte neu"));
     }
@@ -471,14 +481,14 @@ public final class AdminScreen extends KwScreen {
         g.drawString(font, Ui.fit(font, (s.gateOn() ? "An" : "Aus") + (s.beta() ? ", Beta" : "") + ". Liste: " + (s.gateList().isEmpty() ? "leer" : s.gateList()), cw - 180),
                 cx, y + 12, Ui.MUTED, false);
         Ui.inset(g, cx, y + 25, cx + 128, y + 43);
-        y = y0() + 58;
+        y = y0() + s(58);
         section(g, "Warteschlange", y);
         g.drawString(font, Ui.fit(font, s.queue(), cw - 130), cx, y + 14, Ui.MUTED, false);
         Ui.inset(g, cx + cw - 124, y + 9, cx + cw - 90, y + 27);
-        y = y0() + 96;
+        y = y0() + s(96);
         section(g, "Maschinensperren", y);
         g.drawString(font, Ui.fit(font, s.locks(), cw - 100), cx, y + 14, Ui.MUTED, false);
-        y = y0() + 134;
+        y = y0() + s(134);
         section(g, "Skalierung und Netzwerk", y);
         g.drawString(font, Ui.fit(font, s.scaling(), cw), cx, y + 12, Ui.MUTED, false);
         g.drawString(font, Ui.fit(font, "Server: " + s.network(), cw), cx, y + 24, Ui.MUTED, false);

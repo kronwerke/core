@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.32.1
+
+- A move from main that arrives nowhere (the client could not connect to the other server) is told to the team online after 30 seconds and logged. The player's next login on main brings them back as before.
+- The admin panel fits a window 240 pixels high: the overview and server tabs press their rows together instead of running into the footer.
+
 ## 0.32.0
 
 - The admin panel lists the players of the whole network, with the server they are on; a kick reaches them there. On the Nether, End and mining servers `/kw admin` opens the panel with the network's players (teleport, game mode and spawn for those on that server, kick for everyone); season, goals and slots stay on main. (R3-16)

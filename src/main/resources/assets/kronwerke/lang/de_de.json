@@ -260,5 +260,6 @@
   "kronwerke.travel.busy": "Du bist gerade unterwegs, gleich geht es weiter.",
   "kronwerke.travel.pull": "Deine Daten kommen gerade noch aus %s. Versuch es in ein paar Sekunden noch einmal.",
   "kronwerke.gate.soon": "Gleich geht es los. Versuch es in ein paar Minuten noch einmal.",
-  "kronwerke.admin.side": "Hier in %s nur die Spieler. Season, Ziele und Plätze verwaltest du in der Hauptwelt."
+  "kronwerke.admin.side": "Hier in %s nur die Spieler. Season, Ziele und Plätze verwaltest du in der Hauptwelt.",
+  "kronwerke.travel.nowhere": "%s ist nach %s aufgebrochen, dort aber nicht angekommen. Beim nächsten Login kommt er wieder hier an."
 }
