@@ -491,7 +491,7 @@ public final class KwCommand {
             fail(c, face == null ? "Seite: north, south, east, west, up oder down." : "Kein Item " + id + ".");
             return 0;
         }
-        String result = de.kronwerke.core.world.TestWorld.use(c.getSource().getLevel(), pos, face, new ItemStack(item.get()), sneak);
+        String result = de.kronwerke.core.world.TestWorld.use(c.getSource().getLevel(), pos, face, item.get(), sneak);
         boolean done = !result.equals("PASS") && !result.equals("FAIL");
         if (done) ok(c, id + " auf " + pos.toShortString() + ": " + result);
         else fail(c, id + " auf " + pos.toShortString() + ": " + result);

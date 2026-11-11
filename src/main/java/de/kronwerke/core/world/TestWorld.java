@@ -164,6 +164,7 @@ public final class TestWorld {
             KronwerkeCore.LOGGER.warn("Could not read {}: {}", file, ex.toString());
             return;
         }
+        hand = net.minecraft.world.item.ItemStack.EMPTY;
         Answers out = new Answers();
         var source = new net.minecraft.commands.CommandSourceStack(out, net.minecraft.world.phys.Vec3.ZERO,
                 net.minecraft.world.phys.Vec2.ZERO, level, 4, "Testwelt", net.minecraft.network.chat.Component.literal("Testwelt"), server, null);
@@ -197,7 +198,9 @@ public final class TestWorld {
             } catch (RuntimeException ex) {
                 out.text.append(ex);
             }
-            if (out.text.length() > 0) {
+            // a block that already was what it should become is no failure
+            String answer = out.text.toString();
+            if (!answer.isEmpty() && !answer.equals("No blocks were filled") && !answer.equals("Could not set the block")) {
                 failed++;
                 log.add(n + ": " + line + " -> " + out.text);
             }
@@ -318,27 +321,33 @@ public final class TestWorld {
 
     /**
      * A tool used on a block the way a player would: the hammer that forms a multiblock, a wrench,
-     * a wand. Returns what the game answered.
+     * a wand. The hand keeps the stack while the same item is used again, so two clicks that
+     * belong together work (a belt between two shafts, a wire between two connectors). Returns
+     * what the game answered.
      */
-    public static String use(ServerLevel level, BlockPos pos, net.minecraft.core.Direction face, net.minecraft.world.item.ItemStack stack, boolean sneak) {
+    public static String use(ServerLevel level, BlockPos pos, net.minecraft.core.Direction face, net.minecraft.world.item.Item item, boolean sneak) {
         var p = net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level);
+        if (hand.isEmpty() || !hand.is(item)) hand = new net.minecraft.world.item.ItemStack(item, item.getDefaultMaxStackSize());
         p.setPos(pos.getX() + 0.5 + face.getStepX() * 1.5, pos.getY() + face.getStepY() * 1.5, pos.getZ() + 0.5 + face.getStepZ() * 1.5);
         if (face.getAxis().isHorizontal()) p.setYRot(face.getOpposite().toYRot());
         p.setXRot(face == net.minecraft.core.Direction.UP ? 90 : face == net.minecraft.core.Direction.DOWN ? -90 : 0);
         p.setShiftKeyDown(sneak);
-        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, stack);
+        p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, hand);
         var at = net.minecraft.world.phys.Vec3.atCenterOf(pos).add(face.getStepX() * 0.5, face.getStepY() * 0.5, face.getStepZ() * 0.5);
         using = true;
         try {
-            var result = p.gameMode.useItemOn(p, level, stack, net.minecraft.world.InteractionHand.MAIN_HAND,
+            var result = p.gameMode.useItemOn(p, level, hand, net.minecraft.world.InteractionHand.MAIN_HAND,
                     new net.minecraft.world.phys.BlockHitResult(at, face, pos, false));
             return result.toString();
         } finally {
             using = false;
+            hand = p.getItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND);
             p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, net.minecraft.world.item.ItemStack.EMPTY);
             p.setShiftKeyDown(false);
         }
     }
+
+    private static net.minecraft.world.item.ItemStack hand = net.minecraft.world.item.ItemStack.EMPTY;
 
     /** One row per tick, then one file of the server folder per tick. */
     public static void tick(MinecraftServer server) {
