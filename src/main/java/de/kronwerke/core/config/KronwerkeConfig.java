@@ -72,6 +72,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends Number>> MOB_ARMOR;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_MIN_STAGE;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_SPAWN_CHANCE;
+    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> MOB_CAP_SCALE;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -178,6 +179,8 @@ public final class KronwerkeConfig {
                         "born_in_chaos_v1:krampus_henchman=3", "born_in_chaos_v1:supreme_bonescaller=3", "born_in_chaos_v1:spiritof_chaos=3"), o -> o instanceof String);
         MOB_SPAWN_CHANCE = b.comment("How many of a mob's natural spawns happen (0 to 1), so one mod does not crowd out the rest: \"mod:entity=0.5\" or \"mod:*=0.5\".")
                 .defineListAllowEmpty("spawnChance", java.util.List.of("born_in_chaos_v1:*=0.55"), o -> o instanceof String);
+        MOB_CAP_SCALE = b.comment("The mob caps of one server of the network as a fraction of the usual ones, by the launcher's role: \"mining=0.6\" keeps the farm world at 60 percent of the monsters and animals of the others.")
+                .defineListAllowEmpty("capScale", java.util.List.of("mining=0.6"), o -> o instanceof String);
         b.pop();
 
         b.push("network");

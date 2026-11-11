@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.3
+
+- The farm world runs with 60 percent of the mob caps of the other servers (`mobs.capScale`, by the launcher's role), on top of ServerCore's own caps.
+
 ## 0.39.2
 
 - Flux Networks: a network made on any server exists on all of them. Before, only main's networks went to the others; one made in the Nether or the mining world stayed there, and the list on main never showed it. Every server makes its networks in a block of numbers of its own, tells the others, and a change or a deletion made elsewhere goes to the server the network was made on and from there to everyone.

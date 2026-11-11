@@ -67,6 +67,7 @@
     "ReliquaryCharmTickMixin",
     "RouterSenderDimensionMixin",
     "MekTeleporterRemoteMixin",
+    "MobCapScaleMixin",
     "QioDriveNewMixin",
     "QioTakeReplayMixin",
     "MekPortableTeleporterRemoteMixin",
