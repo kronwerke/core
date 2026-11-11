@@ -127,6 +127,32 @@ public final class Crossing {
         return true;
     }
 
+    /** When an entity a mod wanted to send elsewhere was last logged, so a farm does not fill the log. */
+    private static long refusedLogAt;
+
+    /** Entity.changeDimension of anything but a player into a dimension on another server: it stays. */
+    public static boolean refuseEntity(Entity e, DimensionTransition t) {
+        if (e instanceof ServerPlayer || e.level().isClientSide() || t == null || t.newLevel() == null) return false;
+        if (Dimensions.here(t.newLevel().dimension())) return false;
+        long now = System.currentTimeMillis();
+        if (now - refusedLogAt > 60_000) {
+            refusedLogAt = now;
+            KronwerkeCore.LOGGER.info("{} at {} stays here: {} is played on another server", e.getType().getDescriptionId(), e.blockPosition(), t.newLevel().dimension().location());
+        }
+        return true;
+    }
+
+    /** A Create portal track's exit (a PortalTrackProvider.Exit record) in a dimension on another server. */
+    public static boolean foreignExit(Object exit) {
+        if (exit == null) return false;
+        try {
+            Object level = exit.getClass().getMethod("level").invoke(exit);
+            return level instanceof ServerLevel sl && !Dimensions.here(sl.dimension());
+        } catch (ReflectiveOperationException | RuntimeException ex) {
+            return false;
+        }
+    }
+
     /** ServerPlayer.changeDimension into a dimension elsewhere (a mod's teleport, /tp). */
     public static boolean transition(ServerPlayer p, DimensionTransition t) {
         ResourceKey<Level> to = t.newLevel().dimension();

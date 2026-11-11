@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.36.0
+
+- An animal, item, cart or any other entity that a mod sends into a dimension played on another server stays where it is. Each server still has its own copy of every dimension, which nobody can visit, so whatever went there was lost. Portals already kept everything but players on their side; this covers mods' own teleports.
+- Create no longer lays a track through a Nether or End portal into a dimension on another server: the track would end in this server's unvisitable copy and a train would vanish there with its cargo. The track does not connect, as at a portal Create cannot use.
+
 ## 0.35.0
 
 - A new stage no longer reloads every data pack (CORE-39). The recipes of the last load are filtered again for the stage and handed to the recipe manager, which takes milliseconds; before, the server stood still for 5 to 6 seconds even when empty, and every client's JEI rebuilt. The mods' own reload listeners run after it, mostly off the server thread, so mods with their own recipe lists (Mekanism, Create and others) build them anew. Clients always get every recipe now, the held back ones too, so a new stage sends them nothing; JEI and the recipe book show the recipes as before the machine locks, and Chapters still hides the locked items. `/kw admin locks refilter <stage>` filters for another stage as a test; the real stage comes back within seconds.
