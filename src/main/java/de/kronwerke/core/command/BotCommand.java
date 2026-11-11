@@ -60,7 +60,8 @@ public final class BotCommand {
         return Commands.literal("grant")
                 .then(Commands.argument("player", StringArgumentType.word())
                         .executes(c -> grant(c, -1))
-                        .then(Commands.argument("slots", IntegerArgumentType.integer(0, 64))
+                        // -1: the default number of slots, so a streamer's kind and UUID can follow
+                        .then(Commands.argument("slots", IntegerArgumentType.integer(-1, 64))
                                 .executes(c -> grant(c, IntegerArgumentType.getInteger(c, "slots")))
                                 .then(Commands.argument("kind", StringArgumentType.word())
                                         .suggests((c, b) -> net.minecraft.commands.SharedSuggestionProvider.suggest(java.util.List.of("streamer", "season1", "team"), b))
@@ -148,7 +149,13 @@ public final class BotCommand {
         String streamerName = StringArgumentType.getString(c, "streamer");
         String player = StringArgumentType.getString(c, "player");
         SlotManager sm = SlotManager.get();
-        SlotData.StreamerEntry e = sm.entryByName(streamerName);
+        // the streamer by UUID (the bot sends it, names change) or by name
+        SlotData.StreamerEntry e = null;
+        try {
+            e = sm.find(java.util.UUID.fromString(streamerName));
+        } catch (IllegalArgumentException notUuid) {
+            e = sm.entryByName(streamerName);
+        }
         if (e == null) {
             answer(c, "ERR " + streamerName + " has no place of their own (grant them first)");
             return 0;
