@@ -108,7 +108,14 @@ public final class Camera {
         try {
             Files.createDirectories(SHOTS);
             Files.write(SHOTS.resolve(p.name() + ".png"), png);
-            ShotFiles.writeOptimised(SHOTS, p.name(), png);
+            final String name = p.name();
+            ShotFiles.WORKER.execute(() -> {
+                try {
+                    ShotFiles.writeOptimised(SHOTS, name, png);
+                } catch (IOException e) {
+                    KronwerkeCore.LOGGER.warn("Camera: no small copy of {}: {}", name, e.toString());
+                }
+            });
             p.done().accept("");
         } catch (IOException e) {
             p.done().accept("Nicht gespeichert: " + e.getMessage());

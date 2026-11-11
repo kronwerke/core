@@ -33,6 +33,14 @@ public final class ShotFiles {
     private ShotFiles() {
     }
 
+    /** One worker for the picture work, so the server thread never waits for it. */
+    public static final java.util.concurrent.ExecutorService WORKER = java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "Kronwerke camera files");
+        t.setDaemon(true);
+        t.setPriority(Thread.MIN_PRIORITY);
+        return t;
+    });
+
     /** The width the quest book gets; larger pictures are scaled down for the small copy. */
     public static final int BOOK_WIDTH = 480;
 

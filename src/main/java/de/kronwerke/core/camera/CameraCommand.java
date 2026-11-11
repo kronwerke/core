@@ -74,26 +74,39 @@ public final class CameraCommand {
 
     /** Makes the small copies again from the full pictures, after the size or palette changed. */
     private static int reopt(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c, String prefix) {
-        try {
-            int n = ShotFiles.reoptimise(Camera.shotsDir(), prefix);
-            ok(c, n + " kleine Kopien neu erstellt.");
-            return n;
-        } catch (java.io.IOException e) {
-            c.getSource().sendFailure(Component.literal("Nicht erstellt: " + e.getMessage()));
-            return 0;
-        }
+        return background(c, "Kleine Kopien", () -> ShotFiles.reoptimise(Camera.shotsDir(), prefix) + " kleine Kopien neu erstellt.");
     }
 
     /** Packs the small copies in shots/opt into pieces for the console (shots/bundle). */
     private static int bundle(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c, String prefix) {
-        try {
-            int n = ShotFiles.bundle(Camera.shotsDir(), prefix);
-            ok(c, n + " Bilder in kronwerke/shots/bundle gepackt.");
-            return n;
-        } catch (java.io.IOException e) {
-            c.getSource().sendFailure(Component.literal("Nicht gepackt: " + e.getMessage()));
-            return 0;
-        }
+        return background(c, "Bündel", () -> ShotFiles.bundle(Camera.shotsDir(), prefix) + " Bilder in kronwerke/shots/bundle gepackt.");
+    }
+
+    /** Image work takes seconds to minutes: off the server thread, answered when done. */
+    private static int background(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c, String what,
+                                  java.util.concurrent.Callable<String> job) {
+        CommandSourceStack src = c.getSource();
+        MinecraftServer server = src.getServer();
+        ShotFiles.WORKER.execute(() -> {
+            String msg;
+            boolean good;
+            try {
+                msg = job.call();
+                good = true;
+            } catch (Exception e) {
+                msg = what + " fehlgeschlagen: " + e.getMessage();
+                good = false;
+            }
+            de.kronwerke.core.KronwerkeCore.LOGGER.info("Camera: {}", msg);
+            final String m = msg;
+            final boolean ok = good;
+            server.execute(() -> {
+                if (ok) src.sendSuccess(() -> Component.literal(m).withStyle(net.minecraft.ChatFormatting.GREEN), true);
+                else src.sendFailure(Component.literal(m));
+            });
+        });
+        ok(c, what + " laufen im Hintergrund, die Antwort kommt hier und im Log.");
+        return 1;
     }
 
     private static com.mojang.brigadier.builder.LiteralArgumentBuilder<CommandSourceStack> shotNode() {
