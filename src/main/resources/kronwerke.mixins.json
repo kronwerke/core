@@ -70,6 +70,7 @@
     "MobCapScaleMixin",
     "QioDriveNewMixin",
     "QioTakeReplayMixin",
+    "AeTakeReplayMixin",
     "MekPortableTeleporterRemoteMixin",
     "SelectorParserTagsMixin",
     "SelectorTagIndexMixin",

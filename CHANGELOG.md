@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.5
+
+- AE2: taking something out of a terminal that is still in main's storage (network linked over a quantum bridge between servers) takes one click: the click that came too early is done again when the things are here. Seen on the real servers before: the first click on the gold gave nothing, the second took it.
+
 ## 0.39.4
 
 - Flux Networks: a network made in the farm world reaches the other servers. An older Core had left that world's number counter far above its block of numbers, so what was made there belonged to no server and was never sent (seen on the real servers: number 364540001 instead of 1000001). The counter is put back into the server's block at start.

@@ -242,6 +242,7 @@ final class RemoteStorage implements MEStorage {
         if (amount > have) fetch(what, amount - have);
         if (mode == Actionable.SIMULATE) return Math.min(amount, have + hostInv.getOrDefault(what, 0L));
         long take = Math.min(amount, have);
+        BridgeLayer.clicked(what, amount, take);
         if (take > 0) {
             held.remove(what, take);
             long soon = sendSoon.get(what);

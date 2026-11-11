@@ -79,6 +79,7 @@ public final class BridgeLayer implements Layer {
     private BridgeLayer(Field objects, Field connection) {
         this.objects = objects;
         this.connection = connection;
+        instance = this;
     }
 
     public static BridgeLayer create() {
@@ -335,6 +336,7 @@ public final class BridgeLayer implements Layer {
             e.setDirty();
             RemoteStorage r = remotes.get(f);
             if (r != null) r.arrived(data);
+            for (JsonElement el : data.getAsJsonArray("items")) clickAgain(key(el.getAsJsonArray().get(0).getAsString()));
             return null;
         }
         // host: into main's storage, whatever fits
@@ -436,5 +438,53 @@ public final class BridgeLayer implements Layer {
             if (q != null && q.role().equals("main")) return Component.literal(q.label());
         }
         return Component.literal("main");
+    }
+
+    // ---- a player's click on something that is still on main is done again when it is here ----
+
+    private static BridgeLayer instance;
+    private static boolean clicking, replaying;
+    private static AEKey shortOf;
+    private static long tookInClick;
+    private record Again(Runnable click, long until) {}
+    private final Map<AEKey, Again> again = new HashMap<>();
+
+    /** AeTakeReplayMixin: a player's click in a terminal is being handled. */
+    public static void clickBegins() {
+        clicking = true;
+        shortOf = null;
+        tookInClick = 0;
+    }
+
+    /** RemoteStorage: something was taken for real; less than asked for means the rest is being fetched. */
+    static void clicked(AEKey what, long asked, long took) {
+        if (!clicking) return;
+        tookInClick += took;
+        if (took < asked) shortOf = what;
+    }
+
+    public static void clickEnds(Runnable click) {
+        clicking = false;
+        AEKey k = shortOf;
+        shortOf = null;
+        // a click that gave something is over: doing it again would put the cursor's stack back
+        if (k == null || tookInClick > 0 || replaying || instance == null) return;
+        instance.again.put(k, new Again(click, System.currentTimeMillis() + 3_000));
+    }
+
+    private void clickAgain(AEKey k) {
+        Again a = k == null ? null : again.remove(k);
+        again.values().removeIf(x -> System.currentTimeMillis() > x.until());
+        if (a == null || System.currentTimeMillis() > a.until()) return;
+        replaying = true;
+        try {
+            a.click().run();
+        } catch (RuntimeException e) {
+            KronwerkeCore.LOGGER.warn("Shared network: a terminal click could not be done again: {}", e.toString());
+        } finally {
+            replaying = false;
+            clicking = false;
+            shortOf = null;
+        }
     }
 }
