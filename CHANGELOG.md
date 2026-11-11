@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.27.0
+
+The Nether and the End on servers of their own, and every finding of the production review.
+
+Network:
+- The Nether and the End run on servers of their own (`network.dimensionServers`). Portals, teleports and respawns into them move the player there; the arriving server finds or builds the portal, the End platform or the bed in its own world after loading the chunks in the background. A player who logs out there comes back there. Without such a server on the bus the dimension stays on main.
+- A player is frozen between the travel snapshot and the transfer (no damage, no pickups, no menus); a late or failed move is cancelled at the target and the player keeps everything. A backpack thrown through a portal takes its contents.
+- A direct join to a side world is turned away at the door; main only takes a player file from the server it sent the player to. A world reset is called off when the players cannot be sent away (`evacuate_failed`).
+- Shared quest and network data is acknowledged only after the receiver saved it; the spread autosave resumes its queue after a restart. Quest resets carry a generation.
+- Network chat: `/kw ignore <name>` hides a player's chat on every server.
+
+Goals and the obelisk:
+- The item that crosses a goal's hold point goes in whole: goals no longer stall at 96 to 98 percent (with a test over the shipped goals.json). goals.json is checked before it replaces the goals in use.
+- Stages, starter kits, the next goal and the monsters' new strength come at the rite's reveal; the rite warns first, lifts nobody who sneaks, sits in a menu or is in creative, and slows nothing down server wide.
+- Deposits: batched feedback, "deposit all" asks once and keeps hotbar and offhand, `/kw undo` gives the last ten seconds back. Leaderboards count points. A boss bar per goal, `/kw bar` hides it. Admins see a rescale preview before they confirm.
+- The hub shows each item's weight and share, the next stage as an estimate to stock up, the top hands of finished stages, and your own points, rank and daily streak.
+
+Locks and protection:
+- Machine locks also hold recipes that make a locked fluid or chemical (by bucket or `locks.fluids`); an open main result keeps its recipe even with a later byproduct. A warning comes before the recipes reload.
+- Locked items in Curios and Accessories slots go back to the inventory; locked weapons do not hit. Dimension locks hold riders, items and mobs too and explain themselves at a lit portal.
+- Spawn protection covers the obelisk zone, entities and indirect damage; only intakes, hoppers, pipes and belts go at the obelisk. Obelisk tiers keep player blocks.
+
+Places and the season:
+- Only players with a granted place hand out slots; stray entries are cleaned up; menu actions are rate limited; names resolve off the server thread. In game invites are off by default and confirm the account first. The bot's commands take UUIDs and find streamers by UUID.
+- Season start needs a confirm while a season runs and asks the launcher for a backup first. The season json names the planned start and time zone.
+- Settings changed on the server live in `kronwerke/overrides.properties` and survive pack updates (`/kw admin locks` writes there).
+
+English:
+- Every player screen and chat line reads from the lang files: the hub, the whitelist menu, the queue, the tab footer, the goal bar, the rite, the obelisk ledger and the player commands. Messages travel as components, so each client shows its own language. Goal titles, descriptions and pillars come from the pack's lang files. The language screen says the quest book is German for now.
+
+Admin panel:
+- A server tab (start gate, beta, list, queue limit, locks, scaling, network), places in the team tab with kinds, grant, Season 1, bonus and take back, players with their server and a kick.
+
 ## 0.26.0
 
 Server:
