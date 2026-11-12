@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.14
+
+- One account plays on one server of the network at a time. A second game with the same account could log in on main while the first was playing in a side world: main asked that world for a waiting report, got none and let the second one in with its older copy of the player, so everything they carried existed twice (seen with two test clients on 12.11.2026). Main now has the side world close the first connection, as a single server does with a second login, and the new login gets in once what the first one had is home.
+
 ## 0.39.13
 
 - The farm world's portal works from every world. Built in the Nether or the End it now leads into the farm world, not into the main world, and the portal in the farm world leads back to where the player came from: in front of the portal they used, on the server it stands on. Coming from the main world nothing changes. Main is told about a move between two side worlds, so it still knows where everyone is.

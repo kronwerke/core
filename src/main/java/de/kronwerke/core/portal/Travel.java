@@ -203,8 +203,21 @@ public final class Travel {
         if (where == null) return null;
         NetworkSync.Peer peer = NetworkSync.peer(where);
         if (peer == null || !peer.bus()) return null; // that server is gone: main's copy is all there is
-        Long asked = pulls.get(id);
         long now = System.currentTimeMillis();
+        for (var r : NetworkSync.remotePlayers()) {
+            if (!r.uuid().equals(id)) continue;
+            // the same account is playing on that server right now, with a second game: main
+            // would let this one in with its older copy, and everything they carry would exist
+            // twice (seen with two test clients on 12.11.2026). As on a single server, the
+            // earlier connection goes; what it had comes home, then this login gets in.
+            JsonObject k = new JsonObject();
+            k.addProperty("uuid", id.toString());
+            NetworkSync.send(where, "player.kick", k, null);
+            pulls.remove(id);
+            KronwerkeCore.LOGGER.info("{} logs in on main while playing on {}: that connection is closed", profile.getName(), where);
+            return Text.t("travel.elsewhere", "Du spielst gerade noch in %s. Die Verbindung dort wird getrennt, versuch es in ein paar Sekunden noch einmal.", peer.label());
+        }
+        Long asked = pulls.get(id);
         if (asked != null && (asked < 0 || now - asked > 20_000)) return null; // answered, or no answer in time
         if (asked == null) {
             pulls.put(id, now);
@@ -729,6 +742,12 @@ public final class Travel {
                     }
                     case "player.none" -> {
                         if (Role.main()) pullAnswered(from, UUID.fromString(str(d, "uuid")));
+                    }
+                    case "player.kick" -> {
+                        ServerPlayer other = server.getPlayerList().getPlayer(UUID.fromString(str(d, "uuid")));
+                        if (other != null && NetworkSync.peer(from) != null && NetworkSync.peer(from).role().equals("main")) {
+                            other.connection.disconnect(Component.translatable("multiplayer.disconnect.duplicate_login"));
+                        }
                     }
                     case "player.via" -> {
                         if (Role.main()) AwayData.get(server).moved(UUID.fromString(str(d, "uuid")), str(d, "to"));
