@@ -59,6 +59,7 @@
   "kronwerke.load.connect": "Connecting",
   "kronwerke.load.world": "Loading world",
   "kronwerke.load.prepare": "Setting up",
+  "kronwerke.load.recipes": "Loading recipes",
   "kronwerke.gate.listed": "You are on the whitelist, see you then!",
   "kronwerke.gate.start": "Starts %2$s.",
   "kronwerke.gate.title": "Kronwerke Season 2",

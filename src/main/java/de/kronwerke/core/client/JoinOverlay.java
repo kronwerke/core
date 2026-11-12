@@ -1,6 +1,7 @@
 package de.kronwerke.core.client;
 
 import de.kronwerke.core.Text;
+import de.kronwerke.core.mixin.DisconnectedScreenAccessor;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -12,9 +13,9 @@ import net.minecraft.client.gui.screens.LevelLoadingScreen;
 import net.minecraft.client.gui.screens.ProgressScreen;
 import net.minecraft.client.gui.screens.ReceivingLevelScreen;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
 import net.neoforged.neoforge.common.NeoForge;
@@ -52,8 +53,24 @@ public final class JoinOverlay {
 
     /** The screens of joining a server, not of moving between two (that is TravelOverlay's). */
     static boolean loading(Screen s) {
-        return s instanceof ConnectScreen || s instanceof ReceivingLevelScreen || s instanceof ProgressScreen
+        return transfer(s) || s instanceof ConnectScreen || s instanceof ReceivingLevelScreen || s instanceof ProgressScreen
                 || s instanceof GenericMessageScreen || s instanceof LevelLoadingScreen;
+    }
+
+    /**
+     * The game's "Connection Lost: Transferred to another server". It is drawn for one frame in
+     * the middle of every move between two servers, before the new connection starts, and that
+     * frame stays on the screen for as long as the old world takes to come down. It is part of
+     * the move, not the end of it, and the pictures go over it.
+     */
+    static boolean transfer(Screen s) {
+        if (!(s instanceof DisconnectedScreen d)) return false;
+        try {
+            return ((DisconnectedScreenAccessor) d).kronwerke$details().reason().getContents() instanceof TranslatableContents t
+                    && t.getKey().equals("disconnect.transfer");
+        } catch (RuntimeException | LinkageError e) {
+            return false;
+        }
     }
 
     /** What is happening right now, for the corner. */
@@ -61,7 +78,7 @@ public final class JoinOverlay {
         if (!note.isEmpty()) return Component.literal(note);
         Screen s = mc.screen;
         if (s == null && mc.level != null) return Text.t("load.world", "Lade Welt");
-        if (s instanceof ConnectScreen) return Text.t("load.connect", "Verbinde");
+        if (s instanceof ConnectScreen || transfer(s)) return Text.t("load.connect", "Verbinde");
         if (s instanceof ReceivingLevelScreen || s instanceof LevelLoadingScreen) return Text.t("load.world", "Lade Welt");
         return Text.t("load.prepare", "Bereite vor");
     }
@@ -98,14 +115,21 @@ public final class JoinOverlay {
 
     private static void onScreen(Screen screen, GuiGraphics g) {
         long now = System.currentTimeMillis();
-        if (screen instanceof DisconnectedScreen || screen instanceof TitleScreen) {
-            since = -1;
-            fadeFrom = -1;
-            holdUntil = -1;
+        if (!loading(screen)) {
+            // a menu (title, server list, "Connection Lost"): the next join starts the works anew
+            if (Minecraft.getInstance().level == null) {
+                since = -1;
+                fadeFrom = -1;
+                holdUntil = -1;
+            }
             return;
         }
-        if (!loading(screen) || TravelOverlay.active()) return;
-        if (since < 0 || now - lastSeen > 3000) since = now;
+        if (TravelOverlay.active()) return;
+        if (since < 0) {
+            // the works start with a connection; "Saving world" on the way out is no join
+            if (!(screen instanceof ConnectScreen)) return;
+            since = now;
+        }
         lastSeen = now;
         fadeFrom = -1;
         if (holdUntil >= 0) holdSawScreen = true;
@@ -135,6 +159,32 @@ public final class JoinOverlay {
             return;
         }
         draw(g, now, 1 - k);
+    }
+
+    /** LoadPump: whether the last picture the game drew itself was this one, whole. */
+    static boolean whole() {
+        return since >= 0 && fadeFrom < 0;
+    }
+
+    /** LoadPump: the picture, drawn while the game's own loop stands still. */
+    static void pumped(GuiGraphics g, long now) {
+        lastSeen = now;
+        draw(g, now, 1);
+    }
+
+    /** LoadPump over the world: only the corner, on a dark plate that also covers the gear of the picture before. */
+    static void plate(GuiGraphics g, long now) {
+        Minecraft mc = Minecraft.getInstance();
+        int w = g.guiWidth();
+        int tw = mc.font.width(stage(mc));
+        g.pose().pushPose();
+        g.pose().translate(0, 0, 955);
+        Shape q = new Shape(g);
+        q.rect(w - 36 - tw, 3, w - 3, 24, argb(1, GROUND));
+        q.rect(w - 36 - tw, 23, w - 3, 24, argb(1, DIM));
+        q.end();
+        g.pose().popPose();
+        indicator(g, now, 1);
     }
 
     /** The whole picture; also called by LoadPump while the game itself draws nothing. */

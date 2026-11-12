@@ -105,6 +105,11 @@ public final class TravelOverlay {
         }
     }
 
+    /** LoadPump: the picture, drawn while the game's own loop stands still. */
+    static void pumped(GuiGraphics g) {
+        draw(g);
+    }
+
     private static void draw(GuiGraphics g) {
         if (phase == OFF) return;
         Minecraft mc = Minecraft.getInstance();
@@ -112,7 +117,7 @@ public final class TravelOverlay {
         long t = now - start;
         // the move failed (the other server dropped the connection, or it never answered): the
         // stars must not lie over "Connection Lost" and its button, or stay for good
-        if (mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen
+        if ((mc.screen instanceof net.minecraft.client.gui.screens.DisconnectedScreen && !JoinOverlay.transfer(mc.screen))
                 || mc.screen instanceof net.minecraft.client.gui.screens.TitleScreen
                 || mc.screen instanceof net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen
                 || (phase == GO && t > 90_000)) {
@@ -133,7 +138,8 @@ public final class TravelOverlay {
             }
             case GO -> {
                 if (t < WHITE_MS) {
-                    g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(0.55f + 0.45f * t / (float) WHITE_MS, 0xffffff));
+                    // once the old world is gone the menu's background would show through the white
+                    g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(mc.level == null ? 1 : 0.55f + 0.45f * t / (float) WHITE_MS, 0xffffff));
                 } else {
                     space(g, mc.font, w, h, now, 1);
                     corner = true;
