@@ -138,8 +138,8 @@ public final class TravelOverlay {
             }
             case GO -> {
                 if (t < WHITE_MS) {
-                    // once the old world is gone the menu's background would show through the white
-                    g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(mc.level == null ? 1 : 0.55f + 0.45f * t / (float) WHITE_MS, 0xffffff));
+                    // once the old world goes, "Connection Lost" and the menu's background would show through the white
+                    g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(mc.level == null || JoinOverlay.transfer(mc.screen) ? 1 : 0.55f + 0.45f * t / (float) WHITE_MS, 0xffffff));
                 } else {
                     space(g, mc.font, w, h, now, 1);
                     corner = true;
