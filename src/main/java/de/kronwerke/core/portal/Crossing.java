@@ -526,7 +526,7 @@ public final class Crossing {
         return o;
     }
 
-    private static JsonObject exact(ResourceKey<Level> dim, Vec3 pos, float yaw) {
+    static JsonObject exact(ResourceKey<Level> dim, Vec3 pos, float yaw) {
         JsonObject a = new JsonObject();
         a.addProperty("exact", true);
         a.addProperty("dim", dim.location().toString());

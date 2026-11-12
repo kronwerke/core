@@ -263,6 +263,65 @@ public final class Travel {
         }
     }
 
+    // ---- the farm world's portal from any world ----
+
+    private static final String ORIGIN = "kronwerke_origin";
+
+    /** The world a server of that role is the farm world's portal target of: any world leads there. */
+    private static NetworkSync.Peer farm() {
+        return NetworkSync.peerByRole(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get());
+    }
+
+    private static boolean inFarm() {
+        return Role.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get());
+    }
+
+    /**
+     * Where the portal takes this player. From the main world, the Nether or the End: into the
+     * farm world. From the farm world: back to the server they came in from, to the portal they
+     * used there (the farm world keeps that with the player), and to the main world when they
+     * came in some other way or that server is down.
+     */
+    static NetworkSync.Peer portalFor(ServerPlayer p) {
+        if (!inFarm()) return farm();
+        CompoundTag o = p.getPersistentData().getCompound(ORIGIN);
+        if (!o.isEmpty()) {
+            NetworkSync.Peer origin = NetworkSync.peer(o.getString("server"));
+            if (origin != null && origin.bus() && origin.running() && !origin.host().isEmpty()) return origin;
+        }
+        return NetworkSync.peerByRole("main");
+    }
+
+    /** Through the portal: with what each kind of trip needs to find the way back. */
+    private static void throughPortal(ServerPlayer p, NetworkSync.Peer target, BlockPos portal) {
+        if (Role.main()) {
+            depart(p, target, portal == null ? here(p) : front(p, portal), null, null);
+        } else if (!inFarm()) {
+            // from the Nether or the End: the farm world notes where they came from
+            JsonObject origin = portal == null ? here(p) : front(p, portal);
+            origin.addProperty("server", Role.server());
+            depart(p, target, null, null, origin);
+        } else {
+            CompoundTag o = p.getPersistentData().getCompound(ORIGIN);
+            JsonObject arrive = null;
+            if (!o.isEmpty() && target.name().equals(o.getString("server"))) {
+                arrive = Crossing.exact(Crossing.key(o.getString("dim")), new net.minecraft.world.phys.Vec3(o.getDouble("x"), o.getDouble("y"), o.getDouble("z")), o.getFloat("yaw"));
+            }
+            p.getPersistentData().remove(ORIGIN);
+            depart(p, target, null, arrive, null);
+        }
+    }
+
+    private static JsonObject here(ServerPlayer p) {
+        JsonObject b = new JsonObject();
+        b.addProperty("dim", p.level().dimension().location().toString());
+        b.addProperty("x", p.getX());
+        b.addProperty("y", p.getY());
+        b.addProperty("z", p.getZ());
+        b.addProperty("yaw", p.getYRot());
+        return b;
+    }
+
     private static void insidePlayer(ServerPlayer p, BlockPos pos) {
         UUID id = p.getUUID();
         Arrival a = arrived.get(id);
@@ -278,7 +337,7 @@ public final class Travel {
         for (Departure d : pending.values()) if (d.player().equals(id)) return;
         long[] t = inPortal.get(id);
         if (t == null) {
-            NetworkSync.Peer target = NetworkSync.portalTarget();
+            NetworkSync.Peer target = portalFor(p);
             if (target == null || !target.bus() || !target.running() || target.host().isEmpty()) {
                 p.displayClientMessage(Text.t("portal.closed", "Das Portal flackert: die andere Welt ist gerade nicht erreichbar.")
                         .withStyle(ChatFormatting.GRAY), true);
@@ -326,8 +385,8 @@ public final class Travel {
             int need = p.isCreative() ? 10 : CHARGE_TICKS;
             if (tick - t[0] >= need) {
                 it.remove();
-                NetworkSync.Peer target = NetworkSync.portalTarget();
-                if (target != null) depart(p, target, back(p, BlockPos.of(t[2])));
+                NetworkSync.Peer target = portalFor(p);
+                if (target != null) throughPortal(p, target, BlockPos.of(t[2]));
             }
         }
     }
@@ -338,18 +397,9 @@ public final class Travel {
      * such server on the bus.
      */
     public static boolean move(ServerPlayer p) {
-        NetworkSync.Peer target = NetworkSync.portalTarget();
+        NetworkSync.Peer target = portalFor(p);
         if (target == null || !target.bus() || !target.running()) return false;
-        JsonObject b = null;
-        if (Role.main()) {
-            b = new JsonObject();
-            b.addProperty("dim", p.level().dimension().location().toString());
-            b.addProperty("x", p.getX());
-            b.addProperty("y", p.getY());
-            b.addProperty("z", p.getZ());
-            b.addProperty("yaw", p.getYRot());
-        }
-        depart(p, target, b);
+        throughPortal(p, target, null);
         return true;
     }
 
@@ -384,7 +434,10 @@ public final class Travel {
 
     /** Where a player who went through the portal at pos stands when they come back: in front of it. */
     static JsonObject back(ServerPlayer p, BlockPos pos) {
-        if (!Role.main()) return null;
+        return Role.main() ? front(p, pos) : null;
+    }
+
+    private static JsonObject front(ServerPlayer p, BlockPos pos) {
         var state = p.level().getBlockState(pos);
         Direction.Axis axis = state.hasProperty(MinePortalBlock.AXIS) ? state.getValue(MinePortalBlock.AXIS)
                 : state.getOptionalValue(net.minecraft.world.level.block.state.properties.BlockStateProperties.HORIZONTAL_AXIS).orElse(Direction.Axis.X);
@@ -477,6 +530,11 @@ public final class Travel {
     }
 
     static void depart(ServerPlayer p, NetworkSync.Peer target, JsonObject back, JsonObject arrive) {
+        depart(p, target, back, arrive, null);
+    }
+
+    /** origin: for the farm world, the server and the place a player from the Nether or the End came from. */
+    static void depart(ServerPlayer p, NetworkSync.Peer target, JsonObject back, JsonObject arrive, JsonObject origin) {
         p.stopRiding();
         // the snapshot is the player's last state here: what the cursor held goes back into
         // the inventory first, and from now on nothing in the inventory moves (frozen())
@@ -487,7 +545,7 @@ public final class Travel {
         data.addProperty("uuid", p.getUUID().toString());
         data.addProperty("name", p.getGameProfile().getName());
         data.addProperty("nbt", encode(tag));
-        if (Role.main() && target.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get())) {
+        if (target.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get())) {
             // the quest book's task; before the advancements are packed, so it travels too
             var adv = server.getAdvancements().get(ResourceLocation.fromNamespaceAndPath("kronwerke", "minenwelt"));
             if (adv != null) p.getAdvancements().award(adv, "travel");
@@ -496,6 +554,7 @@ public final class Travel {
         de.kronwerke.core.goal.StageLink.pack(p, data);
         if (back != null) data.add("back", back);
         if (arrive != null) data.add("arrive", arrive);
+        if (origin != null) data.add("origin", origin);
         JsonObject extra = de.kronwerke.core.share.Share.pack(p, Compat.collect(p));
         if (extra != null) data.add("extra", extra);
         String id = UUID.randomUUID().toString();
@@ -519,6 +578,16 @@ public final class Travel {
             // main saves the player as they log out: in front of the portal, not in it
             JsonObject b = dep.back();
             if (b != null) p.teleportTo(p.serverLevel(), b.get("x").getAsDouble(), b.get("y").getAsDouble(), b.get("z").getAsDouble(), b.get("yaw").getAsFloat(), 0);
+        }
+        if (!Role.main() && !target.role().equals("main")) {
+            // main keeps track of where everyone is: it was not part of this move
+            NetworkSync.Peer main = NetworkSync.peerByRole("main");
+            if (main != null) {
+                JsonObject via = new JsonObject();
+                via.addProperty("uuid", p.getUUID().toString());
+                via.addProperty("to", dep.target());
+                NetworkSync.send(main.name(), "player.via", via, null);
+            }
         }
         leaving.put(p.getUUID(), dep.target());
         underway.put(p.getUUID(), new Underway(p.getGameProfile().getName(), target.label().isEmpty() ? target.name() : target.label(), System.currentTimeMillis()));
@@ -661,6 +730,9 @@ public final class Travel {
                     case "player.none" -> {
                         if (Role.main()) pullAnswered(from, UUID.fromString(str(d, "uuid")));
                     }
+                    case "player.via" -> {
+                        if (Role.main()) AwayData.get(server).moved(UUID.fromString(str(d, "uuid")), str(d, "to"));
+                    }
                     case "player.cancel" -> cancelled(from, d);
                     case "kw.items" -> receiveItems(from, d);
                     case "kw.items.ok" -> {
@@ -711,6 +783,20 @@ public final class Travel {
             if (b == null && a != null) b = de.kronwerke.core.share.Share.arrive(a); // a waystone of this server
             if (b == null) b = Dimensions.dimensionServer() ? Crossing.fallback(server, tag) : Hub.arrival(server);
             place(tag, b);
+            CompoundTag own = tag.getCompound("NeoForgeData");
+            if (d.get("origin") instanceof JsonObject o && inFarm()) {
+                CompoundTag from0 = new CompoundTag();
+                from0.putString("server", str(o, "server"));
+                from0.putString("dim", str(o, "dim"));
+                from0.putDouble("x", o.get("x").getAsDouble());
+                from0.putDouble("y", o.get("y").getAsDouble());
+                from0.putDouble("z", o.get("z").getAsDouble());
+                from0.putFloat("yaw", o.get("yaw").getAsFloat());
+                own.put(ORIGIN, from0);
+            } else {
+                own.remove(ORIGIN); // came in another way: the portal here leads to the main world
+            }
+            tag.put("NeoForgeData", own);
             // the mining world's overworld is not main's: a bed on main means nothing there
             if (!Dimensions.dimensionServer()) for (String k : SPAWN_TAGS) tag.remove(k);
         }
@@ -948,7 +1034,7 @@ public final class Travel {
     // ---- items through the portal ----
 
     private static void sendItem(ItemEntity item) {
-        NetworkSync.Peer target = NetworkSync.portalTarget();
+        NetworkSync.Peer target = Role.main() || inFarm() ? NetworkSync.portalTarget() : farm(); // from the Nether or the End: into the farm world
         if (target == null || !target.bus() || !target.running() || !NetworkSync.on()) return;
         ItemStack stack = item.getItem();
         if (stack.isEmpty()) return;

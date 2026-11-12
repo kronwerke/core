@@ -2,6 +2,7 @@
 
 ## 0.39.13
 
+- The farm world's portal works from every world. Built in the Nether or the End it now leads into the farm world, not into the main world, and the portal in the farm world leads back to where the player came from: in front of the portal they used, on the server it stands on. Coming from the main world nothing changes. Main is told about a move between two side worlds, so it still knows where everyone is.
 - A player who logged out in the farm world before it was reset stays in the main world at the next login, with a line that says why. Before, main still had the place they logged out at and sent them into the new world at the old coordinates (seen on 12.11.2026). The place is now kept together with the world it belongs to.
 
 ## 0.39.12

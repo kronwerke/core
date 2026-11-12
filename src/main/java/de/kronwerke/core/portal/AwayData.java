@@ -72,6 +72,14 @@ public final class AwayData extends SavedData {
         return where.get(id);
     }
 
+    /** A player who is away went on from one side world to another (the farm world's portal in the Nether). */
+    public void moved(UUID id, String server) {
+        if (!where.containsKey(id) || server.equals(where.get(id))) return;
+        where.put(id, server);
+        resume.remove(id);
+        changed();
+    }
+
     public void home(UUID id) {
         if (where.remove(id) != null) changed();
     }
