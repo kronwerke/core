@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.16
+
+- The pictures during JEI's start are on in the test client (where the probe is on), so that they can be seen on the real servers before they go to the players. Where a picture is dear to draw, fewer are drawn: they get at most a fifth of the time.
+
 ## 0.39.15
 
 - Joining the server has its own picture instead of the game's grey "Connecting to the server" and "Loading terrain" screens: three brass gears mesh and turn in front of a glow, a crown stands in the large one, embers rise, and the name comes in underneath. It is the same picture whatever world the player lands in. Who logged out in a side world comes in on main and is sent on at once; the picture stays over that move too and clears only in the world they end up in. It fades into the world over a second.

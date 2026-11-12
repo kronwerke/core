@@ -37,17 +37,19 @@ import java.util.List;
  * dropped: handling them would run the game's input code in the middle of JEI's start. The
  * keys are read anew from the keyboard afterwards, so none stays stuck.
  * <p>
- * For now only with -Dkronwerke.loadpump=true: it is seen in the real test client first.
+ * For now only in the test client (the probe is on) or with -Dkronwerke.loadpump=true: it is
+ * seen in the real test client first.
  */
 public final class LoadPump {
-    private static final boolean ON = Boolean.getBoolean("kronwerke.loadpump");
+    private static final boolean ON = Boolean.getBoolean("kronwerke.loadpump")
+            || (Boolean.getBoolean("kronwerke.probe") && !"false".equals(System.getProperty("kronwerke.loadpump")));
     /** A frame at most every 33 ms: 30 a second is smooth for the gears and costs the work little. */
     private static final long EVERY_NS = 33_000_000L;
 
     private static volatile boolean active;
     private static boolean inside, inFrame, broken;
     private static Thread thread;
-    private static long began, last, calls;
+    private static long began, last, calls, next, drawing;
     private static int frames;
     private static String stage = "";
     private static final List<Gap> gaps = new ArrayList<>();
@@ -126,6 +128,8 @@ public final class LoadPump {
         if (!ON || broken || active || inFrame || !RenderSystem.isOnRenderThread()) return;
         thread = Thread.currentThread();
         began = last = System.nanoTime();
+        next = began + EVERY_NS;
+        drawing = 0;
         frames = 0;
         calls = 0;
         gaps.clear();
@@ -150,8 +154,8 @@ public final class LoadPump {
         for (int i = 0; i < Math.min(6, gaps.size()); i++) {
             worst.append(i == 0 ? "" : ", ").append(gaps.get(i).ms()).append(" ms (").append(gaps.get(i).where()).append(')');
         }
-        KronwerkeCore.LOGGER.info("JEI's start took {} ms with {} pictures drawn meanwhile ({} chances); longest waits: {}",
-                ms, frames, calls, worst.isEmpty() ? "none over 100 ms" : worst);
+        KronwerkeCore.LOGGER.info("JEI's start took {} ms with {} pictures drawn meanwhile in {} ms ({} chances); longest waits for a chance: {}",
+                ms, frames, drawing / 1_000_000, calls, worst.isEmpty() ? "none over 100 ms" : worst);
     }
 
     /** JEI turns to the next plugin: "Registering recipes", "farmersdelight:jei_plugin". */
@@ -170,17 +174,23 @@ public final class LoadPump {
         if (inside || Thread.currentThread() != thread) return;
         calls++;
         long now = System.nanoTime();
-        if (now - last < EVERY_NS) return;
+        if (now < next) return;
         if (now - began > 180_000_000_000L) {
             end();
             return;
         }
-        long waited = (now - last) / 1_000_000;
-        if (waited >= 100) gaps.add(new Gap(waited, stage));
+        // how long after a picture was due the work gave the next chance: where that is long, a hook is missing
+        long late = (now - next) / 1_000_000;
+        if (late >= 100) gaps.add(new Gap(late, stage));
         inside = true;
         try {
             frame();
             frames++;
+            // where a picture is dear (no graphics card: 50 ms and more), fewer are drawn: the
+            // pictures get at most a fifth of the time, the work the rest
+            long took = System.nanoTime() - now;
+            drawing += took;
+            next = now + Math.max(EVERY_NS, took * 5);
         } catch (Throwable t) {
             // never again in this game: a picture is not worth a crash
             broken = true;
