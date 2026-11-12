@@ -217,7 +217,7 @@ public final class Travel {
 
     /** The side world has nothing waiting for the player: the next login goes through. */
     private static void pullAnswered(String from, UUID id) {
-        if (pulls.containsKey(id)) pulls.put(id, -1L);
+        if (pulls.containsKey(id)) pulls.put(id, -System.currentTimeMillis());
     }
 
     // ---- what others ask ----
@@ -452,7 +452,11 @@ public final class Travel {
         if (!Role.main() && tick % 600 == 0) checkpoints();
         if (!Role.main() && tick % 20 == 0) HomeReports.tick();
         if (tick % 40 == 0) checkUnderway();
-        if (Role.main() && !pulls.isEmpty() && tick % 20 == 0) pulls.values().removeIf(t -> now - t > 60_000);
+        // an answer (negative: when it came) stays until the login it was for, at most ten minutes.
+        // It used to be -1 and this line took it for an age-old question and removed it within
+        // a second, so the next login asked again, was told to wait again, for good: two players
+        // whose move to the Nether had failed could not get back onto main (12.11.2026).
+        if (Role.main() && !pulls.isEmpty() && tick % 20 == 0) pulls.values().removeIf(t -> now - Math.abs(t) > (t < 0 ? 600_000 : 60_000));
         if (Role.role().equals(de.kronwerke.core.config.KronwerkeConfig.PORTAL_TARGET.get()) && tick % 100 == 0) tiefgraeber();
         Crossing.tick(server);
         if (!evacuating.isEmpty() || evacuateUntil > 0) {
@@ -550,6 +554,9 @@ public final class Travel {
             it.remove();
             Underway u = e.getValue();
             KronwerkeCore.LOGGER.warn("{} was sent to {} 30 seconds ago and has not arrived there", u.name(), u.to());
+            // they never got there, so main's copy is the newest there is: their login here goes
+            // straight through instead of asking the other server first
+            if (Role.main()) pulls.put(e.getKey(), -now);
             Component line = Text.t("travel.nowhere", "%s ist nach %s aufgebrochen, dort aber nicht angekommen. Beim nächsten Login kommt er wieder hier an.", u.name(), u.to()).withStyle(ChatFormatting.GRAY);
             for (ServerPlayer op : server.getPlayerList().getPlayers()) if (op.hasPermissions(2)) op.sendSystemMessage(line);
             // the move itself was silent: now it is a leaving like any other, here and on the other servers
@@ -725,7 +732,7 @@ public final class Travel {
         if (!Role.main()) return;
         UUID id = UUID.fromString(str(d, "uuid"));
         homeApply(from, id, d, final_);
-        if (pulls.containsKey(id)) pulls.put(id, -1L); // a login that waited for this may go on
+        if (pulls.containsKey(id)) pulls.put(id, -System.currentTimeMillis()); // a login that waited for this may go on
         // written (or not wanted here): the side world stops sending it. An exception above
         // leaves it unconfirmed, so it comes again.
         if (d.has("rseq")) {

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.10
+
+- A move that fails no longer locks the player out of main. When the client cannot reach the other server (seen on 12.11.2026: the Nether server's port was closed from outside), the next login on main asks that server whether it holds a newer state and tells the player to try again in a few seconds. The answer was stored as -1 and removed within a second by the clean-up of old questions, so every login asked again and was sent away again, for good. The answer now stays until the login it was for, and a player who was sent off and did not arrive within 30 seconds is let in at once, without asking.
+
 ## 0.39.9
 
 - A block that the spawn or the obelisk zone refuses no longer looks like a lost item. The server undid the placement, stack included, but the client had already taken one off the stack in the hand and kept showing one fewer for good (19 of 20 after one refused block at the obelisk, seen on the real servers). The player's inventory is sent once more a tick later.
