@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.13
+
+- A player who logged out in the farm world before it was reset stays in the main world at the next login, with a line that says why. Before, main still had the place they logged out at and sent them into the new world at the old coordinates (seen on 12.11.2026). The place is now kept together with the world it belongs to.
+
 ## 0.39.12
 
 - The stage names are English in the English texts: stage 2 (Brass Works), stage 3 (Steel Works), stage 4 (Star Works), stage 5 (Chaos Works), as in the quest book. They had stayed German ("stage 2 (Messingwerk)").

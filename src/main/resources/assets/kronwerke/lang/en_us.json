@@ -41,6 +41,7 @@
   "kronwerke.crossing.closed": "The portal flickers: %s cannot be reached right now.",
   "kronwerke.crossing.other": "the other world",
   "kronwerke.crossing.resume_closed": "%s cannot be reached right now, so you are at your portal.",
+  "kronwerke.crossing.resume_reset": "%s has been made anew since your last visit, you are at your portal.",
   "kronwerke.deposit.done": "Handed in: %s. ",
   "kronwerke.deposit.none": "None of that fits the current goal.",
   "kronwerke.deposit.none_all": "Nothing in your inventory fits the current goal (the hotbar is left alone). /kw goals shows what is needed.",

@@ -18,7 +18,11 @@ public final class AwayData extends SavedData {
     public record Back(String dim, double x, double y, double z, float yaw) {}
 
     /** Where a player who logged out on a dimension server goes on with their next login. */
-    public record Resume(String server, Back at) {}
+    /**
+     * epoch is the world that server had when the player logged out there ("" when unknown): a
+     * side world that was reset since is a new world, and the place in it means nothing.
+     */
+    public record Resume(String server, Back at, String epoch) {}
 
     private final Map<UUID, String> where = new HashMap<>();
     private final Map<UUID, Back> back = new HashMap<>();
@@ -74,7 +78,8 @@ public final class AwayData extends SavedData {
 
     public void resume(UUID id, String server, Back at) {
         if (at == null) return;
-        resume.put(id, new Resume(server, at));
+        String epoch = de.kronwerke.core.share.Share.epochOf(server);
+        resume.put(id, new Resume(server, at, epoch == null ? "" : epoch));
         changed();
     }
 
@@ -120,6 +125,7 @@ public final class AwayData extends SavedData {
         resume.forEach((k, v) -> {
             CompoundTag e = write(v.at());
             e.putString("server", v.server());
+            e.putString("epoch", v.epoch());
             r.put(k.toString(), e);
         });
         tag.put("resume", r);
@@ -138,7 +144,7 @@ public final class AwayData extends SavedData {
         CompoundTag r = tag.getCompound("resume");
         for (String k : r.getAllKeys()) {
             CompoundTag e = r.getCompound(k);
-            d.resume.put(UUID.fromString(k), new Resume(e.getString("server"), read(e)));
+            d.resume.put(UUID.fromString(k), new Resume(e.getString("server"), read(e), e.getString("epoch")));
         }
         return d;
     }

@@ -268,6 +268,16 @@ public final class Crossing {
             AwayData.Resume r = AwayData.get(p.server).takeResume(id);
             if (r != null) {
                 NetworkSync.Peer peer = NetworkSync.peer(r.server());
+                // the world they logged out in is gone (the farm world was reset): the place in it
+                // means nothing in the new one, they stay where they left the main world. Before,
+                // the next login sent them into the new world at the old coordinates (12.11.2026).
+                String then = r.epoch(), now = de.kronwerke.core.share.Share.epochOf(r.server());
+                if (!then.isEmpty() && now != null && !now.equals(then)) {
+                    KronwerkeCore.LOGGER.info("{} logged out on {} before its world was reset and stays on main", p.getGameProfile().getName(), r.server());
+                    p.displayClientMessage(Text.t("crossing.resume_reset", "%s ist seit deinem letzten Besuch neu entstanden, du bist an deinem Portal.",
+                            label(peer, key(r.at().dim()))).withStyle(ChatFormatting.GRAY), false);
+                    return;
+                }
                 if (Dimensions.up(peer)) {
                     AwayData.Back b = r.at();
                     holds.put(id, new Hold(peer.name(), exact(key(b.dim()), new Vec3(b.x(), b.y(), b.z()), b.yaw()), here(p), System.currentTimeMillis() + 1_500));
