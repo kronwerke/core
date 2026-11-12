@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.11
+
+- Mekanism frequencies show their owner's name on every server. Mekanism works the name out when it makes or loads a frequency, from the server's own list of players, and shows "<uuid>" for someone who was never on that server. Core took that stand-in for a name, let it replace the real one that had come from the owner's server, and passed it on (seen in the Nether on 12.11.2026: "Owner: <c4ce4ea4-...>"). A stand-in is no longer taken or sent, and a frequency that carries one gets the real name as soon as it is known.
+
 ## 0.39.10
 
 - A move that fails no longer locks the player out of main. When the client cannot reach the other server (seen on 12.11.2026: the Nether server's port was closed from outside), the next login on main asks that server whether it holds a newer state and tells the player to try again in a few seconds. The answer was stored as -1 and removed within a second by the clean-up of old questions, so every login asked again and was sent away again, for good. The answer now stays until the login it was for, and a player who was sent off and did not arrive within 30 seconds is let in at once, without asking.

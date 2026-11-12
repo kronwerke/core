@@ -200,10 +200,24 @@ public final class FrequencyLayer implements Layer {
                 recs.put(en.getKey(), new long[] {now, r == null ? 0 : r[1]});
                 dirty = true;
             }
-            String on = en.getValue().getOwnerName();
-            if (on != null && !on.equals(owners.get(en.getKey()))) {
-                owners.put(en.getKey(), on);
-                dirty = true;
+            // Mekanism works the owner's name out when it makes or loads the frequency, from this
+            // server's own list of players; for someone who was never here that is "<uuid>". Such
+            // a stand-in is no name: it must not replace the real one that came from the server
+            // where the owner plays (it did: after every start the Nether showed and passed on
+            // "<c4ce4ea4-...>" for a player who had not been there yet, seen 12.11.2026), and a
+            // frequency that carries one gets the real name as soon as it is known.
+            String on = en.getValue().getOwnerName(), known = owners.get(en.getKey());
+            if (named(on)) {
+                if (!on.equals(known)) {
+                    owners.put(en.getKey(), on);
+                    dirty = true;
+                }
+            } else if (named(known)) {
+                try {
+                    ownerName.set(en.getValue(), known);
+                } catch (IllegalAccessException | RuntimeException e) {
+                    // then it shows without a name
+                }
             }
         }
         for (var en : recs.entrySet()) {
@@ -319,7 +333,7 @@ public final class FrequencyLayer implements Layer {
                     recs.put(k, new long[] {nb, nd});
                     dirty = true;
                 }
-                if (o.has("on") && !owners.containsKey(k)) owners.put(k, o.get("on").getAsString());
+                if (o.has("on") && named(o.get("on").getAsString()) && !named(owners.get(k))) owners.put(k, o.get("on").getAsString());
                 Frequency f = find(id);
                 if (nb > nd && f == null) make(id, k);
                 else if (nd >= nb && f != null) remove(id, k);
@@ -340,13 +354,18 @@ public final class FrequencyLayer implements Layer {
         theirs.put(from, places);
     }
 
+    /** A real player name, not Mekanism's stand-in for an owner this server does not know. */
+    private static boolean named(String name) {
+        return name != null && !name.isEmpty() && !name.startsWith("<");
+    }
+
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void make(Id id, String key) {
         FrequencyManager m = manager(id);
         Frequency f = m.getOrCreateFrequency(new Frequency.FrequencyIdentity(id.name(), id.security(), id.owner()), id.owner());
         String on = owners.get(key);
         // the owner may never have been on this server: their name comes along
-        if (f != null && on != null && !on.equals(f.getOwnerName())) {
+        if (f != null && named(on) && !on.equals(f.getOwnerName())) {
             try {
                 ownerName.set(f, on);
             } catch (IllegalAccessException | RuntimeException e) {
@@ -458,7 +477,7 @@ public final class FrequencyLayer implements Layer {
             for (var en : o.entrySet()) {
                 JsonObject r = en.getValue().getAsJsonObject();
                 recs.put(en.getKey(), new long[] {r.get("b").getAsLong(), r.get("d").getAsLong()});
-                if (r.has("on")) owners.put(en.getKey(), r.get("on").getAsString());
+                if (r.has("on") && named(r.get("on").getAsString())) owners.put(en.getKey(), r.get("on").getAsString());
             }
         } catch (IOException | RuntimeException e) {
             KronwerkeCore.LOGGER.warn("Shared network: the record of Mekanism's frequencies could not be read: {}", e.toString());
