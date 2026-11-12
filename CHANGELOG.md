@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.15
+
+- Joining the server has its own picture instead of the game's grey "Connecting to the server" and "Loading terrain" screens: three brass gears mesh and turn in front of a glow, a crown stands in the large one, embers rise, and the name comes in underneath. It is the same picture whatever world the player lands in. Who logged out in a side world comes in on main and is sent on at once; the picture stays over that move too and clears only in the world they end up in. It fades into the world over a second.
+- A small gear turns in the top right corner while joining and while moving between the servers, next to a word for what is going on (connecting, loading the world). Where it stands still, the game does.
+- The picture of the move between the servers and the join picture are no longer drawn through by the boss bar, the chat and other late parts of the HUD.
+
 ## 0.39.14
 
 - One account plays on one server of the network at a time. A second game with the same account could log in on main while the first was playing in a side world: main asked that world for a waiting report, got none and let the second one in with its older copy of the player, so everything they carried existed twice (seen with two test clients on 12.11.2026). Main now has the side world close the first connection, as a single server does with a second login, and the new login gets in once what the first one had is home.

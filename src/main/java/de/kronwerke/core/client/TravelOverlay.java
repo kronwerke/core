@@ -5,6 +5,7 @@ import de.kronwerke.core.portal.TravelPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
@@ -33,6 +34,11 @@ public final class TravelOverlay {
     private static float fadeFrom = 1;
 
     private TravelOverlay() {
+    }
+
+    /** Whether the move between two servers is on screen (then the join picture stays out of it). */
+    public static boolean active() {
+        return phase != OFF;
     }
 
     /** Whether the server said that this client is on its way to another server of the network. */
@@ -67,7 +73,11 @@ public final class TravelOverlay {
                 arrived = false;
             }
             case TravelPayload.GO -> {
-                if (phase != CHARGE) start = now - CHARGE_MS;
+                if (phase == OFF && JoinOverlay.joining(now)) {
+                    // sent on while still coming in: the join picture stays over it
+                    JoinOverlay.forward(now);
+                    return;
+                }
                 phase = GO;
                 start = now;
                 label = p.label().isEmpty() ? label : p.label();
@@ -81,6 +91,7 @@ public final class TravelOverlay {
                 start = now;
             }
             case TravelPayload.ARRIVE -> {
+                if (phase == OFF && JoinOverlay.forwarded(now)) return;
                 if (phase == OFF) {
                     // arrived without seeing the start (a move ordered by the server): a short arrival
                     phase = GO;
@@ -113,19 +124,21 @@ public final class TravelOverlay {
         RenderSystem.enableBlend();
         g.pose().pushPose();
         g.pose().translate(0, 0, 900);
+        boolean corner = false;
         switch (phase) {
             case CHARGE -> {
                 float k = Math.min(1, t / (float) CHARGE_MS);
                 streams(g, w, h, now, k, true);
-                g.fill(0, 0, w, h, argb(k * k * 0.55f, 0xffffff));
+                g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(k * k * 0.55f, 0xffffff));
             }
             case GO -> {
                 if (t < WHITE_MS) {
-                    g.fill(0, 0, w, h, argb(0.55f + 0.45f * t / (float) WHITE_MS, 0xffffff));
+                    g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(0.55f + 0.45f * t / (float) WHITE_MS, 0xffffff));
                 } else {
                     space(g, mc.font, w, h, now, 1);
+                    corner = true;
                     long since = t - WHITE_MS;
-                    if (since < 500) g.fill(0, 0, w, h, argb(1 - since / 500f, 0xffffff));
+                    if (since < 500) g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(1 - since / 500f, 0xffffff));
                 }
                 // only the screens of the reconnect hold the arrival back: a window that opens
                 // on arrival (a mod's welcome, a book) sat under the stars before, until Escape
@@ -150,18 +163,20 @@ public final class TravelOverlay {
                 if (spaceAlpha > 0) space(g, mc.font, w, h, now, spaceAlpha);
                 float white = k < 0.25f ? k / 0.25f : Math.max(0, 1 - (k - 0.25f) / 0.75f);
                 streams(g, w, h, now, Math.max(0, 1 - k), false);
-                g.fill(0, 0, w, h, argb(white * 0.9f, 0xffffff));
+                g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(white * 0.9f, 0xffffff));
                 if (k >= 1) phase = OFF;
             }
             case FADE -> {
                 float k = Math.min(1, t / (float) FADE_MS);
-                g.fill(0, 0, w, h, argb(fadeFrom * (1 - k) * 0.6f, 0xffffff));
+                g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(fadeFrom * (1 - k) * 0.6f, 0xffffff));
                 if (k >= 1) phase = OFF;
             }
             default -> {
             }
         }
         g.pose().popPose();
+        // between the worlds the same small gear turns in the corner as on joining
+        if (corner) JoinOverlay.indicator(g, now, 1);
     }
 
     /** Light streaming up (rising) or down (arriving), thicker and brighter with k; a beam in the middle; gold sparks. */
@@ -196,7 +211,7 @@ public final class TravelOverlay {
             int x = (int) (hash(i + 302) * w + Math.sin(secs * 2 + i) * 6);
             int y = up ? (int) (h * (1 - p)) : (int) (h * p);
             float a = k * (1 - Math.abs(p - 0.5f) * 2) * 0.9f;
-            g.fill(x, y, x + 2, y + 2, argb(a, 0xffcf6e));
+            g.fill(RenderType.guiOverlay(), x, y, x + 2, y + 2, argb(a, 0xffcf6e));
         }
         // a glow from below that grows
         g.fillGradient(0, (int) (h * (1 - 0.6f * k)), w, h, argb(0, color), argb(0.45f * k, blend(color, 0xffffff, 0.4f)));
@@ -226,7 +241,7 @@ public final class TravelOverlay {
             Component name = Component.literal(label);
             int tw = font.width(name);
             float pulse = 0.85f + 0.15f * (float) Math.sin(time * 2.4);
-            g.drawString(font, name, -tw / 2, 0, argb(alpha * pulse, blend(color, 0xffffff, 0.2f)), false);
+            JoinOverlay.text(g, font, name, -tw / 2, 0, argb(alpha * pulse, blend(color, 0xffffff, 0.2f)));
             g.pose().popPose();
         }
     }
@@ -237,7 +252,7 @@ public final class TravelOverlay {
         int steps = Math.max(1, (int) (Math.hypot(dx, dy) / Math.max(1, size)));
         for (int s = 0; s <= steps; s++) {
             int x = (int) (x0 + dx * s / steps), y = (int) (y0 + dy * s / steps);
-            g.fill(x, y, x + size, y + size, c);
+            g.fill(RenderType.guiOverlay(), x, y, x + size, y + size, c);
         }
     }
 

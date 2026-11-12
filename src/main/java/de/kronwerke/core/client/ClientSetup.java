@@ -23,6 +23,7 @@ public final class ClientSetup {
         // the rank icons' resource pack, always on (see RanksPack)
         modBus.addListener(RanksPack::onFind);
         TravelOverlay.register();
+        JoinOverlay.register();
         de.kronwerke.core.probe.Probe.register();
         // why a machine, altar or ritual did not craft: over its window or over the block
         LockHints.register();
