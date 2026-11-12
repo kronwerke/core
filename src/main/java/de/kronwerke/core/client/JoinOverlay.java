@@ -121,6 +121,7 @@ public final class JoinOverlay {
                 since = -1;
                 fadeFrom = -1;
                 holdUntil = -1;
+                TravelOverlay.failed();
             }
             return;
         }

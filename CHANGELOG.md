@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.18
+
+- JEI starts once again when a login is sent on to a side world. Since 0.39.15 the join picture stays over that move instead of the stars, and with the stars went the mark that told JEI (and the chat) that this is a move: JEI stopped on main and built everything a second time in the side world, 22 and 18 seconds in the test client on the real servers (12.11.2026). Whether a move is under way no longer depends on which picture is on the screen.
+- The pictures while the game stands still are on for everyone. In the test client on the real servers JEI's start (18 to 22 seconds) now gives 450 to 560 pictures, and the longest wait between two is 0.14 to 0.3 seconds; before, the screen stood for the whole time. The client's setting loadPictures (kronwerke-client.toml) turns them off, should a machine not like them: they have only been seen without a graphics card so far.
+
 ## 0.39.17
 
 - The Grubenrahmen is a real model with depth: an iron cage along the edges, one step in a shell of cracked stone with a window in every face, and two steps further in a core of light that breathes. It was a flat picture of a frame on a cube. Frames next to each other join as before: the cage runs along the outside of the whole group and around the opening, with a bolt where a corner needs one, and the stone goes through without a seam. The pack's connected textures for the block (Athena) are gone with this; the block does it itself. In the hand and in the inventory it is the whole block with its cage.

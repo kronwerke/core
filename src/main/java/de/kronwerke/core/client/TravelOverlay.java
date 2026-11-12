@@ -41,10 +41,22 @@ public final class TravelOverlay {
         return phase != OFF;
     }
 
-    /** Whether the server said that this client is on its way to another server of the network. */
+    /**
+     * Whether the server said that this client is on its way to another server of the network.
+     * Not the same as the stars being on the screen: who is sent on right at the login moves
+     * under the join picture, and JEI and the chat must be kept across that move all the same.
+     */
     public static boolean moving() {
-        return phase == GO && !arrived;
+        return underway && System.currentTimeMillis() - underwaySince < 90_000;
     }
+
+    /** The move ended without an arrival (the connection was lost, the player is back in the menu). */
+    static void failed() {
+        underway = false;
+    }
+
+    private static boolean underway;
+    private static long underwaySince;
 
     /** For the test player's timeline. */
     public static String phaseName() {
@@ -73,6 +85,8 @@ public final class TravelOverlay {
                 arrived = false;
             }
             case TravelPayload.GO -> {
+                underway = true;
+                underwaySince = now;
                 if (phase == OFF && JoinOverlay.joining(now)) {
                     // sent on while still coming in: the join picture stays over it
                     JoinOverlay.forward(now);
@@ -85,12 +99,14 @@ public final class TravelOverlay {
                 arrived = false;
             }
             case TravelPayload.CANCEL -> {
+                underway = false;
                 if (phase == OFF) return;
                 fadeFrom = phase == GO ? 1 : Math.min(1, (now - start) / (float) CHARGE_MS);
                 phase = FADE;
                 start = now;
             }
             case TravelPayload.ARRIVE -> {
+                underway = false;
                 if (phase == OFF && JoinOverlay.forwarded(now)) return;
                 if (phase == OFF) {
                     // arrived without seeing the start (a move ordered by the server): a short arrival
@@ -123,6 +139,7 @@ public final class TravelOverlay {
                 || (phase == GO && t > 90_000)) {
             phase = OFF;
             arrived = false;
+            underway = false;
             return;
         }
         int w = g.guiWidth(), h = g.guiHeight();

@@ -7,6 +7,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexSorting;
 import de.kronwerke.core.KronwerkeCore;
 import de.kronwerke.core.Text;
+import de.kronwerke.core.config.KronwerkeClientConfig;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -41,12 +42,15 @@ import java.util.List;
  * dropped: handling them would run the game's input code in the middle of that work. The keys
  * are read anew from the keyboard afterwards, so none stays stuck.
  * <p>
- * For now only in the test client (the probe is on) or with -Dkronwerke.loadpump=true: it is
- * seen in the real test client first.
+ * Seen in the real test client on 12.11.2026 (JEI's 22 seconds: 511 pictures, the longest wait
+ * 0.8 s). The client's setting loadPictures turns it off.
  */
 public final class LoadPump {
-    private static final boolean ON = Boolean.getBoolean("kronwerke.loadpump")
-            || (Boolean.getBoolean("kronwerke.probe") && !"false".equals(System.getProperty("kronwerke.loadpump")));
+    /** -Dkronwerke.loadpump=true or false decides; without it the client's setting loadPictures does. Known from the first frame on. */
+    private static final String FORCED = System.getProperty("kronwerke.loadpump");
+    private static volatile boolean on;
+    /** Where the game stands still is only written down in the test client and with the switch set by hand. */
+    private static final boolean WATCH = Boolean.getBoolean("kronwerke.probe") || "true".equals(FORCED);
     /** A frame at most every 33 ms: 30 a second is smooth for the gears and costs the work little. */
     private static final long EVERY_NS = 33_000_000L;
 
@@ -68,8 +72,12 @@ public final class LoadPump {
     }
 
     public static void register() {
-        if (!ON) return;
+        if ("false".equals(FORCED)) return;
         NeoForge.EVENT_BUS.addListener((RenderFrameEvent.Pre e) -> {
+            if (thread == null) {
+                on = FORCED != null ? Boolean.parseBoolean(FORCED) : KronwerkeClientConfig.loadPictures();
+                KronwerkeCore.LOGGER.info("Pictures while the game stands still are {}", on ? "on" : "off (loadPictures in the client's settings)");
+            }
             inFrame = true;
             coveredNow = false;
             thread = Thread.currentThread();
@@ -93,7 +101,6 @@ public final class LoadPump {
             inFrame = false;
             covered = coveredNow;
         });
-        KronwerkeCore.LOGGER.info("Pictures while the game stands still are on (kronwerke.loadpump)");
     }
 
     // ---- what else holds the game: for finding the next place that needs a turn ----
@@ -108,6 +115,7 @@ public final class LoadPump {
         long now = System.nanoTime();
         long ms = (now - lastPicture) / 1_000_000;
         lastPicture = now;
+        if (!WATCH) return;
         if (game == null) {
             game = Thread.currentThread();
             Thread t = new Thread(LoadPump::watch, "Kronwerke stall watch");
@@ -154,7 +162,7 @@ public final class LoadPump {
 
     /** JEI's start begins (on the game's thread). */
     public static void begin() {
-        if (!ON || broken || active || inFrame || !RenderSystem.isOnRenderThread()) return;
+        if (!on || broken || active || inFrame || !RenderSystem.isOnRenderThread()) return;
         thread = Thread.currentThread();
         began = last = System.nanoTime();
         next = began + EVERY_NS;
@@ -194,7 +202,7 @@ public final class LoadPump {
 
     /** From inside long work on the game's thread, as often as it likes: draws a picture when one is due. */
     public static void pulse() {
-        if (!ON) return;
+        if (!on) return;
         boolean jei = active;
         if (!jei && !covered) return;
         if (inside || inFrame || broken || Thread.currentThread() != thread) return;

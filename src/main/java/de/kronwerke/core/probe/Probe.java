@@ -450,7 +450,7 @@ public final class Probe {
                 try (var lines = Files.lines(FMLPaths.GAMEDIR.get().resolve("logs/latest.log"), StandardCharsets.UTF_8)) {
                     int max = n;
                     lines.filter(l -> pat.matcher(l).find()).forEach(l -> {
-                        hits.addLast(l.length() > 300 ? l.substring(0, 300) : l);
+                        hits.addLast(l.length() > 1500 ? l.substring(0, 1500) : l);
                         if (hits.size() > max) hits.removeFirst();
                     });
                 }
