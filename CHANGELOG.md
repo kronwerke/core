@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.12
+
+- The stage names are English in the English texts: stage 2 (Brass Works), stage 3 (Steel Works), stage 4 (Star Works), stage 5 (Chaos Works), as in the quest book. They had stayed German ("stage 2 (Messingwerk)").
+
 ## 0.39.11
 
 - Mekanism frequencies show their owner's name on every server. Mekanism works the name out when it makes or loads a frequency, from the server's own list of players, and shows "<uuid>" for someone who was never on that server. Core took that stand-in for a name, let it replace the real one that had come from the owner's server, and passed it on (seen in the Nether on 12.11.2026: "Owner: <c4ce4ea4-...>"). A stand-in is no longer taken or sent, and a frequency that carries one gets the real name as soon as it is known.
