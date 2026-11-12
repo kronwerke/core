@@ -2,7 +2,7 @@
 
 ## 0.39.17
 
-- The Grubenrahmen is a real model with depth: an iron cage along the edges, one step in a shell of cracked stone with a window in every face, and two steps further in a core of light that breathes. It was a flat picture of a frame on a cube. In the hand and in the inventory it is the same model.
+- The Grubenrahmen is a real model with depth: an iron cage along the edges, one step in a shell of cracked stone with a window in every face, and two steps further in a core of light that breathes. It was a flat picture of a frame on a cube. Frames next to each other join as before: the cage runs along the outside of the whole group and around the opening, with a bolt where a corner needs one, and the stone goes through without a seam. The pack's connected textures for the block (Athena) are gone with this; the block does it itself. In the hand and in the inventory it is the whole block with its cage.
 - The frame burns while it holds a portal: the core turns bright and the cracks in the stone carry its light (a new state of the block, lit). It goes dark again when the portal ends. Frames of portals from before wake up by themselves.
 - Lighting the portal is a sequence. The gem sounds, the light runs around the frame block by block from where the gem was put, each block with a chime and sparks, then the surface forms from the frame inwards, a thin veil first, then half, then whole, and it stands with a flash and a deep note. About a second for the smallest portal. The surface is only a way through once it is whole.
 - The portal's surface has a second layer in the middle, darker, with gold sparks that rise slowly and a swirl of its own, so that it has depth when one walks past.

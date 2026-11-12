@@ -1,0 +1,1 @@
+{"textures":{"particle":"kronwerke:block/grubenrahmen_iron","iron":"kronwerke:block/grubenrahmen_iron"},"elements":[{"from":[14,0,0],"to":[16,2,2],"faces":{"north":{"texture":"#iron","cullface":"north"},"south":{"texture":"#iron"},"east":{"texture":"#iron","cullface":"east"},"west":{"texture":"#iron"},"up":{"texture":"#iron"},"down":{"texture":"#iron","cullface":"down"}}}]}

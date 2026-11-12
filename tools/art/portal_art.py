@@ -56,8 +56,7 @@ def stone(lit):
         for x in range(32):
             d = min(x, y, 31 - x, 31 - y)
             c = sp[x, y][:3]
-            if d in (2, 3): c = hexc('060608')             # under the cage: its shadow
-            elif d == 4: c = mix(c, hexc('060608'), 0.55)
+            if d == 4: c = mix(c, hexc('060608'), 0.45)       # the cage's shadow; a fine seam where two frames join
             elif d == 9: c = mix(c, hexc('5aa6d2') if lit else hexc('2d4761'), 0.55 if lit else 0.35)   # the window's rim catches the core's light
             elif d >= 10: c = mix(c, hexc('2a5b86') if lit else hexc('101c2c'), 0.6)   # the window's walls, seen from the side
             sp[x, y] = c + (255,)
