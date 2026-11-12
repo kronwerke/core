@@ -143,6 +143,7 @@ public final class TravelOverlay {
                 } else {
                     space(g, mc.font, w, h, now, 1);
                     corner = true;
+                    LoadPump.covers();
                     long since = t - WHITE_MS;
                     if (since < 500) g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(1 - since / 500f, 0xffffff));
                 }

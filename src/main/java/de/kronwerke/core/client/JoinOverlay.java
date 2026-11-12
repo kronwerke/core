@@ -133,6 +133,7 @@ public final class JoinOverlay {
         lastSeen = now;
         fadeFrom = -1;
         if (holdUntil >= 0) holdSawScreen = true;
+        LoadPump.covers();
         draw(g, now, 1);
     }
 
@@ -146,6 +147,7 @@ public final class JoinOverlay {
             // on main for a moment before the move: the picture stays whole until the other world stands
             if (!holdSawScreen && now < holdUntil) {
                 lastSeen = now;
+                LoadPump.covers();
                 draw(g, now, 1);
                 return;
             }
@@ -195,12 +197,19 @@ public final class JoinOverlay {
         g.pose().pushPose();
         g.pose().translate(0, 0, 950);
         float cx = w / 2f, cy = h / 2f - 16;
+        // drawn for a screen 240 high; on a larger one everything grows with it
+        float zoom = Math.max(1f, Math.min(2.5f, h / 240f));
         // the works come up to speed in the first second and a half
         float run = Math.min(1, t / 1500f);
         // (the turn is the integral of a speed that rises from nothing to full, so nothing jumps)
         float a = (float) ((t <= 1500 ? t * t / 3000.0 : t - 750.0) / 1000.0 * 0.6);
+        Shape ground = new Shape(g);
+        ground.rect(0, 0, w, h, argb(alpha, GROUND));
+        ground.end();
+        g.pose().translate(cx, h / 2f, 0);
+        g.pose().scale(zoom, zoom, 1);
+        g.pose().translate(-cx, -h / 2f, 0);
         Shape q = new Shape(g);
-        q.rect(0, 0, w, h, argb(alpha, GROUND));
         // the glow of the fire behind the works, breathing slowly
         float breath = 0.5f + 0.5f * (float) Math.sin(t / 1300.0);
         q.glow(cx, cy + 6, 20, 120, argb(alpha * (0.16f + 0.05f * breath) * run, EMBER));

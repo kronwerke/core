@@ -30,12 +30,16 @@ import java.util.List;
  * side, and its plugins are not written for another thread.
  * <p>
  * So the work stays where it is and gives the screen a turn: mixins call {@link #pulse()} from
- * inside JEI's loops (per plugin, per recipe, per item of the search), and whenever a frame is
+ * inside the loops (per plugin, per recipe, per item of the search), and whenever a frame is
  * due, one is drawn right there: the join picture or the stars of a move if one of them was on
  * the screen, otherwise just the small gear in the corner over the last picture of the world.
+ * The same goes for the other long steps of coming in (tags, the creative tabs, the books)
+ * as long as one of the two pictures covers the screen: then a picture drawn here is the same
+ * one the game would draw, and nobody can tell them apart.
+ * <p>
  * The window's events are taken off the queue so that it stays alive, but keys and clicks are
- * dropped: handling them would run the game's input code in the middle of JEI's start. The
- * keys are read anew from the keyboard afterwards, so none stays stuck.
+ * dropped: handling them would run the game's input code in the middle of that work. The keys
+ * are read anew from the keyboard afterwards, so none stays stuck.
  * <p>
  * For now only in the test client (the probe is on) or with -Dkronwerke.loadpump=true: it is
  * seen in the real test client first.
@@ -46,11 +50,14 @@ public final class LoadPump {
     /** A frame at most every 33 ms: 30 a second is smooth for the gears and costs the work little. */
     private static final long EVERY_NS = 33_000_000L;
 
+    /** JEI is starting: pictures are drawn whatever is on the screen. */
     private static volatile boolean active;
-    private static boolean inside, inFrame, broken;
+    /** The game's last own frame was one of the loading pictures, whole: pictures are drawn when it stalls. */
+    private static volatile boolean covered;
+    private static boolean coveredNow, inside, inFrame, broken, pumping;
     private static Thread thread;
-    private static long began, last, calls, next, drawing;
-    private static int frames;
+    private static long began, last, calls, next, drawing, lastReal;
+    private static int frames, outside;
     private static String stage = "";
     private static final List<Gap> gaps = new ArrayList<>();
 
@@ -64,12 +71,29 @@ public final class LoadPump {
         if (!ON) return;
         NeoForge.EVENT_BUS.addListener((RenderFrameEvent.Pre e) -> {
             inFrame = true;
+            coveredNow = false;
+            thread = Thread.currentThread();
             // a frame of the game's own: whatever was being pumped is over, even if it ended in an error
             if (active) end();
+            if (pumping) {
+                pumping = false;
+                Minecraft mc = Minecraft.getInstance();
+                mc.getWindow().updateVsync(mc.options.enableVsync().get());
+                keys(mc);
+                long ms = (System.nanoTime() - lastReal) / 1_000_000;
+                if (outside > 0 && ms >= 400) {
+                    KronwerkeCore.LOGGER.info("The game stood still for {} ms behind a loading picture; {} pictures drawn meanwhile", ms, outside);
+                }
+                outside = 0;
+            }
+            lastReal = System.nanoTime();
             stalled();
         });
-        NeoForge.EVENT_BUS.addListener((RenderFrameEvent.Post e) -> inFrame = false);
-        KronwerkeCore.LOGGER.info("Pictures during JEI's start are on (kronwerke.loadpump)");
+        NeoForge.EVENT_BUS.addListener((RenderFrameEvent.Post e) -> {
+            inFrame = false;
+            covered = coveredNow;
+        });
+        KronwerkeCore.LOGGER.info("Pictures while the game stands still are on (kronwerke.loadpump)");
     }
 
     // ---- what else holds the game: for finding the next place that needs a turn ----
@@ -123,6 +147,11 @@ public final class LoadPump {
         }
     }
 
+    /** The overlays, while the game draws a frame: this frame is a loading picture and nothing else. */
+    static void covers() {
+        if (inFrame) coveredNow = true;
+    }
+
     /** JEI's start begins (on the game's thread). */
     public static void begin() {
         if (!ON || broken || active || inFrame || !RenderSystem.isOnRenderThread()) return;
@@ -134,8 +163,6 @@ public final class LoadPump {
         calls = 0;
         gaps.clear();
         stage = "";
-        // without this every picture would wait for the screen's next refresh, and JEI with it
-        GLFW.glfwSwapInterval(0);
         JoinOverlay.note(Text.t("load.recipes", "Lade Rezepte").getString());
         active = true;
     }
@@ -145,9 +172,6 @@ public final class LoadPump {
         if (!active) return;
         active = false;
         JoinOverlay.note("");
-        Minecraft mc = Minecraft.getInstance();
-        mc.getWindow().updateVsync(mc.options.enableVsync().get());
-        if (frames > 0) keys(mc);
         long ms = (System.nanoTime() - began) / 1_000_000;
         gaps.sort(Comparator.comparingLong(Gap::ms).reversed());
         StringBuilder worst = new StringBuilder();
@@ -170,33 +194,41 @@ public final class LoadPump {
 
     /** From inside long work on the game's thread, as often as it likes: draws a picture when one is due. */
     public static void pulse() {
-        if (!active) return;
-        if (inside || Thread.currentThread() != thread) return;
-        calls++;
+        if (!ON) return;
+        boolean jei = active;
+        if (!jei && !covered) return;
+        if (inside || inFrame || broken || Thread.currentThread() != thread) return;
         long now = System.nanoTime();
-        if (now < next) return;
-        if (now - began > 180_000_000_000L) {
-            end();
+        if (jei) {
+            calls++;
+            if (now < next) return;
+            if (now - began > 180_000_000_000L) {
+                end();
+                return;
+            }
+            // how long after a picture was due the work gave the next chance: where that is long, a hook is missing
+            long late = (now - next) / 1_000_000;
+            if (late >= 100) gaps.add(new Gap(late, stage));
+        } else if (now < next || now - lastPicture < 80_000_000L) {
+            // outside JEI only when the game is really late with its own next frame
             return;
         }
-        // how long after a picture was due the work gave the next chance: where that is long, a hook is missing
-        long late = (now - next) / 1_000_000;
-        if (late >= 100) gaps.add(new Gap(late, stage));
         inside = true;
         try {
             frame();
-            frames++;
+            if (jei) frames++;
+            else outside++;
             // where a picture is dear (no graphics card: 50 ms and more), fewer are drawn: the
             // pictures get at most a fifth of the time, the work the rest
             long took = System.nanoTime() - now;
-            drawing += took;
+            if (jei) drawing += took;
             next = now + Math.max(EVERY_NS, took * 5);
         } catch (Throwable t) {
             // never again in this game: a picture is not worth a crash
             broken = true;
             active = false;
             JoinOverlay.note("");
-            KronwerkeCore.LOGGER.warn("Pictures during JEI's start are off after an error", t);
+            KronwerkeCore.LOGGER.warn("Pictures while the game stands still are off after an error", t);
         } finally {
             inside = false;
             last = System.nanoTime();
@@ -213,6 +245,11 @@ public final class LoadPump {
         Window win = mc.getWindow();
         if (win.getWidth() <= 0 || win.getHeight() <= 0) return; // minimised
         long now = System.currentTimeMillis();
+        if (!pumping) {
+            pumping = true;
+            // without this every picture would wait for the screen's next refresh, and the work with it
+            GLFW.glfwSwapInterval(0);
+        }
         boolean travel = TravelOverlay.active();
         boolean whole = travel || JoinOverlay.whole();
         RenderTarget target = mc.getMainRenderTarget();

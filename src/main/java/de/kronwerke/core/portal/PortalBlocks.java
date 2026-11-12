@@ -20,13 +20,13 @@ public final class PortalBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(KronwerkeCore.MOD_ID);
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(KronwerkeCore.MOD_ID);
 
-    /** The frame: dark stone bound in iron, blue veins that glow a little. */
-    public static final DeferredBlock<Block> FRAME = BLOCKS.register("grubenrahmen", () -> new Block(BlockBehaviour.Properties.of()
+    /** The frame: an iron cage, a stone shell and a core that burns while it holds a portal. */
+    public static final DeferredBlock<FrameBlock> FRAME = BLOCKS.register("grubenrahmen", () -> new FrameBlock(BlockBehaviour.Properties.of()
             .mapColor(MapColor.DEEPSLATE).sound(SoundType.DEEPSLATE_BRICKS).strength(5.0f, 1200.0f)
-            .requiresCorrectToolForDrops().lightLevel(s -> 4)));
+            .requiresCorrectToolForDrops().lightLevel(s -> s.getValue(FrameBlock.LIT) ? 10 : 4)));
 
     public static final DeferredBlock<MinePortalBlock> PORTAL = BLOCKS.register("minenportal", () -> new MinePortalBlock(BlockBehaviour.Properties.of()
-            .noCollission().strength(-1.0f).sound(SoundType.GLASS).lightLevel(s -> 11).noLootTable()
+            .noCollission().strength(-1.0f).sound(SoundType.GLASS).lightLevel(s -> 3 + 4 * s.getValue(MinePortalBlock.STAGE)).noLootTable()
             .pushReaction(PushReaction.BLOCK).isValidSpawn((s, l, p, t) -> false)));
 
     public static final DeferredItem<Item> FRAME_ITEM = ITEMS.register("grubenrahmen", () -> new BlockItem(FRAME.get(), new Item.Properties()));

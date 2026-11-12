@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.DustParticleOptions;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
@@ -20,6 +21,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.joml.Vector3f;
@@ -27,6 +29,9 @@ import org.joml.Vector3f;
 /** The portal's surface: like the Nether's, blue with gold sparks, and the way to the other world. */
 public class MinePortalBlock extends Block {
     public static final EnumProperty<Direction.Axis> AXIS = BlockStateProperties.HORIZONTAL_AXIS;
+    /** How far the surface has formed after the lighting: 0 a thin veil, 1 half, 2 whole and open. */
+    public static final IntegerProperty STAGE = IntegerProperty.create("stage", 0, 2);
+    public static final int WHOLE = 2;
     private static final VoxelShape X_SHAPE = Block.box(0, 0, 6, 16, 16, 10);
     private static final VoxelShape Z_SHAPE = Block.box(6, 0, 0, 10, 16, 16);
     private static final DustParticleOptions BLUE = new DustParticleOptions(new Vector3f(0.42f, 0.7f, 1.0f), 1.1f);
@@ -34,12 +39,12 @@ public class MinePortalBlock extends Block {
 
     public MinePortalBlock(BlockBehaviour.Properties p) {
         super(p);
-        registerDefaultState(stateDefinition.any().setValue(AXIS, Direction.Axis.X));
+        registerDefaultState(stateDefinition.any().setValue(AXIS, Direction.Axis.X).setValue(STAGE, WHOLE));
     }
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> b) {
-        b.add(AXIS);
+        b.add(AXIS, STAGE);
     }
 
     @Override
@@ -56,9 +61,20 @@ public class MinePortalBlock extends Block {
         return super.updateShape(state, dir, neighbor, level, pos, neighborPos);
     }
 
+    /** Only the whole surface leads anywhere. */
     @Override
     protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
-        if (!level.isClientSide) Travel.inside(entity, level, pos);
+        if (!level.isClientSide && state.getValue(STAGE) == WHOLE) Travel.inside(entity, level, pos);
+    }
+
+    /** The surface forms: set off by the lighting, later the further in the block lies. */
+    @Override
+    protected void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource r) {
+        int stage = state.getValue(STAGE);
+        if (stage >= WHOLE) return;
+        level.setBlock(pos, state.setValue(STAGE, stage + 1), 2 | 16);
+        level.sendParticles(BLUE, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, 4, 0.35, 0.35, 0.35, 0);
+        if (stage + 1 < WHOLE) level.scheduleTick(pos, this, 5);
     }
 
     @Override
@@ -73,6 +89,14 @@ public class MinePortalBlock extends Block {
                     0.35f, 0.55f + r.nextFloat() * 0.1f, false);
         }
         boolean x = state.getValue(AXIS) == Direction.Axis.X;
+        if (state.getValue(STAGE) < WHOLE) {
+            // while it forms it crackles
+            for (int i = 0; i < 2; i++) {
+                level.addParticle(ParticleTypes.ELECTRIC_SPARK, pos.getX() + (x ? r.nextDouble() : 0.5), pos.getY() + r.nextDouble(),
+                        pos.getZ() + (x ? 0.5 : r.nextDouble()), 0, 0, 0);
+            }
+            return;
+        }
         for (int i = 0; i < 3; i++) {
             double px = pos.getX() + (x ? r.nextDouble() : 0.5 + (r.nextDouble() - 0.5) * 0.3);
             double pz = pos.getZ() + (x ? 0.5 + (r.nextDouble() - 0.5) * 0.3 : r.nextDouble());

@@ -1,1 +1,1 @@
-{"variants": {"": {"model": "kronwerke:block/grubenrahmen"}}}
+{"variants": {"lit=false": {"model": "kronwerke:block/grubenrahmen"}, "lit=true": {"model": "kronwerke:block/grubenrahmen_lit"}}}

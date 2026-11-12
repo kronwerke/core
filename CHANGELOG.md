@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.39.17
+
+- The Grubenrahmen is a real model with depth: an iron cage along the edges, one step in a shell of cracked stone with a window in every face, and two steps further in a core of light that breathes. It was a flat picture of a frame on a cube. In the hand and in the inventory it is the same model.
+- The frame burns while it holds a portal: the core turns bright and the cracks in the stone carry its light (a new state of the block, lit). It goes dark again when the portal ends. Frames of portals from before wake up by themselves.
+- Lighting the portal is a sequence. The gem sounds, the light runs around the frame block by block from where the gem was put, each block with a chime and sparks, then the surface forms from the frame inwards, a thin veil first, then half, then whole, and it stands with a flash and a deep note. About a second for the smallest portal. The surface is only a way through once it is whole.
+- The portal's surface has a second layer in the middle, darker, with gold sparks that rise slowly and a swirl of its own, so that it has depth when one walks past.
+- The gem lights the portal from any side of a frame block. Before it had to be put on the side that faces the inside, otherwise the message said that the frame was not closed. A portal that stands is not lit again and takes no gem.
+- The join picture grows with the screen (it was drawn for a small one and sat lost in the middle of a large one).
+- Pictures while the game stands still also outside JEI's start, as long as the join picture or the stars cover the screen: while the server's tags are applied, the creative tabs and Patchouli's books are built, and inside JEI's lists of items and tags. Still only in the test client.
+
 ## 0.39.16
 
 - The pictures during JEI's start are on in the test client (where the probe is on), so that they can be seen on the real servers before they go to the players. Where a picture is dear to draw, fewer are drawn: they get at most a fifth of the time.

@@ -1,1 +1,25 @@
-{"variants": {"axis=x": {"model": "kronwerke:block/minenportal_ns"}, "axis=z": {"model": "kronwerke:block/minenportal_ew"}}}
+{
+ "variants": {
+  "axis=x,stage=0": {
+   "model": "kronwerke:block/minenportal_0"
+  },
+  "axis=z,stage=0": {
+   "model": "kronwerke:block/minenportal_0",
+   "y": 90
+  },
+  "axis=x,stage=1": {
+   "model": "kronwerke:block/minenportal_1"
+  },
+  "axis=z,stage=1": {
+   "model": "kronwerke:block/minenportal_1",
+   "y": 90
+  },
+  "axis=x,stage=2": {
+   "model": "kronwerke:block/minenportal_2"
+  },
+  "axis=z,stage=2": {
+   "model": "kronwerke:block/minenportal_2",
+   "y": 90
+  }
+ }
+}
