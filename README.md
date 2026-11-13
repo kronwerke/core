@@ -150,7 +150,8 @@ Ranks are scoreboard teams with a glyph prefix from the Nautical Ranks resource 
 
 ## Spawn, join kit and locked dimensions
 
-- `spawn.radius` (96) protects the square around the overworld spawn: no breaking or placing by players without op, no block damage from explosions, no mob griefing, no hostile spawns, no PvP. Intakes next to the obelisk stay allowed. 0 turns it off.
+- `spawn.radius` (96) protects the square around the overworld spawn: no breaking or placing by players without op, no block damage from explosions, no mob griefing, no hostile spawns, no PvP. 0 turns it off. On a side world only the arrival place is protected (8 blocks), and no monster spawns within 32 blocks of it.
+- `arrival.graceSeconds` (120): who joins or comes over from another server takes no damage and is no mob's target until their client is through loading, plus three seconds, and for that many seconds at the most. It ends when they hurt someone. 0 turns it off.
 - `spawn.blastProof` lists blocks no explosion removes anywhere (bedrock, end portal frames and portals, end gateways and reinforced deepslate are always kept; the Cataclysm altars and boss respawners by default). Patterns with `*` work.
 
 - Every player gets the `join.kit` items once, on the first join (a waystone and warp dust by default). The client asks for the language (Deutsch or English) after the first join and remembers the answer in its config.

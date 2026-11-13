@@ -40,6 +40,7 @@
     "IronsCurioCacheMixin",
     "JourneyMapOverlayMixin",
     "KeepAliveGraceMixin",
+    "ArrivalPongMixin",
     "LagEntityMixin",
     "LagMachineMixin",
     "LevelTrackingTagMixin",

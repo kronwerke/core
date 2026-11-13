@@ -112,6 +112,10 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onMobGriefing);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onSpawn);
         NeoForge.EVENT_BUS.addListener(SpawnGuard::onDamage);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.spawn.ArrivalGrace::onLogin);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.spawn.ArrivalGrace::onLogout);
+        NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, de.kronwerke.core.spawn.ArrivalGrace::onDamage);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.spawn.ArrivalGrace::onTarget);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onAttack);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteract);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteractPlain);

@@ -51,6 +51,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue CHEAP_TNT_EXPOSURE;
     public static final ModConfigSpec.IntValue GOAL_PAUSE_TICKS;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
+    public static final ModConfigSpec.IntValue ARRIVAL_GRACE;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<String> SPAWN_CENTER;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
@@ -119,6 +120,11 @@ public final class KronwerkeConfig {
                 .define("queue", true);
         QUEUE_LIMIT = b.comment("How many players the whole network holds (main and the side worlds together) before new players queue. Operators, owners, streamers and players coming back from a side world never queue. Changed in game with /kw admin queue limit <n>, which is kept in kronwerke/queue-limit.txt and wins over this value (pack updates bring this file back).")
                 .defineInRange("queueLimit", 50, 1, 999);
+        b.pop();
+
+        b.push("arrival");
+        ARRIVAL_GRACE = b.comment("Who joins or comes over from another server takes no damage and is no mob's target until their client is through loading (it answers a ping the server sends behind the login), plus three seconds. This is the longest that lasts, in seconds, whatever the client does. 0 turns it off.")
+                .defineInRange("graceSeconds", 120, 0, 600);
         b.pop();
 
         b.push("spawn");

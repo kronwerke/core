@@ -2,6 +2,7 @@
 
 ## 0.39.34
 
+- Nobody dies while their game still loads (13.11.2026). A client that joins, or comes over from another server, stands in the world for the server long before it can do anything: it builds its recipe lists first and neither draws nor reacts, twenty seconds on the test client and more on a slow PC. The test player was killed in that time twice at the farm world's portal and lost most of its health a third time, without having moved. Now an arrival takes no damage and no mob picks them as a target until their client answers a ping the server sends behind the login (the client works its packets off in order, so the answer comes when the loading is through), and for three seconds after. It ends at once when the arrival hurts someone, and after `arrival.graceSeconds` (120) at the latest. The void and `/kill` still kill. `spawn/ArrivalGrace`, `ArrivalPongMixin`; the server log says how long each arrival took. Seen in a local world without JEI (one second); on the real servers see the test list.
 - The leaderboard wall is dark on its narrow sides and its back too (13.11.2026). They still wore the pedestal's texture, a framed square on every block, so from the side the one panel was four tiles again. Seen on the real server with 0.39.33; the front is right (one field, brass frame, names and points).
 
 ## 0.39.33
