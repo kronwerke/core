@@ -574,10 +574,10 @@ public final class KwHubScreen extends KwScreen {
         int y = cTop + 6;
         boolean german = minecraft.options.languageCode.startsWith("de");
         // 1: the language, two plates
-        optionText(g, y, rowH, roomy, 146, tr("hub.opt_lang", "Sprache"), tr("hub.opt_lang_tip", "Menüs, Hinweise und Quests. Wechselt sofort, ohne Neustart."));
+        optionText(g, y, rowH, roomy, 146, tr("hub.opt_lang", "Sprache"), tr("hub.opt_lang_tip", "Menüs, Hinweise, Quests. Wechselt sofort."));
         int px = x1 - 10 - 124, py = y + (rowH - 16) / 2;
-        plate(g, px, py, 60, "Deutsch", german, mouseX, mouseY, () -> LanguageScreen.apply("de_de"));
-        plate(g, px + 64, py, 60, "English", !german, mouseX, mouseY, () -> LanguageScreen.apply("en_us"));
+        plate(g, px, py, 60, "Deutsch", german, mouseX, mouseY, () -> language("de_de"));
+        plate(g, px + 64, py, 60, "English", !german, mouseX, mouseY, () -> language("en_us"));
         y += rowH;
         // 2: the goal's bar, kept by the server
         optionText(g, y, rowH, roomy, 46, tr("hub.opt_bar", "Leiste des Ziels"), tr("hub.opt_bar_tip", "Der Balken oben am Bildschirm, der zeigt, wie weit die Stufe ist."));
@@ -592,7 +592,7 @@ public final class KwHubScreen extends KwScreen {
         y += rowH;
         // 4: the clouds
         int clouds = (int) KronwerkeClientConfig.cloudHeight();
-        optionText(g, y, rowH, roomy, 100, tr("hub.opt_clouds", "Höhe der Wolken"), tr("hub.opt_clouds_tip", "Vanilla hat sie auf 192. Hier wird bis 608 gebaut, darum liegen sie auf 448."));
+        optionText(g, y, rowH, roomy, 100, tr("hub.opt_clouds", "Höhe der Wolken"), tr("hub.opt_clouds_tip", "Vanilla: 192. Hier wird bis 608 gebaut, darum 448."));
         int sy = y + (rowH - 16) / 2;
         plate(g, x1 - 10 - 16, sy, 16, "+", false, mouseX, mouseY, () -> clouds(clouds, 1));
         plate(g, x1 - 10 - 78, sy, 16, "-", false, mouseX, mouseY, () -> clouds(clouds, -1));
@@ -600,11 +600,17 @@ public final class KwHubScreen extends KwScreen {
         g.drawString(font, cs, x1 - 10 - 39 - font.width(cs) / 2, sy + 4, Ui.GOLD_LIGHT, false);
         y += rowH;
         // 5: the loading picture
-        optionText(g, y, rowH, roomy, 46, tr("hub.opt_load", "Bewegtes Ladebild"), tr("hub.opt_load_tip", "Hält das Bild beim Betreten in Bewegung. Aus, falls das Spiel dabei hakt."));
+        optionText(g, y, rowH, roomy, 46, tr("hub.opt_load", "Bewegtes Ladebild"), tr("hub.opt_load_tip", "Das Bild bewegt sich beim Betreten. Aus, falls das Spiel dabei hakt."));
         lever(g, x1 - 34, y + (rowH - 12) / 2, KronwerkeClientConfig.loadPictures(), mouseX, mouseY, () -> {
             KronwerkeClientConfig.LOAD_PICTURES.set(!KronwerkeClientConfig.LOAD_PICTURES.get());
             KronwerkeClientConfig.SPEC.save();
         });
+    }
+
+    /** The language changes at once; the buttons are built again so their labels follow. */
+    private void language(String code) {
+        LanguageScreen.apply(code);
+        rebuildWidgets();
     }
 
     private void clouds(int now, int dir) {
