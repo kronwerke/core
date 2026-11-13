@@ -180,7 +180,7 @@ public final class TabList {
         int here = server.getPlayerList().getPlayerCount(), elsewhere = de.kronwerke.core.link.NetworkSync.remoteCount();
         footer.append((elsewhere > 0 ? de.kronwerke.core.Text.t("tab.online_here", "%s online, %s hier", here + elsewhere, here)
                         : de.kronwerke.core.Text.t("tab.online", "%s online", here)).withStyle(ChatFormatting.GRAY))
-                .append(Component.literal(de.kronwerke.core.link.Role.main() ? "   /kw goals   /kw deposit" : "").withStyle(ChatFormatting.DARK_GRAY));
+                .append(Component.literal(de.kronwerke.core.link.Role.main() ? "   /kw   /kw goals" : "").withStyle(ChatFormatting.DARK_GRAY));
         long reset = de.kronwerke.core.link.NetworkSync.resetAt();
         if (!de.kronwerke.core.link.Role.main() && reset > System.currentTimeMillis()) {
             long min = (reset - System.currentTimeMillis()) / 60_000;

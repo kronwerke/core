@@ -293,13 +293,6 @@ public final class Obelisk {
         return Math.min(ObeliskTiers.MAX, n);
     }
 
-    /** True when nobody has given anything for a day. */
-    public boolean slumbering() {
-        if (server == null) return false;
-        long last = data().lastDepositAt();
-        return last > 0 && System.currentTimeMillis() - last > 24L * 60 * 60 * 1000;
-    }
-
     private static final ResourceLocation LIFT = ResourceLocation.fromNamespaceAndPath(de.kronwerke.core.KronwerkeCore.MOD_ID, "obelisk_lift");
 
     /** From the fourth stage the ground around the obelisk lets go a little: players on the plinth weigh half. */
@@ -373,21 +366,10 @@ public final class Obelisk {
                 level.playSound(null, at, net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value(), net.minecraft.sounds.SoundSource.BLOCKS, 2.0f, 0.5f);
                 scheduler.at(7, () -> level.playSound(null, at, net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value(), net.minecraft.sounds.SoundSource.BLOCKS, 1.6f, 0.5f));
             }
-        } else if (slumbering()) {
-            // the sleeping stone: dust sifts down the trunk, one slow heartbeat every thirty seconds
-            for (int i = 0; i < 3; i++) {
-                double a = level.random.nextDouble() * Math.PI * 2;
-                level.sendParticles(net.minecraft.core.particles.ParticleTypes.WHITE_ASH, core.getX() + 0.5 + Math.cos(a) * 2.2, core.getY() + 4 + level.random.nextDouble() * 11, core.getZ() + 0.5 + Math.sin(a) * 2.2, 1, 0.1, 0.3, 0.1, 0);
-            }
-            if (ambientTicks % 600 == 0) {
-                level.playSound(null, at, net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value(), net.minecraft.sounds.SoundSource.BLOCKS, 1.6f, 0.5f);
-                scheduler.at(8, () -> level.playSound(null, at, net.minecraft.sounds.SoundEvents.NOTE_BLOCK_BASS.value(), net.minecraft.sounds.SoundSource.BLOCKS, 1.0f, 0.5f));
-            }
-            if (ambientTicks % 320 == 0) level.playSound(null, at, KwSounds.HUM.get(), net.minecraft.sounds.SoundSource.BLOCKS, 0.2f, 0.8f);
         } else if (ambientTicks % 160 == 0) {
             // the hum, eight seconds long, rises with the goal
             float f = g == null ? 0.2f : (float) gm.fraction(g);
-            float volume = slumbering() ? 0.2f : 0.5f + 0.7f * f;
+            float volume = 0.5f + 0.7f * f;
             level.playSound(null, at, KwSounds.HUM.get(), net.minecraft.sounds.SoundSource.BLOCKS, volume, 0.9f + 0.2f * f);
         }
         // every five to ten minutes a rune misfires; nobody will believe it is random
@@ -404,53 +386,20 @@ public final class Obelisk {
         }
     }
 
-    private boolean lit = true;
+    private boolean lightsChecked;
 
     /**
-     * Lights or puts out every tier block that has a light: at once, or ring by ring from the
-     * plinth outward with a sound for each ring, which is the awakening.
+     * The lights of the tier blocks are always on. Up to 0.39.29 the stone put them out when
+     * nobody had given anything for a day; this lights whatever such a night left dark, once
+     * after the start, as soon as the build is loaded.
      */
-    void setLit(ServerLevel level, boolean on, boolean staggered) {
-        lit = on;
-        BlockPos core = data().pos();
-        java.util.List<BlockPos> spots = new java.util.ArrayList<>(data().extras().keySet());
-        spots.sort(java.util.Comparator.comparingInt(p -> Math.max(Math.abs(p.getX() - core.getX()), Math.abs(p.getZ() - core.getZ())) * 4 + Math.abs(p.getY() - core.getY())));
-        int lastRing = -1;
-        int delay = 0;
-        for (BlockPos p : spots) {
-            if (!level.isLoaded(p)) continue;
+    private void relight(ServerLevel level) {
+        for (BlockPos p : data().extras().keySet()) {
+            if (!level.isLoaded(p)) return;
             net.minecraft.world.level.block.state.BlockState s = level.getBlockState(p);
-            if (!s.hasProperty(ObeliskPartBlock.LIT) || s.getValue(ObeliskPartBlock.LIT) == on) continue;
-            if (!staggered) {
-                level.setBlock(p, s.setValue(ObeliskPartBlock.LIT, on), 3);
-                continue;
-            }
-            int ring = Math.max(Math.abs(p.getX() - core.getX()), Math.abs(p.getZ() - core.getZ()));
-            if (ring != lastRing) {
-                lastRing = ring;
-                delay += 6;
-                int d = delay;
-                scheduler.at(d, () -> level.playSound(null, core.above(2), net.minecraft.sounds.SoundEvents.RESPAWN_ANCHOR_CHARGE, net.minecraft.sounds.SoundSource.BLOCKS, 0.9f, 0.8f + 0.1f * (d / 6)));
-            }
-            int d = delay;
-            scheduler.at(d, () -> {
-                net.minecraft.world.level.block.state.BlockState now = level.getBlockState(p);
-                if (now.hasProperty(ObeliskPartBlock.LIT)) level.setBlock(p, now.setValue(ObeliskPartBlock.LIT, on), 3);
-                level.sendParticles(net.minecraft.core.particles.ParticleTypes.END_ROD, p.getX() + 0.5, p.getY() + 1.1, p.getZ() + 0.5, 3, 0.2, 0.1, 0.2, 0.01);
-            });
+            if (s.hasProperty(ObeliskPartBlock.LIT) && !s.getValue(ObeliskPartBlock.LIT)) level.setBlock(p, s.setValue(ObeliskPartBlock.LIT, true), 3);
         }
-    }
-
-    /** The first gift after a day of sleep: the lights come back ring by ring, runes run up the trunk, a word to everyone near. */
-    private void awaken(ServerLevel level, BlockPos core) {
-        setLit(level, true, true);
-        pulse(level, core);
-        level.playSound(null, core.above(8), KwSounds.HUM.get(), net.minecraft.sounds.SoundSource.BLOCKS, 1.4f, 1.1f);
-        Component title = Text.t("obelisk.wakes", "Der Stein erwacht").withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD);
-        Component sub = Text.t("obelisk.wakes_sub", "Die erste Gabe nach langer Stille").withStyle(ChatFormatting.GRAY);
-        for (ServerPlayer p : level.players()) {
-            if (p.blockPosition().distSqr(core) < 96 * 96) ObeliskRite.title(p, title, sub);
-        }
+        lightsChecked = true;
     }
 
     /** Feeder records of blocks that are gone: nothing stays booked to a player for ever. */
@@ -486,7 +435,7 @@ public final class Obelisk {
      */
     private void whisper(ServerLevel level, BlockPos core, int crowd) {
         whisperIn -= 20;
-        if (whisperIn > 0 || crowd == 0 || slumbering()) return;
+        if (whisperIn > 0 || crowd == 0) return;
         whisperIn = 2400 + level.random.nextInt(2400);
         // lastDepositAt is wall clock time: ten minutes without a gift
         long since = System.currentTimeMillis() - data().lastDepositAt();
@@ -559,7 +508,6 @@ public final class Obelisk {
         ServerLevel level = obeliskLevel();
         if (level == null) return;
         GoalManager gm = GoalManager.get();
-        boolean wasAsleep = slumbering();
         data().touch(System.currentTimeMillis());
         int index = -1;
         for (int i = 0; i < g.pillars().size() && i < 3; i++) {
@@ -579,9 +527,7 @@ public final class Obelisk {
 
         double share = gm.total(g) <= 0 ? 0 : amount * (double) item.points() / gm.total(g);
         int size = share >= 0.05 ? 3 : share >= 0.01 ? 2 : share >= 0.001 ? 1 : 0;
-        if (wasAsleep) size = Math.max(size, 2);
         float[] strength = {0.3f, 0.6f, 0.85f, 1.0f};
-        if (wasAsleep || !lit) awaken(level, data().pos());
         ObeliskTopBlockEntity top = top(level);
         if (top != null) {
             top.show((int) Math.round(gm.fraction(g) * 100), gm.isHeld(g) ? ObeliskTopBlockEntity.MOOD_HELD : ObeliskTopBlockEntity.MOOD_RUNNING, tier());
@@ -610,8 +556,7 @@ public final class Obelisk {
         if (size >= 1) pulse(level, core);
         if (size >= 2) {
             level.playSound(null, core.above(17), net.minecraft.sounds.SoundEvents.BEACON_POWER_SELECT, net.minecraft.sounds.SoundSource.BLOCKS, 1.5f, 1.2f);
-            // the awakening has its own title, it is not talked over
-            if (player != null && pillar != null && !wasAsleep) {
+            if (player != null && pillar != null) {
                 ObeliskRite.title(player, Text.t("obelisk.accepts", "Der Obelisk nimmt an").withStyle(ChatFormatting.GOLD),
                         Component.literal(pillar.title() + "  " + pillarPercent(gm, g, pillar) + "%").withStyle(ChatFormatting.GRAY));
             }
@@ -758,14 +703,12 @@ public final class Obelisk {
         if (top != null && top.rite() == 0) {
             int tier = tier();
             if (g != null) {
-                int mood = gm.isHeld(g) ? ObeliskTopBlockEntity.MOOD_HELD : slumbering() ? ObeliskTopBlockEntity.MOOD_ASLEEP : ObeliskTopBlockEntity.MOOD_RUNNING;
+                int mood = gm.isHeld(g) ? ObeliskTopBlockEntity.MOOD_HELD : ObeliskTopBlockEntity.MOOD_RUNNING;
                 top.show((int) Math.round(gm.fraction(g) * 100), mood, tier);
             } else {
                 top.show(tier > 0 ? 100 : 0, tier > 0 ? ObeliskTopBlockEntity.MOOD_DONE : ObeliskTopBlockEntity.MOOD_IDLE, tier);
             }
-            // the sleeping stone puts its lights out, all at once; waking lights them one ring after another
-            boolean asleep = g != null && !gm.isHeld(g) && slumbering();
-            if (asleep && lit) setLit(level, false, false);
+            if (!lightsChecked) relight(level);
         }
         refreshBoard(level, g);
         broadcastState(level, top);

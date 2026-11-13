@@ -23,7 +23,7 @@ import org.joml.Vector3f;
  * The top of the obelisk: a crystal that floats and turns above the tip, shards that circle
  * it, and the beam. Everything takes its colour from the goal: cyan while the goal runs and
  * warming towards gold as it fills, purple while it waits for the event, gold when it is
- * done, a quiet blue-grey when nothing is active, dim and low while the stone sleeps. The
+ * done, a quiet blue-grey when nothing is active. The
  * tier (stages done) makes the crystal bigger and gives it more shards; from tier four it
  * leaves afterimages. A deposit makes the crystal flare by the size of the gift. While the
  * rite runs the renderer plays it from the start time the server sent: a freeze, the crystal
@@ -36,7 +36,6 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
     private static final float[] GOLD = {1.00f, 0.80f, 0.36f};
     private static final float[] PURPLE = {0.72f, 0.50f, 0.95f};
     private static final float[] IDLE = {0.55f, 0.62f, 0.75f};
-    private static final float[] SLEEP = {0.40f, 0.48f, 0.60f};
     private static final float[] AMBER = {1.00f, 0.62f, 0.30f};
     private static final float[] VIOLET = {0.80f, 0.55f, 1.00f};
     private static final float BASE_Y = 22 / 16.0f + 0.8f;
@@ -51,7 +50,6 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
             case ObeliskTopBlockEntity.MOOD_HELD -> c = PURPLE.clone();
             case ObeliskTopBlockEntity.MOOD_DONE -> c = GOLD.clone();
             case ObeliskTopBlockEntity.MOOD_IDLE -> c = IDLE.clone();
-            case ObeliskTopBlockEntity.MOOD_ASLEEP -> c = SLEEP.clone();
             default -> {
                 float t = Mth.clamp(percent / 100f, 0f, 1f);
                 t = t * t;
@@ -103,9 +101,8 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         // the flare after a deposit, scaled by the size of the gift
         float since = gameTime - be.lastDeposit() + partialTick;
         float flare = be.lastDeposit() > 0 && since < 40 ? (float) Math.max(0, 1 - since / 40) * be.flashStrength() : 0;
-        boolean asleep = mood == ObeliskTopBlockEntity.MOOD_ASLEEP;
         boolean held = mood == ObeliskTopBlockEntity.MOOD_HELD;
-        float breathe = asleep ? 0.6f : 0.85f + 0.15f * Mth.sin(time / 14f);
+        float breathe = 0.85f + 0.15f * Mth.sin(time / 14f);
         float glow = Math.min(1f, breathe + flare * 0.6f + riteWhite);
         // the texture is already coloured, so the tint stays light and only leans the hue
         float[] tint = {Mth.lerp(riteWhite, 0.45f + 0.55f * c[0], 1f), Mth.lerp(riteWhite, 0.45f + 0.55f * c[1], 1f), Mth.lerp(riteWhite, 0.45f + 0.55f * c[2], 1f)};
@@ -119,15 +116,15 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         glow = Math.min(1f, glow + 0.1f * near);
 
         float size = (0.75f + 0.08f * tier) * (1f + flare * 0.25f) * riteScale;
-        float bob = asleep ? -0.35f : 0.08f * Mth.sin(time / 22f);
+        float bob = 0.08f * Mth.sin(time / 22f);
         if (held) bob += 0.03f * Mth.sin(time * 2.2f);
         // the shards quicken with whoever comes close and with the crowd around the plinth
-        float spin = (asleep ? 0.3f : mood == ObeliskTopBlockEntity.MOOD_DONE ? 2.5f : 1.2f) * riteSpin * (1f + 1.5f * near) * (1f + 0.15f * Math.min(ObeliskEffects.crowd(), 6));
+        float spin = (mood == ObeliskTopBlockEntity.MOOD_DONE ? 2.5f : 1.2f) * riteSpin * (1f + 1.5f * near) * (1f + 0.15f * Math.min(ObeliskEffects.crowd(), 6));
         VertexConsumer vc = buffer.getBuffer(RenderType.entityTranslucentEmissive(CRYSTAL));
         int frame = (int) ((gameTime / 3) % FRAMES);
 
         // afterimages from tier four: the crystal a few frames ago, fainter
-        if (tier >= 4 && !asleep) {
+        if (tier >= 4) {
             for (int k = 1; k <= 3; k++) {
                 float past = time - k * 2.5f;
                 pose.pushPose();
@@ -164,7 +161,7 @@ public class ObeliskTopRenderer implements BlockEntityRenderer<ObeliskTopBlockEn
         long inCycle = gameTime % cycle;
         float visit = 0f;
         int visitCorner = (int) ((gameTime / cycle) % 4);
-        if (!held && !asleep && riteT < 0 && inCycle < 240) {
+        if (!held && riteT < 0 && inCycle < 240) {
             float p = (inCycle + partialTick) / 240f;
             visit = p < 0.25f ? p / 0.25f : p > 0.75f ? (1 - p) / 0.25f : 1f;
             visit = visit * visit * (3 - 2 * visit);

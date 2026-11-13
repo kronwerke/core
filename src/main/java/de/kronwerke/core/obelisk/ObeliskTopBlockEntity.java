@@ -18,7 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
  * renderer can play the whole sequence from that one timestamp.
  */
 public class ObeliskTopBlockEntity extends BlockEntity {
-    public static final int MOOD_RUNNING = 0, MOOD_HELD = 1, MOOD_DONE = 2, MOOD_IDLE = 3, MOOD_ASLEEP = 4;
+    public static final int MOOD_RUNNING = 0, MOOD_HELD = 1, MOOD_DONE = 2, MOOD_IDLE = 3;
 
     private int percent;
     private int mood = MOOD_IDLE;

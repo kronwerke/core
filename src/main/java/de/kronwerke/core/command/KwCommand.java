@@ -170,9 +170,6 @@ public final class KwCommand {
                     else fail(c, Text.t("undo.none", "Nichts zum Zurückgeben: nur Gaben der letzten zehn Sekunden, und nicht, wenn das Ziel damit voll oder angehalten ist."));
                     return back > 0 ? 1 : 0;
                 }))
-                .then(Commands.literal("deposit")
-                        .executes(c -> deposit(c, false))
-                        .then(Commands.literal("all").executes(c -> deposit(c, true))))
                 .then(Commands.literal("goals").executes(KwCommand::goals))
                 .then(Commands.literal("top")
                         .executes(c -> top(c, null))
@@ -362,7 +359,6 @@ public final class KwCommand {
         boolean streamer = c.getSource().hasPermission(2) || (c.getSource().getPlayer() != null && SlotManager.get().ownSlots(c.getSource().getPlayer().getUUID()) != null);
         c.getSource().sendSuccess(() -> Component.literal("Kronwerke").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD), false);
         line(c, "/kw goals", Text.t("help.goals", "Was der Obelisk gerade braucht und wie weit wir sind"));
-        line(c, "/kw deposit", Text.t("help.deposit", "Gibt den Stapel in der Hand am Obelisken ab, /kw deposit all das Inventar ohne Hotbar"));
         line(c, "/kw undo", Text.t("help.undo", "Gibt die Gabe der letzten zehn Sekunden zurück"));
         line(c, "/kw top", Text.t("help.top", "Die fleißigsten Hände beim laufenden Ziel"));
         line(c, "/kw bar", Text.t("help.bar", "Blendet die Leiste des Ziels aus oder wieder ein"));
@@ -625,7 +621,7 @@ public final class KwCommand {
         c.getSource().sendSuccess(() -> Component.literal("OK {\"running\":" + s.running() + ",\"number\":" + s.number() + ",\"startedAt\":" + s.startedAt()
                 + ",\"start\":" + new com.google.gson.Gson().toJson(KronwerkeConfig.SEASON_START.get())
                 + ",\"timezone\":" + new com.google.gson.Gson().toJson(KronwerkeConfig.TIMEZONE.get())
-                + ",\"gate\":" + s.gateClosed() + ",\"beta\":" + s.beta() + ",\"tier\":" + ob.tier() + ",\"slumbering\":" + ob.slumbering() + "}"), false);
+                + ",\"gate\":" + s.gateClosed() + ",\"beta\":" + s.beta() + ",\"tier\":" + ob.tier() + "}"), false);
         return 1;
     }
 
@@ -702,25 +698,6 @@ public final class KwCommand {
     }
 
     // ---- goals ----
-
-    private static int deposit(CommandContext<CommandSourceStack> c, boolean all) throws CommandSyntaxException {
-        ServerPlayer p = c.getSource().getPlayerOrException();
-        long taken;
-        if (all) {
-            taken = GoalManager.get().depositAll(p);
-        } else {
-            ItemStack hand = p.getMainHandItem();
-            taken = GoalManager.get().deposit(p, hand);
-        }
-        if (taken == 0) {
-            fail(c, all ? Text.t("deposit.none_all", "Nichts in deinem Inventar passt zum aktuellen Ziel (die Hotbar bleibt unberührt). /kw goals zeigt, was gebraucht wird.")
-                    : Text.t("deposit.none_hand", "Nichts in deiner Hand passt zum aktuellen Ziel. /kw goals zeigt, was gebraucht wird."));
-            return 0;
-        }
-        c.getSource().sendSuccess(() -> Text.t("deposit.done", "Abgegeben: %s. ", Text.number(taken)).withStyle(ChatFormatting.GREEN)
-                .append(de.kronwerke.core.obelisk.Obelisk.undoComponent()), false);
-        return 1;
-    }
 
     private static int goals(CommandContext<CommandSourceStack> c) {
         GoalManager gm = GoalManager.get();

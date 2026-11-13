@@ -61,6 +61,12 @@ public final class LanguageScreen extends KwScreen {
     }
 
     private void choose(String code) {
+        apply(code);
+        Minecraft.getInstance().setScreen(parent);
+    }
+
+    /** Sets the game's language, for the first question and for the switch in the /kw options. */
+    public static void apply(String code) {
         Minecraft mc = Minecraft.getInstance();
         KronwerkeClientConfig.LANGUAGE_CHOSEN.set(true);
         KronwerkeClientConfig.SPEC.save();
@@ -72,7 +78,6 @@ public final class LanguageScreen extends KwScreen {
             mc.getLanguageManager().setSelected(code);
             mc.getLanguageManager().onResourceManagerReload(mc.getResourceManager());
         }
-        mc.setScreen(parent);
     }
 
     private int cardX(int i) {

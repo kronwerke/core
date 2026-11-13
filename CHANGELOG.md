@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.39.30
+
+- Handing in works at the obelisk only. `/kw deposit` and `/kw deposit all` are gone, and so are the two buttons of the `/kw` menu ("Hand abgeben", "Alles abgeben") with their actions on the server. What stays: the right click on the obelisk with a stack in the hand, sneaking for everything that fits, the feeder block, and `/kw undo` (13.11.2026).
+- The obelisk no longer falls asleep. After a day without a gift it put its lights out, dimmed crystal, beam and rune rings, and the bar read "der Obelisk schläft"; the first gift woke it with a title. All of that is removed, with `/kw admin obelisk sleep` and the field `slumbering` of the season's status line. Lights an earlier night left dark are lit once after the start.
+- The `/kw` menu and every other Kronwerke screen (admin, whitelist, language, queue) wear the pixel look of the pack's menus: brass frames with rivets, night violet fields, cream writing, the crown and KRONWERKE in raised brass letters in the header. `tools/textures/gui.py` draws the sprites with the pack's pixel toolkit (`px.py`).
+- The `/kw` menu has four pages behind tabs. Goals as before, the stages now in their colours. Ranking: the ten most diligent hands of the running goal with heads and a gauge, the first of every pillar, the player's own points, place and streak. Options: language (changes at once), the goal's bar, softer light at the rite, cloud height, the moving loading picture, and buttons to the game's options and key binds. Help: how handing in works and the commands, a click puts one into the chat. Below the pages: quest book, map, Discord, website, and as before the whitelist and the admin panel for those who have them.
+
 ## 0.39.29
 
 - The test player can change its client's language (`probe lang de_de`), so pictures of screens for the quest book show the game in the book's language. The bootstrap starts the client in English every time (13.11.2026).

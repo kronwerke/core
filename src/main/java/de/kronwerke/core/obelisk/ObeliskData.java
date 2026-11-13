@@ -32,7 +32,7 @@ public class ObeliskData extends SavedData {
     /** blocks the tiers added around the build with what stood there before, so a rebuild can put it back */
     private final Map<BlockPos, net.minecraft.world.level.block.state.BlockState> extras = new LinkedHashMap<>();
     private int builtTier;
-    /** wall clock of the last deposit, for the slumber */
+    /** wall clock of the last deposit, for the whisper after ten quiet minutes */
     private long lastDepositAt;
     /** player -> day of the last daily offering and the streak length */
     private final Map<UUID, int[]> streaks = new HashMap<>();

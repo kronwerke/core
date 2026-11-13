@@ -18,7 +18,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 public class ObeliskPartBlock extends Block {
     public static final MapCodec<ObeliskPartBlock> CODEC = simpleCodec(p -> new ObeliskPartBlock(p, Shapes.block()));
 
-    /** Lit while the obelisk is awake; the sleeping stone puts its lanterns, embers and glows out. */
+    /** Whether the lantern, ember or glow of the part is on. Always true since the stone no longer sleeps; kept so saved blocks stay valid. */
     public static final net.minecraft.world.level.block.state.properties.BooleanProperty LIT = net.minecraft.world.level.block.state.properties.BlockStateProperties.LIT;
     /** Not drawn while the rite tears the obelisk apart; the clients draw flying copies in its place. */
     public static final net.minecraft.world.level.block.state.properties.BooleanProperty HIDDEN = net.minecraft.world.level.block.state.properties.BooleanProperty.create("hidden");

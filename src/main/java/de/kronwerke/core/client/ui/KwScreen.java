@@ -9,13 +9,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The frame every Kronwerke screen shares: the slate panel, the header band with the name
- * of the screen and a close cross, tooltips for buttons and for whatever the screen marks
+ * The frame every Kronwerke screen shares: the brass framed panel, the header band with the
+ * pixel brand, the name of the screen and a close cross, tooltips for buttons and for whatever the screen marks
  * with hover(). Screen.render draws the background first and the widgets after it, so the
  * panel and its text live in renderBackground and drawContent, and the buttons land on top.
  */
 public abstract class KwScreen extends Screen {
-    protected static final int HEAD = 24;
+    protected static final int HEAD = 26;
     protected int left, top, w, h;
     private final List<Component> hoverTip = new ArrayList<>();
     private boolean closeHover;
@@ -80,23 +80,29 @@ public abstract class KwScreen extends Screen {
         renderTransparentBackground(g);
         hoverTip.clear();
         Ui.panel(g, left, top, left + w, top + h);
-        Ui.header(g, left + 5, top + 5, left + w - 5, top + HEAD);
-        Component brand = Component.literal("KRONWERKE").withStyle(net.minecraft.ChatFormatting.BOLD);
-        g.drawString(font, brand, left + 12, top + 10, Ui.GOLD, true);
-        int bx = left + 12 + font.width(brand);
-        g.fill(bx + 5, top + 12, bx + 6, top + 16, Ui.GOLD_DARK);
-        g.drawString(font, Ui.fit(font, heading(), w - (bx + 11 - left) - 110), bx + 11, top + 10, Ui.TEXT, false);
-        // close cross
-        int cx = left + w - 19, cy = top + 9;
+        Ui.header(g, left + 6, top + 6, left + w - 6, top + HEAD);
+        // on a narrow panel the brand gives way to the heading
+        boolean brand = w >= 300;
+        if (brand) g.blitSprite(Ui.BRAND, left + 9, top + 6, Ui.BRAND_W, Ui.BRAND_H);
+        int bx = left + 9 + (brand ? Ui.BRAND_W : 0);
+        if (brand) {
+            g.fill(bx + 4, top + 11, bx + 5, top + 19, Ui.GOLD_DARK);
+            g.fill(bx + 5, top + 12, bx + 6, top + 20, Ui.SHADOW);
+        }
+        g.drawString(font, Ui.fit(font, heading(), w - (bx + 11 - left) - 110), bx + 11, top + 11, Ui.TEXT, true);
+        // close cross, two pixels thick, on a small dark plate
+        int cx = left + w - 21, cy = top + 10;
         closeHover = closable() && in(mouseX, mouseY, cx - 3, cy - 3, cx + 11, cy + 11);
         if (closable()) {
-            int cc = closeHover ? Ui.GOLD_LIGHT : Ui.MUTED;
-            for (int i = 0; i < 7; i++) {
-                g.fill(cx + i, cy + i, cx + i + 1, cy + i + 1, cc);
-                g.fill(cx + 6 - i, cy + i, cx + 7 - i, cy + i + 1, cc);
+            g.fill(cx - 2, cy - 2, cx + 10, cy + 10, Ui.SHADOW);
+            g.fill(cx - 1, cy - 1, cx + 9, cy + 9, closeHover ? Ui.RED : Ui.RAISED);
+            int cc = closeHover ? Ui.TEXT : Ui.MUTED;
+            for (int i = 0; i < 6; i++) {
+                g.fill(cx + 1 + i, cy + 1 + i, cx + 2 + i, cy + 2 + i, cc);
+                g.fill(cx + 6 - i, cy + 1 + i, cx + 7 - i, cy + 2 + i, cc);
             }
         }
-        drawHeaderRight(g, closable() ? cx - 8 : cx + 7, top + 8);
+        drawHeaderRight(g, closable() ? cx - 8 : cx + 9, top + 9);
         drawContent(g, mouseX, mouseY, partial);
     }
 

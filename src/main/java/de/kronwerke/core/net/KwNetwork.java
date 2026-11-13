@@ -202,14 +202,28 @@ public final class KwNetwork {
         }
     }
 
+    /**
+     * The ranking of the running goal for the hub: top, its ten most diligent hands as
+     * "uuid|name|points"; champions, the first of each pillar as "pillarId|name|points"; bar,
+     * whether this player sees the goal's bar (/kw bar).
+     */
+    public record HubBoard(List<String> top, List<String> champions, boolean bar) {
+        public static final StreamCodec<RegistryFriendlyByteBuf, HubBoard> CODEC = StreamCodec.composite(
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), HubBoard::top,
+                ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list()), HubBoard::champions,
+                ByteBufCodecs.BOOL, HubBoard::bar,
+                HubBoard::new);
+    }
+
     /** The player's own part and the season's name, for the hub. */
-    public record HubMine(String season, long points, int rank, int hands, int streak) {
+    public record HubMine(String season, long points, int rank, int hands, int streak, HubBoard board) {
         public static final StreamCodec<RegistryFriendlyByteBuf, HubMine> CODEC = StreamCodec.composite(
                 ByteBufCodecs.STRING_UTF8, HubMine::season,
                 ByteBufCodecs.VAR_LONG, HubMine::points,
                 ByteBufCodecs.VAR_INT, HubMine::rank,
                 ByteBufCodecs.VAR_INT, HubMine::hands,
                 ByteBufCodecs.VAR_INT, HubMine::streak,
+                HubBoard.CODEC, HubMine::board,
                 HubMine::new);
     }
 
@@ -442,7 +456,17 @@ public final class KwNetwork {
             hands = pts.size();
         }
         int streak = de.kronwerke.core.obelisk.Obelisk.get().data().streak(id);
-        HubMine me = new HubMine(de.kronwerke.core.config.KronwerkeConfig.SEASON_NAME.get(), mine, rank, hands, streak);
+        List<String> top = new ArrayList<>(), champions = new ArrayList<>();
+        if (running != null) {
+            var ob = de.kronwerke.core.obelisk.Obelisk.get();
+            for (var e : gm.leaderboard(running, 10)) top.add(e.getKey() + "|" + ob.nameOf(e.getKey()) + "|" + e.getValue());
+            for (de.kronwerke.core.goal.Goal.Pillar pl : running.pillars()) {
+                var first = gm.leaderboard(running, pl, 1);
+                if (!first.isEmpty()) champions.add(pl.id() + "|" + ob.nameOf(first.get(0).getKey()) + "|" + first.get(0).getValue());
+            }
+        }
+        HubMine me = new HubMine(de.kronwerke.core.config.KronwerkeConfig.SEASON_NAME.get(), mine, rank, hands, streak,
+                new HubBoard(top, champions, gm.barShown(id)));
         // the whitelist button only for players with places of their own to give
         boolean streamer = admin || SlotManager.get().ownSlots(id) != null;
         return new HubPayload(goals, streamer, admin, message, error, me);
@@ -572,7 +596,6 @@ public final class KwNetwork {
                 }
                 switch (payload.action()) {
                     case "hub" -> HubLink.ask(p, "");
-                    case "deposit", "deposit_all" -> HubLink.ask(p, "deposit");
                     default -> HubLink.ask(p, "main_only");
                 }
                 return;
@@ -650,10 +673,10 @@ public final class KwNetwork {
                     sendHub(p, "", false);
                     return;
                 }
-                case "deposit", "deposit_all" -> {
-                    long taken = payload.action().equals("deposit_all") ? de.kronwerke.core.goal.GoalManager.get().depositAll(p)
-                            : de.kronwerke.core.goal.GoalManager.get().deposit(p, p.getMainHandItem());
-                    sendHub(p, taken > 0 ? de.kronwerke.core.Text.t("deposit.done", "Abgegeben: %s. ", de.kronwerke.core.Text.number(taken)) : de.kronwerke.core.Text.t("deposit.none", "Nichts davon passt zum aktuellen Ziel."), taken <= 0);
+                case "bar" -> {
+                    boolean shown = de.kronwerke.core.goal.GoalManager.get().toggleBar(p);
+                    sendHub(p, shown ? de.kronwerke.core.Text.t("bar.shown", "Die Leiste des Ziels ist wieder da.")
+                            : de.kronwerke.core.Text.t("hub.bar_hidden", "Die Leiste des Ziels ist ausgeblendet."), false);
                     return;
                 }
                 case "admin" -> {

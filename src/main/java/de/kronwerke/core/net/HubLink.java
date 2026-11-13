@@ -27,7 +27,7 @@ public final class HubLink {
     private HubLink() {
     }
 
-    /** Side world: this player's hub from main; why is "", "deposit" or "main_only". */
+    /** Side world: this player's hub from main; why is "" or "main_only". */
     public static void ask(ServerPlayer p, String why) {
         NetworkSync.Peer main = NetworkSync.peerByRole("main");
         if (main == null || !main.running()) {
@@ -49,7 +49,6 @@ public final class HubLink {
             if (t.equals("ask") && Role.main()) {
                 String why = d.has("why") ? d.get("why").getAsString() : "";
                 Component message = switch (why) {
-                    case "deposit" -> Text.t("hub.deposit_home", "Abgeben geht am Obelisken und im Menü der Hauptwelt.");
                     case "main_only" -> Text.t("network.main_only", "Das geht nur in der Hauptwelt.");
                     default -> Component.empty();
                 };

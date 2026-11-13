@@ -20,27 +20,31 @@ import java.util.Map;
 
 /**
  * The look shared by every Kronwerke screen: the sprites under textures/gui/sprites (drawn
- * by tools/textures/gui.py), the colours of the obelisk, and the small pieces every screen
- * needs: panels, cards, bars that shimmer while a goal runs, rings for the stages, item icons
+ * by tools/textures/gui.py), the colours of the pack's menus (brass, night violet, cream),
+ * and the small pieces every screen needs: panels, cards, bars that shimmer while a goal runs, rings for the stages, item icons
  * from an id. Every text that depends on data goes through fit(), so a long name never runs
  * out of its column.
  */
 public final class Ui {
-    public static final int BORDER = 0xFF3a3146;
-    public static final int RAISED = 0xFF221c2b;
-    public static final int HOVER = 0xFF2c2438;
-    public static final int GOLD = 0xFFd4a24a;
-    public static final int GOLD_LIGHT = 0xFFf6d68c;
-    public static final int GOLD_DARK = 0xFF8a6420;
-    public static final int RED = 0xFF8b2f3a;
-    public static final int RED_HOVER = 0xFFa63a47;
-    public static final int GREEN = 0xFF4fae5a;
-    public static final int CYAN = 0xFF5fd3d3;
-    public static final int PURPLE = 0xFF9a6fd6;
-    public static final int TEXT = 0xFFEDE6F5;
-    public static final int MUTED = 0xFF9a90a8;
-    public static final int DIM = 0xFF5d5468;
-    public static final int SHADOW = 0xFF08060a;
+    public static final int BORDER = 0xFF3a3046;
+    public static final int RAISED = 0xFF231d2c;
+    public static final int HOVER = 0xFF2d2538;
+    public static final int GOLD = 0xFFe5b451;
+    public static final int GOLD_LIGHT = 0xFFf7dc86;
+    public static final int GOLD_DARK = 0xFF8a5a24;
+    public static final int RED = 0xFF86303e;
+    public static final int RED_HOVER = 0xFFa8404a;
+    public static final int GREEN = 0xFF7fc46a;
+    public static final int CYAN = 0xFF8bb6dc;
+    public static final int PURPLE = 0xFFbb98f4;
+    public static final int TEXT = 0xFFf2ede3;
+    public static final int MUTED = 0xFFa79db4;
+    public static final int DIM = 0xFF655b72;
+    public static final int SHADOW = 0xFF15121f;
+    /** The field of a ring or a bar that is not filled yet. */
+    public static final int TRACK = 0xFF2d2538;
+    /** The colours of the five stages, as the website and the menus use them. */
+    public static final int[] STAGE = {0xFFa8b596, 0xFFe5b451, 0xFF8bb6dc, 0xFFbb98f4, 0xFFf06579};
 
     public static final ResourceLocation PANEL = sprite("panel");
     public static final ResourceLocation INSET = sprite("inset");
@@ -49,6 +53,11 @@ public final class Ui {
     public static final ResourceLocation BAR = sprite("bar");
     public static final ResourceLocation TAB = sprite("tab");
     public static final ResourceLocation TAB_ACTIVE = sprite("tab_active");
+    public static final ResourceLocation BRAND = sprite("brand");
+    public static final ResourceLocation SWITCH_ON = sprite("switch_on");
+    public static final ResourceLocation SWITCH_OFF = sprite("switch_off");
+    /** The brand sprite's size in GUI pixels. */
+    public static final int BRAND_W = 130, BRAND_H = 18;
 
     private static final Map<String, ItemStack> ICONS = new HashMap<>();
 
@@ -105,12 +114,15 @@ public final class Ui {
         g.blitSprite(SLOT, x, y, 18, 18);
     }
 
-    /** A small label with a coloured background and rounded looking corners. */
+    /** A small tag in the given colour, darkened so the cream writing reads on it, the corners cut. */
     public static int chip(GuiGraphics g, Font font, String text, int x, int y, int colour) {
-        int w = font.width(text) + 8;
-        g.fill(x + 1, y, x + w - 1, y + 11, colour);
-        g.fill(x, y + 1, x + w, y + 10, colour);
-        g.drawString(font, text, x + 4, y + 2, 0xFFFFFFFF, false);
+        int w = font.width(text) + 10;
+        g.fill(x + 1, y, x + w - 1, y + 12, SHADOW);
+        g.fill(x, y + 1, x + w, y + 11, SHADOW);
+        g.fill(x + 1, y + 1, x + w - 1, y + 11, darken(colour, 110));
+        g.fill(x + 1, y + 1, x + w - 1, y + 2, colour);
+        g.fill(x + 1, y + 10, x + w - 1, y + 11, darken(colour, 160));
+        g.drawString(font, text, x + 5, y + 2, TEXT, false);
         return w;
     }
 
@@ -139,8 +151,11 @@ public final class Ui {
         if (fill <= 0) return;
         int fx0 = x0 + 1, fx1 = x0 + 1 + fill;
         g.fill(fx0, y + 1, fx1, y + h - 1, colour);
-        g.fill(fx0, y + 1, fx1, y + 2, lighten(colour, 40));
-        g.fill(fx0, y + h - 2, fx1, y + h - 1, darken(colour, 40));
+        g.fill(fx0, y + 1, fx1, y + 2, lighten(colour, 60));
+        g.fill(fx0, y + h - 2, fx1, y + h - 1, darken(colour, 60));
+        // cut like a brass gauge: a dark notch every six pixels
+        int notch = darken(colour, 70);
+        for (int nx = x0 + 6; nx < fx1 - 1; nx += 6) g.fill(nx, y + 2, nx + 1, y + h - 1, notch);
         if (running && fill > 6) {
             long t = Util.getMillis() % 2400;
             int sweep = (int) ((fx1 - fx0 + 12) * t / 2400.0) - 6;
@@ -168,6 +183,31 @@ public final class Ui {
                 int c = a / (Math.PI * 2) <= fill && fill > 0 ? colour : track;
                 g.fill(cx + x, cy + y, cx + x + 1, cy + y + 1, c);
             }
+        }
+    }
+
+    /** The colour of a stage by its place in the season (0 is the first); brass for anything beyond the five. */
+    public static int stage(int index) {
+        return index >= 0 && index < STAGE.length ? STAGE[index] : GOLD;
+    }
+
+    /** One of the 10 px signs (icon_<name>), tinted. */
+    public static void sign(GuiGraphics g, String name, int x, int y, int colour) {
+        g.setColor(((colour >> 16) & 255) / 255f, ((colour >> 8) & 255) / 255f, (colour & 255) / 255f, 1f);
+        g.blitSprite(sprite("icon_" + name), x, y, 10, 10);
+        g.setColor(1f, 1f, 1f, 1f);
+    }
+
+    /** A yes or no lever, 24 by 12. */
+    public static void lever(GuiGraphics g, int x, int y, boolean on) {
+        g.blitSprite(on ? SWITCH_ON : SWITCH_OFF, x, y, 24, 12);
+    }
+
+    /** A filled disc, row by row, for a glow behind a ring. */
+    public static void disc(GuiGraphics g, int cx, int cy, int r, int colour) {
+        for (int y = -r; y <= r; y++) {
+            int half = (int) Math.round(Math.sqrt(r * r + r - y * y));
+            g.fill(cx - half, cy + y, cx + half + 1, cy + y + 1, colour);
         }
     }
 

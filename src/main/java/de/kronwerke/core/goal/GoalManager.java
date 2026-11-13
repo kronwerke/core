@@ -749,7 +749,6 @@ public final class GoalManager {
                 it.remove();
             }
         }
-        boolean asleep = de.kronwerke.core.obelisk.Obelisk.get().slumbering();
         for (Goal g : active) {
             ServerBossEvent bar = bars.computeIfAbsent(g.id(), k -> {
                 ServerBossEvent b = new ServerBossEvent(g.name(), BossEvent.BossBarColor.YELLOW, BossEvent.BossBarOverlay.NOTCHED_10);
@@ -758,14 +757,19 @@ public final class GoalManager {
             });
             double f = fraction(g);
             String ev = eventText(g);
-            Component state = isHeld(g) ? (ev.isEmpty() ? Text.t("bar.held", "  wartet auf das Event") : Text.t("bar.event", "  Event %s", ev)) : asleep ? Text.t("bar.asleep", "  der Obelisk schläft") : Component.literal(String.format("  %d%%", Math.round(f * 100)));
+            Component state = isHeld(g) ? (ev.isEmpty() ? Text.t("bar.held", "  wartet auf das Event") : Text.t("bar.event", "  Event %s", ev)) : Component.literal(String.format("  %d%%", Math.round(f * 100)));
             bar.setName(g.name().withStyle(ChatFormatting.GOLD)
-                    .append(state.copy().withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : asleep ? ChatFormatting.GRAY : ChatFormatting.WHITE)));
+                    .append(state.copy().withStyle(isHeld(g) ? ChatFormatting.LIGHT_PURPLE : ChatFormatting.WHITE)));
             bar.setColor(isHeld(g) ? BossEvent.BossBarColor.PURPLE : BossEvent.BossBarColor.YELLOW);
             bar.setProgress((float) Math.min(1.0, f));
             bar.setVisible(true);
         }
         scopeBossBar();
+    }
+
+    /** Whether this player sees the goal bar, or has put it away with /kw bar. */
+    public boolean barShown(UUID id) {
+        return !barHidden.contains(id);
     }
 
     /** /kw bar: a player hides the goal bar, or shows it again. True when it is shown now. */

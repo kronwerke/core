@@ -164,7 +164,7 @@ public final class Travel {
         if (e.getEntity() instanceof ServerPlayer p && frozen(p)) e.setCanceled(true);
     }
 
-    /** A frozen player runs no command: /kw deposit, /trash, a backpack command would act on what already travels. */
+    /** A frozen player runs no command: /trash, a backpack command would act on what already travels. */
     public static void onFrozenCommand(net.neoforged.neoforge.event.CommandEvent e) {
         if (e.getParseResults().getContext().getSource().getEntity() instanceof ServerPlayer p && frozen(p)) {
             e.setCanceled(true);

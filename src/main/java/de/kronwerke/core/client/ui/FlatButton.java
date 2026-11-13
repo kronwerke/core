@@ -27,6 +27,7 @@ public class FlatButton extends AbstractButton {
     private final Style style;
     private final Component confirm;
     private ItemStack icon = ItemStack.EMPTY;
+    private String sign = "";
     private List<Component> tip = List.of();
     private long armedUntil;
     private Runnable onFirst;
@@ -52,6 +53,12 @@ public class FlatButton extends AbstractButton {
 
     public FlatButton icon(ItemStack stack) {
         this.icon = stack;
+        return this;
+    }
+
+    /** One of the 10 px signs of the screens (icon_<name>) on the left, in the colour of the label. */
+    public FlatButton sign(String name) {
+        this.sign = name;
         return this;
     }
 
@@ -100,7 +107,7 @@ public class FlatButton extends AbstractButton {
             fg = hover ? Ui.TEXT : 0xFFff8a8a;
         } else if (style == Style.PRIMARY) {
             sprite = hover ? PRIMARY_HOVER : PRIMARY;
-            fg = 0xFF1a1208;
+            fg = 0xFF2a1a0c;
         } else {
             sprite = hover ? NORMAL_HOVER : NORMAL;
             if (hover) fg = Ui.GOLD_LIGHT;
@@ -109,12 +116,13 @@ public class FlatButton extends AbstractButton {
         g.blitSprite(sprite, x0, y0, width, height);
         var font = Minecraft.getInstance().font;
         Component label = armed() ? confirm : getMessage();
-        int iconW = icon.isEmpty() ? 0 : 18;
-        String text = Ui.fit(font, label.getString(), width - 6 - iconW);
-        int tx = x0 + iconW + (width - iconW - font.width(text)) / 2;
+        int iconW = !icon.isEmpty() ? 20 : !sign.isEmpty() ? 13 : 0;
+        String text = Ui.fit(font, label.getString(), width - 8 - iconW);
+        int tx = x0 + (width - iconW - font.width(text)) / 2 + iconW;
+        if (!sign.isEmpty() && icon.isEmpty()) Ui.sign(g, sign, tx - 13, y0 + (height - 10) / 2, fg);
         if (!icon.isEmpty()) {
             g.pose().pushPose();
-            g.pose().translate(x0 + 2, y0 + (height - 16) / 2.0, 0);
+            g.pose().translate(x0 + 4, y0 + (height - 16) / 2.0, 0);
             g.renderItem(icon, 0, 0);
             g.pose().popPose();
         }

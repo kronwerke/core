@@ -393,7 +393,6 @@ public final class ObeliskEffects {
             float near = (float) Mth.clamp(1 - (dist - 100) / 60, 0, 1);
             float breathe = 0.8f + 0.2f * Mth.sin(((mc.level.getGameTime() % ANIM_PERIOD) + partial) / 90f);
             fade = (0.14f + 0.07f * (tierNow - 2)) * near * breathe;
-            if (moodNow(mc) == ObeliskTopBlockEntity.MOOD_ASLEEP) fade *= 0.4f;
             tear = 0.16f + 0.03f * (tierNow - 2);
             tier = tierNow;
             // the patch hangs high above the obelisk, seen from where the player stands
@@ -624,7 +623,7 @@ public final class ObeliskEffects {
         if (dist > 600) return;
         float time = (mc.level.getGameTime() % ANIM_PERIOD) + event.getPartialTick().getGameTimeDeltaPartialTick(false);
         float day = skyBrightness(mc, event);
-        float strength = mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.3f : 1f;
+        float strength = 1f;
         strength *= 1f + 0.08f * Math.min(crowd(), 6);
         // the open sky has its own light, the signal steps back while the galaxy shows
         strength *= 1f - 0.7f * skyOpen();
@@ -725,7 +724,6 @@ public final class ObeliskEffects {
         float partial = event.getPartialTick().getGameTimeDeltaPartialTick(false);
         float riteT = riteTime(mc, partial);
         int tier = tierNow(mc), mood = moodNow(mc);
-        boolean asleep = mood == ObeliskTopBlockEntity.MOOD_ASLEEP;
         float[] colour = ObeliskTopRenderer.colour(percentNow(mc), mood, tier);
         float[] white = {1f, 1f, 1f};
         float[] gold = {1f, 0.82f, 0.45f};
@@ -741,9 +739,9 @@ public final class ObeliskEffects {
 
         ObeliskBeam.begin(event.getModelViewMatrix(), cam);
         if (riteT < 0 || riteT >= de.kronwerke.core.obelisk.ObeliskRite.T_END) {
-            float r = (asleep ? 0.2f : 0.38f + 0.04f * tier) + flare * 0.35f;
-            ObeliskBeam.column(tip, 900, r, colour, asleep ? 0.35f : 0.85f + flare * 0.3f);
-            flow = asleep ? 0.3f : 1f + flare;
+            float r = 0.38f + 0.04f * tier + flare * 0.35f;
+            ObeliskBeam.column(tip, 900, r, colour, 0.85f + flare * 0.3f);
+            flow = 1f + flare;
         } else if (riteT < de.kronwerke.core.obelisk.ObeliskRite.T_PULL) {
             // the stillness: the beam goes out
             float fade = 1f - riteT / de.kronwerke.core.obelisk.ObeliskRite.T_PULL;
@@ -1267,7 +1265,7 @@ public final class ObeliskEffects {
         float time = (mc.level.getGameTime() % ANIM_PERIOD) + event.getPartialTick().getGameTimeDeltaPartialTick(false);
         float night = Mth.clamp(1f - skyBrightness(mc, event), 0f, 1f);
         int mood = moodNow(mc);
-        float strength = (0.35f + 0.65f * night) * (mood == ObeliskTopBlockEntity.MOOD_ASLEEP ? 0.35f : 1f) * (float) Mth.clamp(1 - (dist - 40) / 24, 0, 1);
+        float strength = (0.35f + 0.65f * night) * (float) Mth.clamp(1 - (dist - 40) / 24, 0, 1);
         // a gathering wakes the rings
         strength *= 1f + 0.12f * Math.min(far.crowd(), 6);
         float sinceGift = (System.currentTimeMillis() - giftAt) / 1200f;
