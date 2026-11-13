@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.24
+
+- The camera sees noon and dry weather, always. A run of ten minutes went from the afternoon into the night of the server, and its pictures from light to dark (13.11.2026). Only in the camera's own client: the server's time is what it was.
+- A build of the test world ends with drying every block that holds water of its own. A block set by command without saying so takes its default, and a few mods leave that at "it does" (Eidolon's altars, effigies and stone hands): each became a spring and three scenes stood under water.
+
 ## 0.39.23
 
 - 0.39.22 never built: its version bump emptied gradle.properties. Same content, built.

@@ -169,6 +169,7 @@ public final class TestWorld {
         var source = new net.minecraft.commands.CommandSourceStack(out, net.minecraft.world.phys.Vec3.ZERO,
                 net.minecraft.world.phys.Vec2.ZERO, level, 4, "Testwelt", net.minecraft.network.chat.Component.literal("Testwelt"), server, null);
         java.util.List<String> log = new java.util.ArrayList<>();
+        java.util.List<int[]> areas = new java.util.ArrayList<>();
         int n = 0;
         for (String raw : lines) {
             n++;
@@ -179,6 +180,7 @@ public final class TestWorld {
                 try {
                     int x0 = Integer.parseInt(a[1]), z0 = Integer.parseInt(a[2]), x1 = Integer.parseInt(a[3]), z1 = Integer.parseInt(a[4]);
                     load(level, new Row(null, x0, z0, x1, z1));
+                    areas.add(new int[] {x0, z0, x1, z1});
                     java.util.List<Entity> all = new java.util.ArrayList<>();
                     for (Entity e : level.getAllEntities()) if (e != null) all.add(e);
                     for (Entity e : all) {
@@ -207,12 +209,40 @@ public final class TestWorld {
                 log.add(n + ": " + line + " -> " + out.text);
             }
         }
+        int dried = 0;
+        for (int[] a : areas) dried += dry(level, a[0], a[1], a[2], a[3]);
+        if (dried > 0) log.add("note: " + dried + " blocks stood in water of their own and were dried");
         try {
             String base = file.getFileName().toString();
             java.nio.file.Files.write(file.resolveSibling(base.substring(0, base.length() - ".mcfunction".length()) + ".log"), log, StandardCharsets.UTF_8);
         } catch (java.io.IOException ex) {
             KronwerkeCore.LOGGER.warn("Could not write the log of {}: {}", file, ex.toString());
         }
+    }
+
+    /**
+     * A block set by command without saying whether it holds water takes its block's default,
+     * and some mods leave that at "it does" (Eidolon's altars and stone hands): every one of
+     * them is then a spring, and three scenes stood under water. No scene wants a block in
+     * water of its own, so each build ends with drying them. Returns how many there were.
+     */
+    private static int dry(ServerLevel level, int x0, int z0, int x1, int z1) {
+        var water = net.minecraft.world.level.block.state.properties.BlockStateProperties.WATERLOGGED;
+        var pos = new BlockPos.MutableBlockPos();
+        int n = 0;
+        for (int x = x0; x <= x1; x++) {
+            for (int z = z0; z <= z1; z++) {
+                if (!level.hasChunk(x >> 4, z >> 4)) continue;
+                for (int y = 56; y <= 160; y++) {
+                    var state = level.getBlockState(pos.set(x, y, z));
+                    if (state.hasProperty(water) && state.getValue(water)) {
+                        level.setBlock(pos, state.setValue(water, false), 2 | 16);
+                        n++;
+                    }
+                }
+            }
+        }
+        return n;
     }
 
     // ---- structures and the whole world from outside the pack ------------------------------

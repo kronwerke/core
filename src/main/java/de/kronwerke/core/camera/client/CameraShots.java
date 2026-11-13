@@ -92,6 +92,13 @@ public final class CameraShots {
         reconnect(mc);
         closeScreens(mc);
         if (mc.level != null && mc.level.getGameTime() % 20 == 0) openAllStages();
+        // always noon and dry in the camera's eyes: a run of ten minutes went from afternoon
+        // into the night, and its pictures from light to dark
+        if (mc.level != null) {
+            mc.level.setDayTime(6000);
+            mc.level.setRainLevel(0f);
+            mc.level.setThunderLevel(0f);
+        }
         if (job == null || mc.level == null || mc.player == null) return;
         waited++;
         // the sections around the camera have to be built first; at most 30 seconds
