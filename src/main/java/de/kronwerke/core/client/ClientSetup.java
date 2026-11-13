@@ -25,6 +25,7 @@ public final class ClientSetup {
         TravelOverlay.register();
         JoinOverlay.register();
         LoadPump.register();
+        MenuMusic.register();
         de.kronwerke.core.probe.Probe.register();
         de.kronwerke.core.camera.client.CameraShots.register();
         // why a machine, altar or ritual did not craft: over its window or over the block

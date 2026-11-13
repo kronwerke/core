@@ -568,7 +568,7 @@ public final class KwHubScreen extends KwScreen {
     private void drawOptions(GuiGraphics g, int mouseX, int mouseY) {
         int x0 = left + 10, x1 = left + w - 10;
         Ui.inset(g, x0, cTop + 2, x1, cBot - 4);
-        int rows = 5;
+        int rows = 6;
         int rowH = Math.max(15, Math.min(27, (cBot - 32 - (cTop + 6)) / rows));
         boolean roomy = rowH >= 23;
         int y = cTop + 6;
@@ -603,6 +603,13 @@ public final class KwHubScreen extends KwScreen {
         optionText(g, y, rowH, roomy, 46, tr("hub.opt_load", "Bewegtes Ladebild"), tr("hub.opt_load_tip", "Das Bild bewegt sich beim Betreten. Aus, falls das Spiel dabei hakt."));
         lever(g, x1 - 34, y + (rowH - 12) / 2, KronwerkeClientConfig.loadPictures(), mouseX, mouseY, () -> {
             KronwerkeClientConfig.LOAD_PICTURES.set(!KronwerkeClientConfig.LOAD_PICTURES.get());
+            KronwerkeClientConfig.SPEC.save();
+        });
+        y += rowH;
+        // 6: the music of the menus
+        optionText(g, y, rowH, roomy, 46, tr("hub.opt_music", "Menümusik"), tr("hub.opt_music_tip", "Kronwerkes ruhige Musik im Menü und beim Verbinden."));
+        lever(g, x1 - 34, y + (rowH - 12) / 2, KronwerkeClientConfig.menuMusic(), mouseX, mouseY, () -> {
+            KronwerkeClientConfig.MENU_MUSIC.set(!KronwerkeClientConfig.MENU_MUSIC.get());
             KronwerkeClientConfig.SPEC.save();
         });
     }

@@ -268,6 +268,8 @@
   "kronwerke.hub.opt_clouds_tip": "Vanilla: 192. Hier wird bis 608 gebaut, darum 448.",
   "kronwerke.hub.opt_load": "Bewegtes Ladebild",
   "kronwerke.hub.opt_load_tip": "Das Bild bewegt sich beim Betreten. Aus, falls das Spiel dabei hakt.",
+  "kronwerke.hub.opt_music": "Menümusik",
+  "kronwerke.hub.opt_music_tip": "Kronwerkes ruhige Musik im Menü und beim Verbinden.",
   "kronwerke.hub.on": "An",
   "kronwerke.hub.off": "Aus",
   "kronwerke.hub.help_give": "So gibst du ab",

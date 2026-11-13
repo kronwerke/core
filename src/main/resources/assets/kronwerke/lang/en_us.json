@@ -281,6 +281,8 @@
   "kronwerke.hub.opt_clouds_tip": "Vanilla: 192. You build up to 608 here, hence 448.",
   "kronwerke.hub.opt_load": "Moving loading picture",
   "kronwerke.hub.opt_load_tip": "The picture moves while you join. Off if the game stutters there.",
+  "kronwerke.hub.opt_music": "Menu music",
+  "kronwerke.hub.opt_music_tip": "Kronwerke's quiet music in the menu and while connecting.",
   "kronwerke.hub.on": "On",
   "kronwerke.hub.off": "Off",
   "kronwerke.hub.help_give": "How to hand in",

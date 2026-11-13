@@ -479,7 +479,7 @@ public final class Probe {
         sb.append("\nwindow=").append(win.getScreenWidth()).append('x').append(win.getScreenHeight()).append(" frame=").append(win.getWidth()).append('x').append(win.getHeight())
                 .append(" gui=").append(win.getGuiScaledWidth()).append('x').append(win.getGuiScaledHeight());
         sb.append("\nserver=").append(server(mc)).append(" overlay=").append(TravelOverlay.phaseName()).append(" fps=").append(fps)
-                .append(" lowest=").append(lowFps);
+                .append(" lowest=").append(lowFps).append(" menumusic=").append(de.kronwerke.core.client.MenuMusic.state());
         lowFps = 999;
         if (mc.level != null && mc.player != null) {
             var pl = mc.player;

@@ -10,6 +10,7 @@ public final class KronwerkeClientConfig {
     public static final ModConfigSpec.BooleanValue FEWER_FLASHES;
     public static final ModConfigSpec.IntValue KEYS_APPLIED;
     public static final ModConfigSpec.BooleanValue LOAD_PICTURES;
+    public static final ModConfigSpec.BooleanValue MENU_MUSIC;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -23,6 +24,8 @@ public final class KronwerkeClientConfig {
                 .defineInRange("keysApplied", 0, 0, Integer.MAX_VALUE);
         LOAD_PICTURES = b.comment("Keeps the loading picture moving while the game is busy on joining (JEI building its recipes and the like): Core draws it from inside that work. Set to false if the game misbehaves while joining or moving between the servers; the picture then stands still for some seconds, as it does without Core.")
                 .define("loadPictures", true);
+        MENU_MUSIC = b.comment("Kronwerke's own quiet music on the title screen, in the menus and while connecting; it follows the Music slider. Set to false for the game's own menu music.")
+                .define("menuMusic", true);
         SPEC = b.build();
     }
 
@@ -37,6 +40,10 @@ public final class KronwerkeClientConfig {
 
     public static boolean loadPictures() {
         return SPEC.isLoaded() && LOAD_PICTURES.get();
+    }
+
+    public static boolean menuMusic() {
+        return SPEC.isLoaded() && MENU_MUSIC.get();
     }
 
     private KronwerkeClientConfig() {

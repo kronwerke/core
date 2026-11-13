@@ -8,7 +8,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** The obelisk's own voice, synthesized by tools/sounds/synth.py. */
+/** The obelisk's own voice, synthesized by tools/sounds/synth.py, and the music of the menus (tools/sounds/menu.py). */
 public final class KwSounds {
     public static final DeferredRegister<SoundEvent> SOUNDS = DeferredRegister.create(Registries.SOUND_EVENT, KronwerkeCore.MOD_ID);
     public static final DeferredHolder<SoundEvent, SoundEvent> HUM = sound("obelisk.hum");
@@ -19,6 +19,7 @@ public final class KwSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> VORTEX = sound("obelisk.vortex");
     public static final DeferredHolder<SoundEvent, SoundEvent> IMPLODE = sound("obelisk.implode");
     public static final DeferredHolder<SoundEvent, SoundEvent> BOOM = sound("obelisk.boom");
+    public static final DeferredHolder<SoundEvent, SoundEvent> MENU_MUSIC = sound("music.menu");
 
     private KwSounds() {
     }

@@ -6,5 +6,6 @@
   "obelisk.whisper": { "subtitle": "Der Obelisk flüstert", "sounds": [ "kronwerke:whisper" ] },
   "obelisk.vortex": { "subtitle": "Ein Sturm um den Obelisken", "sounds": [ { "name": "kronwerke:vortex", "stream": true } ] },
   "obelisk.implode": { "subtitle": "Alles wird hineingezogen", "sounds": [ "kronwerke:implode" ] },
-  "obelisk.boom": { "subtitle": "Der Obelisk birst", "sounds": [ "kronwerke:boom" ] }
+  "obelisk.boom": { "subtitle": "Der Obelisk birst", "sounds": [ "kronwerke:boom" ] },
+  "music.menu": { "sounds": [ { "name": "kronwerke:menu", "stream": false } ] }
 }
