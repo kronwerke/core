@@ -361,8 +361,16 @@ public final class TestWorld {
         var p = net.neoforged.neoforge.common.util.FakePlayerFactory.getMinecraft(level);
         if (hand.isEmpty() || !hand.is(item)) hand = new net.minecraft.world.item.ItemStack(item, item.getDefaultMaxStackSize());
         p.setPos(pos.getX() + 0.5 + face.getStepX() * 1.5, pos.getY() + face.getStepY() * 1.5, pos.getZ() + 0.5 + face.getStepZ() * 1.5);
-        if (face.getAxis().isHorizontal()) p.setYRot(face.getOpposite().toYRot());
+        // head and body too: where a living thing looks is asked of its head, and a block that
+        // turns to face whoever sets it (a drawer) looked at the old direction of the head
+        float yaw = face.getAxis().isHorizontal() ? face.getOpposite().toYRot() : 180f;
+        p.setYRot(yaw);
+        p.setYHeadRot(yaw);
+        p.setYBodyRot(yaw);
         p.setXRot(face == net.minecraft.core.Direction.UP ? 90 : face == net.minecraft.core.Direction.DOWN ? -90 : 0);
+        p.yRotO = yaw;
+        p.yHeadRotO = yaw;
+        p.xRotO = p.getXRot();
         p.setShiftKeyDown(sneak);
         p.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, hand);
         // a fake player never ticks, so a cooldown an item sets (Create's belt after the first
