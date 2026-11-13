@@ -28,7 +28,7 @@ Nothing important is unlocked by an individual. The server has a list of goals, 
 ```
   players deposit items          goal reached          stage unlocked
   ──────────────────────►  ████████████░░░  ────►  commands run for everyone
-   obelisk, feeders, by hand      boss bar               (Chapters, titles, rewards)
+   obelisk, by hand only          boss bar               (Chapters, titles, rewards)
 ```
 
 Whitelist slots work the same way in miniature: each streamer has a budget of invites and manages it in game, or through the [Discord bot](https://github.com/kronwerke/bot), which talks to this mod over RCON.
@@ -39,12 +39,12 @@ Whitelist slots work the same way in miniature: each streamer has a budget of in
 | --- | --- |
 | `slot` | Slot budgets per streamer, invites and revokes, kept in sync with the vanilla whitelist |
 | `goal` | Goals with tech and magic pillars, scaling by activity, hold point before the event, starter kits, boss bar |
-| `obelisk` | The obelisk block, the deposit point at spawn and the feeder containers around it |
+| `obelisk` | The obelisk block, the deposit point at spawn |
 | `command` | `/kw` for players, streamers and admins, `/kw test` for test servers |
 | `privacy` | Deletes rotated server logs after `logDays` (30), since they hold names and addresses |
 | `lock` | Locked items the SevTech way: they can be picked up and carried, but not held, worn or used. One in a hand or armour slot is moved into the inventory (dropped only when it is full), with a line in the action bar saying which stage it belongs to; the tooltip says the same. Replaces Chapters' audit, which dropped every locked item and refused to pick it up again. On the client, locked items are veiled (a dark cover with a question mark, "???" as the name), and JEI shows the next stage's items veiled while later stages stay hidden |
 | `compat` | On clients: hands Chapters' stage locks to JEI in one batch instead of one call per item, which froze joining for minutes |
-| `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, feeder radius and interval, log retention |
+| `config` | `kronwerke-common.toml`: default slots, whitelist enforcement, boss bar, chat announcements, log retention |
 
 ## Quick look
 
@@ -95,12 +95,9 @@ The **leaderboard wall** (`/kw admin obelisk board`, or the button in the admin 
 
 The obelisk **grows with the stages** (`obelisk/ObeliskTiers`): each completed goal adds something around the build, from paving to a crown of end rods, remembered so a rebuild puts the ground back; `/kw admin obelisk tier <n>` previews a tier. A completed goal starts the **rite** (`obelisk/ObeliskRite`, `client/RiteFx`), ninety seconds in five acts: stillness, the pull (a vortex of copied ground blocks round the beam, players lifted, the air bent by `shaders/post/lens`), the burst (the obelisk breaks apart in slow motion), the return (the pieces rejoin, the new tier is built, arcs of light) and the galaxy with the roll call; `/kw admin obelisk rite` rehearses it. Deposits are answered by their size (a note per item, a pulse up the trunk, a title, a word to the server), the stone hums and misfires, and counts a daily offering streak per player. On the client (`client/ObeliskEffects`) the obelisk reaches beyond its blocks: the torn sky of a completed stage (`shaders/core/galaxy`, told to every player by `SkyPayload`), the shockwave and the veil (`shaders/post`), the beam (`shaders/core/beam`, `client/ObeliskBeam`), the fog colour by tier, the aurora from the fourth stage and the camera shake. `StatePayload` tells every client where the obelisk stands and how it feels, so the far effects do not need its blocks in view: the signal, ribbons of light winding into the sky that grow with the stage, the rune rings on the pavement that flare with every gift, the rite's great beam seen from across the map, the thin sky above the obelisk between rites, the pylons' light during the intake and the cracks of light at the burst. The tiers are built from the obelisk's own blocks (`tools/textures/tiers.py` draws them with their glow layers; `tools/textures/core.py` draws the masonry of the obelisk itself and the paving, flagstone and shard of its grounds).
 
-Machines feed the obelisk through the **intake** (`kronwerke:obelisk_intake`, functional blocks tab): a pedestal a player places within `feederRadius` of the core. Whatever a pipe, hopper or belt pushes into it goes into the goal under that player's name; what the goal does not want is refused, so the pipe keeps it. The old behaviour where any container next to the obelisk became a feeder is off (`obelisk.containerFeeders`).
+Handing in is done by hand, at the obelisk, and nowhere else. There is no command and no menu button for it, the feeder block (`kronwerke:obelisk_intake`) and the container feeders are gone since 0.39.30, nobody places hoppers, pipes or belts next to it (the spawn protection covers the obelisk like the rest of the spawn), and a machine's fake player that clicks it is turned away.
 
 - **Right click** it to hand in the stack in your hand. Sneak and right click to hand in everything in your inventory that the goal takes. When nothing fits, it says what it wants.
-- **Feeders (off by default).** With `containerFeeders`, a chest, barrel or any other container placed within `feederRadius` blocks of the obelisk becomes a feeder of the player who placed it, up to `feedersPerPlayer`, drained every `feederInterval` seconds. The intake replaces this.
-- The hold point applies to feeders too: at 98 percent they stop being emptied until the event.
-- Players need build rights next to the obelisk to place a feeder. Admins can also set one with `/kw admin obelisk feeder <pos> <player>`.
 
 | Command | Who | What |
 | --- | --- | --- |
@@ -115,9 +112,7 @@ Machines feed the obelisk through the **intake** (`kronwerke:obelisk_intake`, fu
 | `/kw admin goal reload\|complete\|reset\|open\|rescale` | op | Manage goals |
 | `/kw admin goal progress <goal> "<item>" <n>` | op | Set the progress of one item (quote the item id) |
 | `/kw admin active` | op | How many players count as active for scaling |
-| `/kw admin obelisk set <pos>\|clear\|info` | op | Where the obelisk is, and its feeders |
-| `/kw admin obelisk feeder <pos> <player>`, `unfeeder <pos>` | op | Add or remove a feeder by hand |
-| `/kw admin obelisk drain` | op | Empty the feeders now |
+| `/kw admin obelisk set <pos>\|clear\|info` | op | Where the obelisk is |
 | `/kw admin bypass [on\|off] [player]`, `bypass list` | op | Every stage a goal grants, for testing; off takes back what the community has not earned yet. Without arguments it toggles your own |
 | `/kw admin invite\|revoke <streamer> <player>` | op, the bot | Slots on behalf of a streamer; one line, `OK` or `ERR` |
 | `/kw admin grant <player> [slots]` | op, the bot | Whitelist without a streamer's slot, with slots of their own (streamers, Season 1 players) |
@@ -131,7 +126,7 @@ With `testCommands = true` in `kronwerke-common.toml`, `/kw test` creates test p
 
 ## The menus
 
-Every screen sits on the same frame (`client/ui/KwScreen`): a brass framed panel on night violet in the pixel look of the pack's menus, a header with the pixel brand, the screen's name and a close cross, tooltips on every button. The sprites under `textures/gui/sprites` are drawn by `tools/textures/gui.py` (with the small toolkit `px.py`, the same the pack's menu art uses) and nine-sliced by their `.mcmeta`. `/kw` opens the hub, four pages behind tabs: the goals (the five stages as a path of rings in their colours on the left, the selected stage on the right with its ring, description and, while it runs, every item with icon, count and bar grouped by pillar), the ranking (the ten most diligent hands of the running goal with their heads, the first of every pillar, the player's own part), the options (language, the goal's bar, softer light, cloud height, the moving loading picture, and the way to the game's own options and key binds) and the help (how handing in works and the commands, a click puts one into the chat). Below them the quest book, the map, Discord, the website, the whitelist for streamers and the admin panel for operators. Nothing in the menu and no command hands anything in: that happens at the obelisk, by hand or through a feeder. `/kw team` is the team screen: every streamer with their slots (plus and minus change the allowance), the players in them, and per player a button to take the place away or to move them to the streamer typed in the field. Consoles get the text help from `/kw`.
+Every screen sits on the same frame (`client/ui/KwScreen`): a brass framed panel on night violet in the pixel look of the pack's menus, a header with the pixel brand, the screen's name and a close cross, tooltips on every button. The sprites under `textures/gui/sprites` are drawn by `tools/textures/gui.py` (with the small toolkit `px.py`, the same the pack's menu art uses) and nine-sliced by their `.mcmeta`. `/kw` opens the hub, four pages behind tabs: the goals (the five stages as a path of rings in their colours on the left, the selected stage on the right with its ring, description and, while it runs, every item with icon, count and bar grouped by pillar), the ranking (the ten most diligent hands of the running goal with their heads, the first of every pillar, the player's own part), the options (language, the goal's bar, softer light, cloud height, the moving loading picture, and the way to the game's own options and key binds) and the help (how handing in works and the commands, a click puts one into the chat). Below them the quest book, the map, Discord, the website, the whitelist for streamers and the admin panel for operators. Nothing in the menu and no command hands anything in: that happens at the obelisk, by hand. `/kw team` is the team screen: every streamer with their slots (plus and minus change the allowance), the players in them, and per player a button to take the place away or to move them to the streamer typed in the field. Consoles get the text help from `/kw`.
 
 `/kw menu` (also `/kw invite` or `/kw revoke` without a name) opens a screen on the client: the slots as a row, every invited player with head, name and online dot, a remove button, and a field to invite the next one. The screen talks to the server through two packets (`net/KwNetwork`); the text commands keep working for consoles and bots. `/kw` alone lists the commands with clickable lines.
 

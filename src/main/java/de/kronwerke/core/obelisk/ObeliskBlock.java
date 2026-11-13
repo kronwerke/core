@@ -19,7 +19,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * rest around it: the 5x5 plinth, the shaft and the crystal. It cannot be broken outside
  * creative mode and registers itself as the obelisk; breaking it in creative mode takes the
  * whole build with it. Everything
- * the obelisk does (deposits, feeders, the goals) lives in {@link Obelisk}; this block is the
+ * the obelisk does (deposits, the goals) lives in {@link Obelisk}; this block is the
  * thing players see and click.
  */
 public class ObeliskBlock extends Block {

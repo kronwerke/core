@@ -656,8 +656,8 @@ public final class KwHubScreen extends KwScreen {
         g.drawString(font, tr("hub.help_give", "So gibst du ab"), x0 + 8, y, Ui.GOLD, false);
         y += 11;
         String[] how = {tr("hub.help_give1", "Rechtsklick auf den Obelisken am Spawn, mit dem Stapel in der Hand. Schleichen gibt alles Passende aus dem Inventar."),
-                tr("hub.help_give2", "Der Zubringer, ein eigener Block neben dem Obelisken, zahlt ein, was Rohre und Bänder hineinschieben."),
-                tr("hub.help_give3", "Einen Befehl oder Menüknopf zum Abgeben gibt es nicht. /kw undo holt eine Gabe zehn Sekunden lang zurück.")};
+                tr("hub.help_give2", "Nur von Hand: kein Befehl, kein Menüknopf und keine Maschine gibt für dich ab."),
+                tr("hub.help_give3", "/kw undo holt eine Gabe zehn Sekunden lang zurück.")};
         for (String s : how) {
             g.fill(x0 + 10, y + 3, x0 + 12, y + 5, Ui.GOLD_DARK);
             for (var line : font.split(Component.literal(s), x1 - x0 - 30)) {

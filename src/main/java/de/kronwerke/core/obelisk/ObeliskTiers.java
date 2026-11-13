@@ -127,9 +127,8 @@ public final class ObeliskTiers {
     public static boolean place(ServerLevel level, ObeliskData data, Placement p) {
         BlockState there = level.getBlockState(p.pos());
         if (!p.replace() && !there.isAir() && !there.canBeReplaced()) return false;
-        // the pavement never takes what players built in the feeder zone: their hoppers, pipes
-        // and belts (anything with a block entity, anything a player placed there) stay
-        if (p.replace() && (there.hasBlockEntity() || data.feeder(p.pos()) != null)) return false;
+        // the pavement never takes a block that holds something (anything with a block entity)
+        if (p.replace() && there.hasBlockEntity()) return false;
         if (there.is(p.state().getBlock())) return false;
         data.addExtra(p.pos(), there);
         level.setBlock(p.pos(), p.state(), Block.UPDATE_ALL);

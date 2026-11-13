@@ -35,7 +35,7 @@ import java.util.UUID;
  *   admin list                 op: all streamers and their invites
  *   admin goal reload|complete|reset|open|rescale|progress ...
  *   admin active            op: how many players count as active for scaling
- *   admin obelisk ...       op: where the obelisk is and its feeders, see ObeliskCommand
+ *   admin obelisk ...       op: where the obelisk is, its build and its rite, see ObeliskCommand
  *   admin invite|revoke|grant|ungrant|goals json   for the Discord bot, see BotCommand
  *   share                   op: the shared network between the servers, see share/ShareCommand
  *   move <players>          op: to the portal's other side without the portal, see portal/MoveCommand

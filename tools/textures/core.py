@@ -3,7 +3,7 @@
 
   plinth_side, plinth_top   the stepped plinth: carved panels with a brass crown, slabs on top
   trunk                      the monolith: large dark panels with corner pins and a mortar line
-  shaft, cap, band, funnel   the tip, its cap, the brass band, the intake's mouth
+  shaft, cap, band           the tip, its cap, the brass band
   pedestal_side, board       the pedestals and the leaderboard wall
   paving, flagstone, shard   the grounds: engraved slabs that carry a faint rune glow, the ring
                              of flagstones, and the crystal that tops the arches
@@ -156,18 +156,6 @@ def band():
     return im
 
 
-def funnel():
-    im = Image.new("RGBA", (16, 16))
-    fill(im, 0, 0, 15, 15, BRASS, 161, 6)
-    bevel(im, 0, 0, 15, 15, light=0.2, dark=0.35)
-    fill(im, 3, 3, 12, 12, SLATE_DARK, 162, 2)
-    bevel(im, 3, 3, 12, 12, light=0.1, dark=0.35, inset=True)
-    fill(im, 6, 6, 9, 9, GROUT, 163, 1)
-    for x, y in ((7, 7), (8, 8)):
-        put(im, x, y, mix(GROUT, CYAN_DEEP, 0.5))
-    return im
-
-
 # ---- pedestal and board ----
 
 def pedestal_side():
@@ -307,7 +295,6 @@ if __name__ == "__main__":
     write_plain("obelisk_shaft", shaft())
     write_plain("obelisk_cap", cap())
     write_plain("obelisk_band", band())
-    write_plain("obelisk_funnel", funnel())
     write_plain("obelisk_pedestal_side", pedestal_side())
     write_plain("obelisk_board", board())
 

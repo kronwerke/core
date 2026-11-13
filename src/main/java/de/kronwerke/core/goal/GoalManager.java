@@ -373,7 +373,7 @@ public final class GoalManager {
             String who = name.getString().trim();
             int space = who.lastIndexOf(' ');
             if (space >= 0) who = who.substring(space + 1);
-            // a feeder hands in stack after stack; one line per player and item within a few seconds
+            // a sneak click hands in stack after stack; one line per player and item within a few seconds
             if (last != null && last.goal().equals(goal) && last.name().equals(who) && last.item().equals(item)
                     && System.currentTimeMillis() - last.at() < 10_000) {
                 recent.pollFirst();
@@ -390,8 +390,8 @@ public final class GoalManager {
     }
 
     /**
-     * Deposits for a contributor who does not have to be online, like the owner of an obelisk
-     * feeder. Takes from the stack and returns how many were taken. announce=false leaves the
+     * Deposits for a contributor by id and name (the test players of /kw test use it too).
+     * Takes from the stack and returns how many were taken. announce=false leaves the
      * chat message to the caller.
      */
     /** How many of the stack a deposit would take right now, without taking anything. */
@@ -413,7 +413,7 @@ public final class GoalManager {
         return deposit(who, name, stack, announce, false);
     }
 
-    /** Feedback for inserts that come stack after stack (an intake fed by a belt or a pipe). */
+    /** Feedback for gifts that come stack after stack (everything that fits, at one sneak click). */
     private record Batch(Goal goal, Goal.PillarItem item, ItemStack shown, UUID who, Component name, long amount, long since, long last) {}
 
     private final Map<String, Batch> batches = new LinkedHashMap<>();
@@ -447,7 +447,7 @@ public final class GoalManager {
                 // a held goal waits for the event even when the last piece filled it
                 if (isHeld(g)) announceHold(g);
                 else if (done(g) >= total(g)) complete(g);
-                // a pipe into the intake deposits every few ticks: the bar is sent at most once a second
+                // many stacks in a row: the bar is sent at most once a second
                 barDue = true;
                 if (server != null) {
                     ServerPlayer depositor = server.getPlayerList().getPlayer(who);
@@ -473,9 +473,8 @@ public final class GoalManager {
     private long barAt;
 
     /**
-     * Deposits from a pipe or a farm are told when the feed has been quiet for ten seconds,
-     * or once a minute while it keeps running; a hand deposit after three seconds as before
-     * (review R2-08: a running intake used to post every three seconds).
+     * Deposits that are not announced at once are told when they have been quiet for ten
+     * seconds, or once a minute while they keep coming; a hand deposit after three seconds.
      */
     public void flushBatches() {
         long now = System.currentTimeMillis();

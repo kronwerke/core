@@ -33,18 +33,16 @@ import java.util.UUID;
 /**
  * The obelisk at spawn: the {@link ObeliskBlock} an operator placed, or any block an admin
  * points at with /kw admin obelisk set. Right click it to deposit what you hold, sneak and
- * right click to deposit everything that fits. Items from machines come in through the
- * {@link ObeliskIntakeBlock} next to it, credited to the player who placed the intake.
- * Containers as feeders are off by default (obelisk.containerFeeders).
+ * right click to deposit everything that fits. That is the only way in: no command, no menu
+ * and no machine hands anything in (the feeder block and the container feeders are gone since
+ * 0.39.30), and a machine's fake player is turned away.
  */
 public final class Obelisk {
     private static final Obelisk INSTANCE = new Obelisk();
 
     private MinecraftServer server;
-    private int ticks;
     private final ObeliskScheduler scheduler = new ObeliskScheduler();
     private int ambientTicks, misfireIn;
-    /** the pillar index of a deposit that is being batched from the intake, with the amount, to flare once */
 
     public static Obelisk get() {
         return INSTANCE;
@@ -52,7 +50,6 @@ public final class Obelisk {
 
     public void init(MinecraftServer server) {
         this.server = server;
-        this.ticks = 0;
         this.scheduler.clear();
         this.misfireIn = 6000;
         this.settled = false;
@@ -86,6 +83,8 @@ public final class Obelisk {
         event.setCanceled(true);
         event.setCancellationResult(InteractionResult.SUCCESS);
         if (event.getHand() != InteractionHand.MAIN_HAND || !(event.getEntity() instanceof ServerPlayer player)) return;
+        // by hand means a person's hand: a deployer or any other machine that clicks is not one
+        if (player instanceof net.neoforged.neoforge.common.util.FakePlayer) return;
 
         GoalManager gm = GoalManager.get();
         List<Goal> active = gm.activeGoals();
@@ -192,34 +191,6 @@ public final class Obelisk {
         player.playNotifySound(net.minecraft.sounds.SoundEvents.BOOK_PAGE_TURN, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.0f);
     }
 
-    // ---- feeders ----
-
-    public void onPlace(BlockEvent.EntityPlaceEvent event) {
-        if (!KronwerkeConfig.CONTAINER_FEEDERS.get()) return;
-        if (server == null || !(event.getEntity() instanceof ServerPlayer player) || !(event.getLevel() instanceof ServerLevel level)) return;
-        ObeliskData d = data();
-        if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return;
-        BlockPos pos = event.getPos();
-        if (pos.equals(d.pos()) || distance(pos, d.pos()) > KronwerkeConfig.FEEDER_RADIUS.get()) return;
-        if (level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null) == null) return;
-
-        int max = KronwerkeConfig.FEEDERS_PER_PLAYER.get();
-        long owned = d.feeders().values().stream().filter(u -> u.equals(player.getUUID())).count();
-        if (owned >= max) {
-            player.sendSystemMessage(Text.t("obelisk.feeders_full", "Du hast schon %s Zubringer am Obelisken. Dieser zählt nicht.", owned).withStyle(ChatFormatting.GRAY));
-            return;
-        }
-        d.addFeeder(pos, player.getUUID());
-        player.sendSystemMessage(Text.t("obelisk.feeder", "Das ist jetzt ein Zubringer. Alles, was hier reinkommt, zählt für dich.").withStyle(ChatFormatting.GREEN));
-    }
-
-    public void onBreak(BlockEvent.BreakEvent event) {
-        if (server == null || !(event.getLevel() instanceof ServerLevel level)) return;
-        ObeliskData d = data();
-        if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return;
-        d.removeFeeder(event.getPos());
-    }
-
     private int displayTicks;
 
     private boolean settled;
@@ -246,9 +217,6 @@ public final class Obelisk {
         }
         ambient();
         if (ambientTicks % 4 == 0) embers();
-        if (++ticks < KronwerkeConfig.FEEDER_INTERVAL.get() * 20) return;
-        ticks = 0;
-        drain();
     }
 
     // ---- the life of the stone: hum, heartbeat, misfires ----
@@ -352,7 +320,6 @@ public final class Obelisk {
         }
         lastCrowdNoted = crowd;
         whisper(level, core, crowd);
-        if (ambientTicks % 1200 == 0) cleanFeeders(level);
         if (!level.hasNearbyAlivePlayer(core.getX() + 0.5, core.getY() + 10, core.getZ() + 0.5, 48)) return;
         ObeliskTopBlockEntity top = top(level);
         if (top != null && top.rite() > 0) return;
@@ -400,14 +367,6 @@ public final class Obelisk {
             if (s.hasProperty(ObeliskPartBlock.LIT) && !s.getValue(ObeliskPartBlock.LIT)) level.setBlock(p, s.setValue(ObeliskPartBlock.LIT, true), 3);
         }
         lightsChecked = true;
-    }
-
-    /** Feeder records of blocks that are gone: nothing stays booked to a player for ever. */
-    private void cleanFeeders(ServerLevel level) {
-        ObeliskData d = data();
-        List<BlockPos> gone = new ArrayList<>();
-        for (BlockPos p : d.feeders().keySet()) if (level.isLoaded(p) && level.getBlockState(p).isAir()) gone.add(p);
-        for (BlockPos p : gone) d.removeFeeder(p);
     }
 
     private int lastCrowdNoted;
@@ -535,7 +494,7 @@ public final class Obelisk {
         }
         BlockPos core = data().pos();
         ServerPlayer player = server.getPlayerList().getPlayer(who);
-        // the gift flies to the crystal on every client nearby: from the giver's hand, or out of the intake
+        // the gift flies to the crystal on every client nearby: from the giver's hand, or from the plinth when the giver stands far off
         boolean fromHand = player != null && player.level() == level && player.blockPosition().distSqr(core) < 40 * 40;
         net.minecraft.world.phys.Vec3 hand = fromHand ? player.getEyePosition().add(player.getLookAngle().scale(0.9)).add(0, -0.35, 0) : null;
         double gx = fromHand ? hand.x : core.getX() + 0.5, gy = fromHand ? hand.y : core.getY() + 1.2, gz = fromHand ? hand.z : core.getZ() + 0.5;
@@ -868,62 +827,6 @@ public final class Obelisk {
         }
         d.setBoard(null, "north", 0, 0);
         return true;
-    }
-
-    /** Moves everything the active goal can take out of every feeder. Returns what was moved. */
-    public long drain() {
-        if (!KronwerkeConfig.CONTAINER_FEEDERS.get()) return 0;
-        ObeliskData d = data();
-        if (!d.isSet() || d.feeders().isEmpty() || GoalManager.get().activeGoals().isEmpty()) return 0;
-        ServerLevel level = server.getLevel(ResourceKey.create(Registries.DIMENSION, ResourceLocation.parse(d.dimension())));
-        if (level == null) return 0;
-
-        long moved = 0;
-        List<BlockPos> gone = new ArrayList<>();
-        for (Map.Entry<BlockPos, UUID> f : d.feeders().entrySet()) {
-            BlockPos pos = f.getKey();
-            if (!level.isLoaded(pos)) continue;
-            IItemHandler h = level.getCapability(Capabilities.ItemHandler.BLOCK, pos, null);
-            if (h == null) {
-                gone.add(pos);
-                continue;
-            }
-            UUID owner = f.getValue();
-            Component name = Component.literal(nameOf(owner));
-            Map<String, Long> delivered = new LinkedHashMap<>();
-            for (int slot = 0; slot < h.getSlots(); slot++) {
-                ItemStack peek = h.extractItem(slot, Integer.MAX_VALUE, true);
-                if (peek.isEmpty()) continue;
-                long want = GoalManager.get().wouldTake(peek);
-                if (want <= 0) continue;
-                // out of the container first, then credited: storage that extracts less than it
-                // simulated (drawers, bins) is credited only for what really came out
-                ItemStack out = h.extractItem(slot, (int) want, false);
-                if (out.isEmpty()) continue;
-                ItemStack rest = out.copy();
-                long taken = GoalManager.get().deposit(owner, name, rest, false);
-                if (!rest.isEmpty()) {
-                    ItemStack back = h.insertItem(slot, rest, false);
-                    if (!back.isEmpty()) net.minecraft.world.Containers.dropItemStack(level, pos.getX() + 0.5, pos.getY() + 1, pos.getZ() + 0.5, back);
-                }
-                if (taken <= 0) continue;
-                moved += taken;
-                delivered.merge(net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(out.getItem()).toString(), taken, Long::sum);
-            }
-            announce(name, delivered);
-        }
-        for (BlockPos p : gone) d.removeFeeder(p);
-        return moved;
-    }
-
-    private void announce(Component name, Map<String, Long> delivered) {
-        if (!KronwerkeConfig.BROADCAST_DEPOSITS.get()) return;
-        delivered.forEach((item, n) -> {
-            if (n < KronwerkeConfig.BROADCAST_DEPOSIT_MIN.get()) return;
-            server.getPlayerList().broadcastSystemMessage(Text.t("obelisk.feeder_delivered", "Zubringer von %s liefert %s %s",
-                    name.copy().withStyle(ChatFormatting.WHITE), Component.literal(Text.number(n)).withStyle(ChatFormatting.WHITE),
-                    Text.item(item)).withStyle(ChatFormatting.GRAY), false);
-        });
     }
 
     public String nameOf(UUID id) {

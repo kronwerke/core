@@ -20,10 +20,7 @@ import net.minecraft.server.level.ServerPlayer;
  *   build <pos>                places the obelisk block at pos and the whole build around it
  *   set <pos>                  the block at pos becomes the obelisk (in the caller's dimension)
  *   clear                      no obelisk
- *   info                       where it is and every feeder with its owner
- *   feeder <pos> <player>      make the container at pos a feeder for player
- *   unfeeder <pos>             stop a feeder
- *   drain                      empty the feeders now instead of waiting
+ *   info                       where it is
  *   rite                       rehearse the completion rite for the running goal, nothing completes
  *   tier <0..5|auto>           show the build at a tier, for previews; auto follows the goals again
  */
@@ -50,14 +47,6 @@ final class ObeliskCommand {
                                 .then(Commands.argument("height", com.mojang.brigadier.arguments.IntegerArgumentType.integer(2, 8))
                                         .executes(c -> board(c, com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "width"),
                                                 com.mojang.brigadier.arguments.IntegerArgumentType.getInteger(c, "height"))))))
-                .then(Commands.literal("feeder").then(Commands.argument("pos", BlockPosArgument.blockPos())
-                        .then(Commands.argument("player", StringArgumentType.word()).executes(ObeliskCommand::feeder))))
-                .then(Commands.literal("unfeeder").then(Commands.argument("pos", BlockPosArgument.blockPos()).executes(ObeliskCommand::unfeeder)))
-                .then(Commands.literal("drain").executes(c -> {
-                    long n = Obelisk.get().drain();
-                    ok(c, "OK drained " + n);
-                    return 1;
-                }))
                 .then(Commands.literal("rite").executes(c -> {
                     String r = Obelisk.get().rehearse();
                     if (r.startsWith("OK")) ok(c, r);
@@ -117,37 +106,7 @@ final class ObeliskCommand {
             return 0;
         }
         BlockPos p = d.pos();
-        ok(c, "OK obelisk " + d.dimension() + " " + p.getX() + " " + p.getY() + " " + p.getZ() + ", " + d.feeders().size() + " feeders");
-        d.feeders().forEach((fp, owner) -> c.getSource().sendSuccess(() -> Component.literal(
-                " " + fp.getX() + " " + fp.getY() + " " + fp.getZ() + "  " + Obelisk.get().nameOf(owner)).withStyle(ChatFormatting.GRAY), false));
-        return 1;
-    }
-
-    private static int feeder(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        ObeliskData d = Obelisk.get().data();
-        if (!d.isSet()) {
-            fail(c, "ERR no obelisk set");
-            return 0;
-        }
-        BlockPos pos = BlockPosArgument.getLoadedBlockPos(c, "pos");
-        String name = StringArgumentType.getString(c, "player");
-        var profile = SlotManager.get().lookup(name);
-        if (profile.isEmpty()) {
-            fail(c, "ERR unknown player " + name);
-            return 0;
-        }
-        d.addFeeder(pos, profile.get().getId());
-        ok(c, "OK feeder " + pos.getX() + " " + pos.getY() + " " + pos.getZ() + " for " + profile.get().getName());
-        return 1;
-    }
-
-    private static int unfeeder(CommandContext<CommandSourceStack> c) throws CommandSyntaxException {
-        BlockPos pos = BlockPosArgument.getLoadedBlockPos(c, "pos");
-        if (!Obelisk.get().data().removeFeeder(pos)) {
-            fail(c, "ERR no feeder there");
-            return 0;
-        }
-        ok(c, "OK feeder removed");
+        ok(c, "OK obelisk " + d.dimension() + " " + p.getX() + " " + p.getY() + " " + p.getZ());
         return 1;
     }
 

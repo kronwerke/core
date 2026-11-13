@@ -11,11 +11,7 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.BooleanValue SHOW_GOAL_BOSSBAR;
     public static final ModConfigSpec.BooleanValue BROADCAST_DEPOSITS;
     public static final ModConfigSpec.IntValue BROADCAST_DEPOSIT_MIN;
-    public static final ModConfigSpec.IntValue FEEDER_RADIUS;
     public static final ModConfigSpec.IntValue BOSS_BAR_RADIUS;
-    public static final ModConfigSpec.BooleanValue CONTAINER_FEEDERS;
-    public static final ModConfigSpec.IntValue FEEDERS_PER_PLAYER;
-    public static final ModConfigSpec.IntValue FEEDER_INTERVAL;
     public static final ModConfigSpec.IntValue SCALE_BASE_PLAYERS;
     public static final ModConfigSpec.IntValue SCALE_DAYS;
     public static final ModConfigSpec.DoubleValue SCALE_MIN_HOURS;
@@ -57,7 +53,6 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<String> SPAWN_CENTER;
-    public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> FEEDER_BLOCKS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BOSSES;
     public static final ModConfigSpec.DoubleValue BOSS_HEALTH_PER_PLAYER;
@@ -127,15 +122,10 @@ public final class KronwerkeConfig {
         b.pop();
 
         b.push("spawn");
-        SPAWN_RADIUS = b.comment("Half the side of the protected square around the overworld spawn, in blocks. 0 turns the protection off. Operators and creative players build freely; containers next to the obelisk stay allowed for feeders.")
+        SPAWN_RADIUS = b.comment("Half the side of the protected square around the overworld spawn, in blocks. 0 turns the protection off. Operators and creative players build freely.")
                 .defineInRange("radius", 96, 0, 2048);
         SPAWN_CENTER = b.comment("The middle of the protected square as x,z. Empty: the world spawn as it was when the protection first ran (kept, so /setworldspawn does not move the protection away from the obelisk).")
                 .define("center", "");
-        FEEDER_BLOCKS = b.comment("What anyone may place in the zone around the obelisk inside the spawn protection: block ids, * for anything. Intakes and what carries items to them.")
-                .defineListAllowEmpty("feederBlocks", java.util.List.of("kronwerke:*", "minecraft:hopper", "create:belt", "create:chute", "create:smart_chute",
-                        "create:*funnel", "create:*tunnel", "create:shaft", "create:cogwheel", "create:large_cogwheel", "create:mechanical_belt",
-                        "mekanism:*logistical_transporter", "pipez:*", "laserio:*", "ae2:*cable*", "ae2:export_bus", "refinedstorage:*cable*",
-                        "refinedstorage:*exporter*", "integrateddynamics:*cable*", "powah:*"), o -> o instanceof String);
         BLAST_PROOF = b.comment("Blocks no explosion removes, anywhere: block ids, or a namespace prefix ending in *. Bedrock, end portal frames, end portals and gateways and reinforced deepslate are always kept.")
                 .defineListAllowEmpty("blastProof", java.util.List.of("cataclysm:altar_of_*", "cataclysm:boss_respawner", "cataclysm:*spawner*"), o -> o instanceof String);
         b.pop();
@@ -202,16 +192,8 @@ public final class KronwerkeConfig {
         b.pop();
 
         b.push("obelisk");
-        CONTAINER_FEEDERS = b.comment("Old behaviour: any container placed next to the obelisk becomes a feeder. Off, the intake block is the only way in for machines.")
-                .define("containerFeeders", false);
-        FEEDER_RADIUS = b.comment("The zone around the obelisk's core, in blocks: intakes work there, and inside the spawn protection anyone may place and take back their own hoppers, pipes and belts there.")
-                .defineInRange("feederRadius", 10, 1, 32);
         BOSS_BAR_RADIUS = b.comment("Show the goal's boss bar only to players within this many blocks of the obelisk (in its dimension). 0 shows it to everyone everywhere.")
                 .defineInRange("bossBarRadius", 0, 0, 100000);
-        FEEDERS_PER_PLAYER = b.comment("How many feeders one player can have.")
-                .defineInRange("feedersPerPlayer", 2, 0, 64);
-        FEEDER_INTERVAL = b.comment("Empty the feeders into the active goal every this many seconds.")
-                .defineInRange("feederInterval", 2, 1, 600);
         b.pop();
 
         b.push("scaling");

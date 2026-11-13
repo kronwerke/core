@@ -80,8 +80,6 @@ public class KronwerkeCore {
         if (Role.main()) {
             // the obelisk and the test world belong to main; side worlds only show what main says
             NeoForge.EVENT_BUS.addListener(Obelisk.get()::onRightClick);
-            NeoForge.EVENT_BUS.addListener(Obelisk.get()::onPlace);
-            NeoForge.EVENT_BUS.addListener(Obelisk.get()::onBreak);
             NeoForge.EVENT_BUS.addListener(Obelisk.get()::onServerTick);
             NeoForge.EVENT_BUS.addListener((net.neoforged.neoforge.event.tick.ServerTickEvent.Post e) -> de.kronwerke.core.world.TestWorld.tick(e.getServer()));
         }

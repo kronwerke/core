@@ -25,9 +25,8 @@ import net.neoforged.neoforge.event.level.ExplosionEvent;
  * The area around the world spawn, kept the way the team built it. Inside spawn.radius
  * blocks of the overworld spawn nobody but operators breaks or places blocks, no explosion
  * takes a block, no mob griefs, no hostile mob spawns and no player hurts another. Doors,
- * buttons, waystones and the obelisk keep working. The zone around the obelisk
- * (obelisk.feederRadius) is open: anyone places intakes, hoppers, pipes and belts there and
- * takes back their own blocks; nothing else may.
+ * buttons, waystones and the obelisk keep working. That holds at the obelisk too: nobody
+ * sets a hopper, a pipe or a belt next to it, giving is done by hand.
  */
 public final class SpawnGuard {
     private SpawnGuard() {
@@ -105,13 +104,6 @@ public final class SpawnGuard {
         }
     }
 
-    /** Whether a block may go into the zone around the obelisk: intakes and what feeds them. */
-    private static boolean feederBlock(BlockState state) {
-        String id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString();
-        for (String p : KronwerkeConfig.FEEDER_BLOCKS.get()) if (matches(id, p)) return true;
-        return false;
-    }
-
     /** Things at spawn that belong to everybody: frames, paintings, armour stands, animals, villagers, pets. */
     private static boolean sheltered(Entity e) {
         if (e instanceof net.minecraft.world.entity.decoration.HangingEntity || e instanceof net.minecraft.world.entity.decoration.ArmorStand) return true;
@@ -120,14 +112,6 @@ public final class SpawnGuard {
 
     private static boolean mayBuild(Entity entity) {
         return entity instanceof Player p && (p.hasPermissions(2) || p.isCreative());
-    }
-
-    private static boolean nearObelisk(Level level, BlockPos pos) {
-        ObeliskData d = Obelisk.get().data();
-        if (!d.isSet() || !level.dimension().location().toString().equals(d.dimension())) return false;
-        BlockPos o = d.pos();
-        int r = KronwerkeConfig.FEEDER_RADIUS.get();
-        return Math.abs(pos.getX() - o.getX()) <= r && Math.abs(pos.getY() - o.getY()) <= r && Math.abs(pos.getZ() - o.getZ()) <= r;
     }
 
     /**
@@ -152,37 +136,14 @@ public final class SpawnGuard {
         }
     }
 
-    private static void tellObelisk(Entity entity) {
-        if (entity instanceof ServerPlayer p) {
-            resync(p);
-            p.displayClientMessage(Text.t("spawn.obelisk_zone", "Am Obelisken gehen nur Einlässe, Trichter, Rohre und Bänder.").withStyle(ChatFormatting.RED), true);
-        }
-    }
-
     public static void onBreak(BlockEvent.BreakEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !inside(level, event.getPos()) || mayBuild(event.getPlayer())) return;
-        // in the zone around the obelisk a player takes back what they placed there
-        if (level.getBlockEntity(event.getPos()) instanceof de.kronwerke.core.obelisk.ObeliskIntakeBlockEntity be && event.getPlayer().getUUID().equals(be.owner())) return;
-        if (nearObelisk(level, event.getPos()) && event.getPlayer().getUUID().equals(Obelisk.get().data().feeder(event.getPos()))) {
-            Obelisk.get().data().removeFeeder(event.getPos());
-            return;
-        }
         event.setCanceled(true);
         tell(event.getPlayer());
     }
 
     public static void onPlace(BlockEvent.EntityPlaceEvent event) {
         if (!(event.getLevel() instanceof ServerLevel level) || !inside(level, event.getPos()) || mayBuild(event.getEntity())) return;
-        // the zone around the obelisk is open for intakes, hoppers, pipes and belts; every block there remembers who placed it
-        if (nearObelisk(level, event.getPos()) && event.getEntity() instanceof ServerPlayer sp) {
-            if (feederBlock(event.getPlacedBlock())) {
-                Obelisk.get().data().addFeeder(event.getPos(), sp.getUUID());
-                return;
-            }
-            event.setCanceled(true);
-            tellObelisk(sp);
-            return;
-        }
         event.setCanceled(true);
         tell(event.getEntity());
     }

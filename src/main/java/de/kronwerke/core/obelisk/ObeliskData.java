@@ -15,8 +15,9 @@ import java.util.Map;
 import java.util.UUID;
 
 /**
- * Where the obelisk stands and which containers next to it feed it, with the player each
- * feeder counts for. Feeders are always in the obelisk's dimension.
+ * Where the obelisk stands, what its tiers built around it, its leaderboard wall and what it
+ * remembers of the gifts. (A file from before 0.39.30 may still carry a list of feeders; it is
+ * not read any more and is dropped with the next save.)
  */
 public class ObeliskData extends SavedData {
     public static final String NAME = "kronwerke_obelisk";
@@ -24,7 +25,6 @@ public class ObeliskData extends SavedData {
 
     private String dimension;
     private BlockPos pos;
-    private final Map<BlockPos, UUID> feeders = new LinkedHashMap<>();
     /** the leaderboard wall: its anchor, the way it faces, its size */
     private BlockPos board;
     private String boardFacing = "north";
@@ -52,7 +52,6 @@ public class ObeliskData extends SavedData {
     public void set(String dimension, BlockPos pos) {
         this.dimension = dimension;
         this.pos = pos.immutable();
-        feeders.clear();
         extras.clear();
         builtTier = 0;
         setDirty();
@@ -61,7 +60,6 @@ public class ObeliskData extends SavedData {
     public void clear() {
         dimension = null;
         pos = null;
-        feeders.clear();
         setDirty();
     }
 
@@ -87,10 +85,6 @@ public class ObeliskData extends SavedData {
         boardWidth = width;
         boardHeight = height;
         setDirty();
-    }
-
-    public Map<BlockPos, UUID> feeders() {
-        return feeders;
     }
 
     public Map<BlockPos, net.minecraft.world.level.block.state.BlockState> extras() {
@@ -148,31 +142,11 @@ public class ObeliskData extends SavedData {
         setDirty();
     }
 
-    public UUID feeder(BlockPos p) {
-        return feeders.get(p);
-    }
-
-    public void addFeeder(BlockPos p, UUID owner) {
-        feeders.put(p.immutable(), owner);
-        setDirty();
-    }
-
-    public boolean removeFeeder(BlockPos p) {
-        boolean had = feeders.remove(p) != null;
-        if (had) setDirty();
-        return had;
-    }
-
     public static ObeliskData load(CompoundTag tag, HolderLookup.Provider provider) {
         ObeliskData d = new ObeliskData();
         if (tag.contains("dimension")) {
             d.dimension = tag.getString("dimension");
             d.pos = BlockPos.of(tag.getLong("pos"));
-        }
-        ListTag list = tag.getList("feeders", Tag.TAG_COMPOUND);
-        for (int i = 0; i < list.size(); i++) {
-            CompoundTag f = list.getCompound(i);
-            d.feeders.put(BlockPos.of(f.getLong("pos")), f.getUUID("owner"));
         }
         if (tag.contains("board")) {
             CompoundTag b = tag.getCompound("board");
@@ -203,14 +177,6 @@ public class ObeliskData extends SavedData {
             tag.putString("dimension", dimension);
             tag.putLong("pos", pos.asLong());
         }
-        ListTag list = new ListTag();
-        feeders.forEach((p, owner) -> {
-            CompoundTag f = new CompoundTag();
-            f.putLong("pos", p.asLong());
-            f.putUUID("owner", owner);
-            list.add(f);
-        });
-        tag.put("feeders", list);
         if (board != null) {
             CompoundTag b = new CompoundTag();
             b.putLong("pos", board.asLong());

@@ -20,7 +20,7 @@ import net.neoforged.neoforge.registries.DeferredHolder;
 import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 
-/** The blocks and items Core adds: the obelisk and its parts, and the intake. */
+/** The blocks and items Core adds: the obelisk and its parts. */
 public final class ObeliskBlocks {
     public static final DeferredRegister.Blocks BLOCKS = DeferredRegister.createBlocks(KronwerkeCore.MOD_ID);
     public static final DeferredRegister.Items ITEMS = DeferredRegister.createItems(KronwerkeCore.MOD_ID);
@@ -82,10 +82,6 @@ public final class ObeliskBlocks {
     public static final DeferredBlock<ObeliskTopBlock> OBELISK_TOP = BLOCKS.register("obelisk_top",
             () -> new ObeliskTopBlock(stone(15).sound(SoundType.AMETHYST)));
 
-    public static final DeferredBlock<ObeliskIntakeBlock> OBELISK_INTAKE = BLOCKS.register("obelisk_intake",
-            () -> new ObeliskIntakeBlock(BlockBehaviour.Properties.of()
-                    .mapColor(MapColor.COLOR_BLACK).sound(SoundType.DEEPSLATE).strength(2.0f, 10.0f).noOcclusion()));
-
     public static final DeferredItem<Item> OBELISK_ITEM = ITEMS.register("obelisk",
             () -> new BlockItem(OBELISK.get(), new Item.Properties().fireResistant()));
     public static final java.util.List<DeferredItem<Item>> TIER_ITEMS = java.util.List.of(
@@ -100,8 +96,6 @@ public final class ObeliskBlocks {
             ITEMS.register("obelisk_shard", () -> new BlockItem(OBELISK_SHARD.get(), new Item.Properties())));
     public static final DeferredItem<Item> OBELISK_PLINTH_ITEM = ITEMS.register("obelisk_plinth",
             () -> new BlockItem(OBELISK_PLINTH.get(), new Item.Properties().fireResistant()));
-    public static final DeferredItem<Item> OBELISK_INTAKE_ITEM = ITEMS.register("obelisk_intake",
-            () -> new BlockItem(OBELISK_INTAKE.get(), new Item.Properties()));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ObeliskTopBlockEntity>> OBELISK_TOP_ENTITY = ENTITIES.register("obelisk_top",
             () -> BlockEntityType.Builder.of(ObeliskTopBlockEntity::new, OBELISK_TOP.get()).build(null));
@@ -109,8 +103,6 @@ public final class ObeliskBlocks {
             () -> BlockEntityType.Builder.of(ObeliskPedestalBlockEntity::new, OBELISK_PEDESTAL.get()).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ObeliskBoardBlockEntity>> OBELISK_BOARD_ENTITY = ENTITIES.register("obelisk_board",
             () -> BlockEntityType.Builder.of(ObeliskBoardBlockEntity::new, OBELISK_BOARD.get()).build(null));
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<ObeliskIntakeBlockEntity>> OBELISK_INTAKE_ENTITY = ENTITIES.register("obelisk_intake",
-            () -> BlockEntityType.Builder.of(ObeliskIntakeBlockEntity::new, OBELISK_INTAKE.get()).build(null));
 
     private ObeliskBlocks() {
     }
@@ -120,7 +112,6 @@ public final class ObeliskBlocks {
         ITEMS.register(modBus);
         ENTITIES.register(modBus);
         modBus.addListener(ObeliskBlocks::onCreativeTabs);
-        modBus.addListener(ObeliskBlocks::onCapabilities);
     }
 
     private static void onCreativeTabs(BuildCreativeModeTabContentsEvent event) {
@@ -129,12 +120,5 @@ public final class ObeliskBlocks {
             event.accept(OBELISK_PLINTH_ITEM.get());
             for (DeferredItem<Item> it : TIER_ITEMS) event.accept(it.get());
         }
-        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
-            event.accept(OBELISK_INTAKE_ITEM.get());
-        }
-    }
-
-    private static void onCapabilities(RegisterCapabilitiesEvent event) {
-        event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, OBELISK_INTAKE_ENTITY.get(), (be, side) -> be.handler);
     }
 }
