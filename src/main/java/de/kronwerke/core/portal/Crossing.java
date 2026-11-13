@@ -89,10 +89,15 @@ public final class Crossing {
             return true; // animals, items and carts stay on this side
         }
         if (Travel.busy(p.getUUID())) return true;
-        if (!CommonHooks.onTravelToDimension(p, to)) return true; // a stage lock said no, and told the player
+        if (!CommonHooks.onTravelToDimension(p, to)) {
+            // a stage lock said no, and told the player
+            if (end) outOfEndPortal(p, pos);
+            return true;
+        }
         NetworkSync.Peer host = Dimensions.host(to);
         if (!Dimensions.up(host)) {
             closed(p, host, to);
+            if (end) outOfEndPortal(p, pos);
             return true;
         }
         JsonObject a = new JsonObject();
@@ -125,6 +130,30 @@ public final class Crossing {
         KronwerkeCore.LOGGER.info("{} crosses to {} through a portal", p.getGameProfile().getName(), host.name());
         Travel.depart(p, host, back, a);
         return true;
+    }
+
+    /**
+     * An End portal that does not take the player. Its blocks hold nobody, and under the portal
+     * of a stronghold is lava: who jumps in while the End is locked (eyes of ender can be made
+     * two stages earlier) or its server is down would fall through and burn with all they
+     * carry. They are set on the nearest block of the frame instead.
+     */
+    private static void outOfEndPortal(ServerPlayer p, BlockPos portal) {
+        ServerLevel level = p.serverLevel();
+        BlockPos best = null;
+        double bestD = Double.MAX_VALUE;
+        for (BlockPos b : BlockPos.betweenClosed(portal.offset(-4, 0, -4), portal.offset(4, 0, 4))) {
+            if (!level.getBlockState(b).is(net.minecraft.world.level.block.Blocks.END_PORTAL_FRAME)) continue;
+            double d = b.distToCenterSqr(p.position());
+            if (d < bestD) {
+                bestD = d;
+                best = b.immutable();
+            }
+        }
+        if (best == null) return; // no frame (a portal a command made, the one in the End): nothing to stand on
+        p.teleportTo(level, best.getX() + 0.5, best.getY() + 1.0, best.getZ() + 0.5, p.getYRot(), p.getXRot());
+        p.setDeltaMovement(Vec3.ZERO);
+        p.fallDistance = 0;
     }
 
     /** When an entity a mod wanted to send elsewhere was last logged, so a farm does not fill the log. */

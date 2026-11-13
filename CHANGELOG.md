@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.20
+
+- An End portal that does not take the player sets them on its frame. The portal's blocks hold nobody and under a stronghold's portal is lava: who jumped in while the End was still locked (eyes of ender can be made from stage 2, the End opens with stage 4) or while its server was down got the message and then fell through into the lava with everything they carried. Found by reading the code on 13.11.2026.
+
 ## 0.39.19
 
 - A waystone or a Mekanism teleporter (the block and the portable one) that stands in a dimension on another server no longer lets a player in who has no stage for that dimension. A portal and every teleport that changes the dimension ask the stage lock before the move starts, but these three move the player from server to server by a path of their own that never came past the lock: someone could have set a waystone in the Nether in creative, or a team with the stage could have shared a frequency. Found by reading the code after Samuel asked whether the locks still hold with the new animations (13.11.2026); not seen to happen.
