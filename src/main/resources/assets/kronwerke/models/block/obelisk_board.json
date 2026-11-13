@@ -3,8 +3,8 @@
  "textures": {
   "particle": "kronwerke:block/obelisk_board_field",
   "front": "kronwerke:block/obelisk_board_field",
-  "side": "kronwerke:block/obelisk_plinth_side",
-  "top": "kronwerke:block/obelisk_plinth_top"
+  "side": "kronwerke:block/obelisk_board_field",
+  "top": "kronwerke:block/obelisk_board_field"
  },
  "elements": [
   {

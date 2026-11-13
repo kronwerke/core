@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.34
+
+- The leaderboard wall is dark on its narrow sides and its back too (13.11.2026). They still wore the pedestal's texture, a framed square on every block, so from the side the one panel was four tiles again. Seen on the real server with 0.39.33; the front is right (one field, brass frame, names and points).
+
 ## 0.39.33
 
 - A right click on the obelisk with a block in the hand no longer eats it on the client (13.11.2026). The server never set the block, but the client had already set it and taken one from the stack, and nothing corrected that: with a hopper in the hand the slot was empty after a click on the stone, 32 cobblestone were 31 after the first sneak click, until the inventory was sent again for another reason. Nothing was lost on the server. Now the client does not set a block against any part of the obelisk (the click still reaches the server), and the server sends the inventory after every click on it. Found with the test player on the real server.
