@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.21
+
+- The camera for the quest book's pictures waits until the chunks around it have arrived and gives what arrived last half a second more. The first picture of a run came out as sky, and a belt of Create that only learned its length when the camera came close was missing from its picture (13.11.2026).
+- Nothing of the HUD gets into a picture any more, also not what other mods draw there: an area title had put "???" over two pictures. Only on the camera's own client.
+
 ## 0.39.20
 
 - An End portal that does not take the player sets them on its frame. The portal's blocks hold nobody and under a stronghold's portal is lava: who jumped in while the End was still locked (eyes of ender can be made from stage 2, the End opens with stage 4) or while its server was down got the message and then fell through into the lava with everything they carried. Found by reading the code on 13.11.2026.

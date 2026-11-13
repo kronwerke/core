@@ -31,6 +31,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public final class CameraShots {
     private static ShotPayload job;
     private static int waited;
+    private static int settledAt;
     private static boolean optionsSet;
     private static long offlineSince;
     private static String lastScreen = "";
@@ -42,6 +43,7 @@ public final class CameraShots {
         if (!CameraClient.ON) return;
         job = p;
         waited = 0;
+        settledAt = 0;
         Minecraft mc = Minecraft.getInstance();
         mc.options.hideGui = true;
         mc.options.fov().set(Math.max(30, Math.min(110, p.fov())));
@@ -68,8 +70,11 @@ public final class CameraShots {
         if (job == null || mc.level == null || mc.player == null) return;
         waited++;
         // the sections around the camera have to be built first; at most 30 seconds
-        boolean ready = mc.levelRenderer.hasRenderedAllSections() && waited >= job.settleTicks();
+        boolean ready = around(mc) && mc.levelRenderer.hasRenderedAllSections() && waited >= job.settleTicks();
         if (!ready && waited < 600) return;
+        // what arrived last (a belt that only now knows its length) gets its frames too
+        if (ready && settledAt == 0) settledAt = waited;
+        if (ready && waited - settledAt < 10) return;
         ShotPayload p = job;
         job = null;
         try {
@@ -77,6 +82,31 @@ public final class CameraShots {
         } catch (IOException | RuntimeException e) {
             KronwerkeCore.LOGGER.warn("The camera could not take shot {}: {}", p.id(), e.toString());
         }
+    }
+
+    /**
+     * Whether the chunks around the camera are there. Right after a long jump nothing is being
+     * built yet, so "all sections rendered" is true over an empty world: the first picture of
+     * a run showed sky.
+     */
+    private static boolean around(Minecraft mc) {
+        int cx = mc.player.chunkPosition().x, cz = mc.player.chunkPosition().z;
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                if (!mc.level.getChunkSource().hasChunk(cx + dx, cz + dz)) return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Nothing of the HUD belongs in a picture. hideGui covers the game's own layers, not
+     * those of mods: an area title drew "???" over two pictures.
+     */
+    public static void register() {
+        if (!CameraClient.ON) return;
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
+                (net.neoforged.neoforge.client.event.RenderGuiLayerEvent.Pre e) -> e.setCanceled(true));
     }
 
     private static BufferedImage capture(Minecraft mc) {
