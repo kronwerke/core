@@ -72,6 +72,12 @@ public final class WaystoneLayer implements Layer {
     public static void travel(ServerPlayer p, Waystone w) {
         JsonObject arrive = new JsonObject();
         arrive.addProperty("waystone", w.getWaystoneUid().toString());
+        // the dimension it really stands in, for the stage lock: kronwerke:remote/<server>/<namespace>/<path>
+        String[] parts = w.getDimension().location().getPath().split("/", 4);
+        JsonObject place = new JsonObject();
+        if (parts.length == 4) place.addProperty("dim", parts[2] + ":" + parts[3]);
+        else if (parts.length == 3) place.addProperty("dim", parts[1] + ":" + parts[2]);
+        if (Travel.locked(p, place)) return; // the player was told which stage it needs
         String at = serverOf(w);
         boolean moved = at == null ? Travel.moveTo(p, arrive) : Travel.moveTo(p, at, arrive);
         if (!moved) {

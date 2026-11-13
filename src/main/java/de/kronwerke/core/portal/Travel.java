@@ -339,7 +339,7 @@ public final class Travel {
         UUID id = p.getUUID();
         Arrival a = arrived.get(id);
         if (a != null && a.until() > System.currentTimeMillis()) return;
-        if (p.isSpectator() || leaving.containsKey(id)) return;
+        if (p.isSpectator() || !p.isAlive() || leaving.containsKey(id)) return;
         if (p.isPassenger()) {
             if (!inPortal.containsKey(id)) {
                 p.displayClientMessage(Text.t("portal.ride", "Steig erst ab: das Portal nimmt nur dich mit, kein Reittier und kein Boot.").withStyle(ChatFormatting.GRAY), true);
@@ -390,7 +390,8 @@ public final class Travel {
                 it.remove();
                 continue;
             }
-            if (!inPortal(p)) {
+            // stepped out, or died in it: who is dead stays here and is not sent anywhere
+            if (!inPortal(p) || !p.isAlive()) {
                 send(p, TravelPayload.CANCEL, null);
                 it.remove();
                 continue;
@@ -400,6 +401,7 @@ public final class Travel {
                 it.remove();
                 NetworkSync.Peer target = portalFor(p);
                 if (target != null) throughPortal(p, target, BlockPos.of(t[2]));
+                else send(p, TravelPayload.CANCEL, null); // the other world went away meanwhile: the light must not stay on the screen
             }
         }
     }
@@ -421,9 +423,21 @@ public final class Travel {
      * waystone on main, say): main puts them there instead of in front of their portal.
      */
     /** Moves a player to a named server of the network (a waystone there); false when it is not up. */
+    /**
+     * Whether the place a move names lies in a dimension the player has no stage for yet; the
+     * player is told. A portal asks the lock itself before it gets here; a waystone, a
+     * teleporter or anything else that names a place on another server is asked here.
+     */
+    public static boolean locked(ServerPlayer p, JsonObject arrive) {
+        if (arrive == null || !arrive.has("dim") || !net.neoforged.fml.ModList.get().isLoaded("chapters")) return false;
+        ResourceLocation dim = ResourceLocation.tryParse(arrive.get("dim").getAsString());
+        return dim != null && de.kronwerke.core.lock.LockedDimensions.refuse(p, dim);
+    }
+
     public static boolean moveTo(ServerPlayer p, String peer, JsonObject arrive) {
         NetworkSync.Peer target = NetworkSync.peer(peer);
         if (target == null || !target.bus() || !target.running() || peer.equals(Role.server())) return false;
+        if (locked(p, arrive)) return false;
         JsonObject back = null;
         if (Role.main()) {
             // main remembers where they stood, for a way home that names no place (the mining world's portal)
@@ -441,6 +455,7 @@ public final class Travel {
     public static boolean moveTo(ServerPlayer p, JsonObject arrive) {
         NetworkSync.Peer target = NetworkSync.portalTarget();
         if (Role.main() || target == null || !target.bus() || !target.running()) return false;
+        if (locked(p, arrive)) return false;
         depart(p, target, null, arrive);
         return true;
     }

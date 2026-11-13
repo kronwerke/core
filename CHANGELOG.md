@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.19
+
+- A waystone or a Mekanism teleporter (the block and the portable one) that stands in a dimension on another server no longer lets a player in who has no stage for that dimension. A portal and every teleport that changes the dimension ask the stage lock before the move starts, but these three move the player from server to server by a path of their own that never came past the lock: someone could have set a waystone in the Nether in creative, or a team with the stage could have shared a frequency. Found by reading the code after Samuel asked whether the locks still hold with the new animations (13.11.2026); not seen to happen.
+- A player who dies inside the farm world's portal while it charges stays where they died. Before, the charge ran to its end and sent the dead player across.
+- The light of the charging portal cannot stay on the screen any more. If the other world goes away during the two and a half seconds of the charge the server now says stop, and the client lets the light go by itself when neither go nor stop comes within four seconds after the charge.
+
 ## 0.39.18
 
 - JEI starts once again when a login is sent on to a side world. Since 0.39.15 the join picture stays over that move instead of the stars, and with the stars went the mark that told JEI (and the chat) that this is a move: JEI stopped on main and built everything a second time in the side world, 22 and 18 seconds in the test client on the real servers (12.11.2026). Whether a move is under way no longer depends on which picture is on the screen.

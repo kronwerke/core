@@ -152,6 +152,13 @@ public final class TravelOverlay {
                 float k = Math.min(1, t / (float) CHARGE_MS);
                 streams(g, w, h, now, k, true);
                 g.fill(RenderType.guiOverlay(), 0, 0, w, h, argb(k * k * 0.55f, 0xffffff));
+                // the server says go or stop at the end of the charge; if neither comes (it was
+                // cut off, the word got lost) the light must not stay over the game for good
+                if (t > CHARGE_MS + 4000) {
+                    fadeFrom = 0.9f;
+                    phase = FADE;
+                    start = now;
+                }
             }
             case GO -> {
                 if (t < WHITE_MS) {

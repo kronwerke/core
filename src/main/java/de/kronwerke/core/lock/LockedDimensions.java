@@ -94,14 +94,24 @@ public final class LockedDimensions {
             if (CHAPTERS && !openForAll(dim)) event.setCanceled(true);
             return;
         }
+        if (refuse(player, dim)) event.setCanceled(true);
+    }
+
+    /**
+     * Says no and tells the player why, when the dimension still needs a stage. For the ways
+     * into a dimension on another server that do not come past the event above: a waystone or
+     * a Mekanism teleporter that stands there moves the player from server to server without
+     * a change of dimension that the game knows of.
+     */
+    public static boolean refuse(ServerPlayer player, ResourceLocation dim) {
         ResourceLocation stage = lockingStage(player, dim);
-        if (stage == null) return;
-        event.setCanceled(true);
+        if (stage == null) return false;
         Component name = Component.translatableWithFallback("kronwerke.dimension." + dim.getNamespace() + "." + dim.getPath(),
                 FALLBACK_NAMES.getOrDefault(dim.toString(), dim.toString()));
         player.displayClientMessage(Component.translatableWithFallback("kronwerke.dimension.locked",
                 "%s öffnet mit %s. Die Gemeinschaft baut den Obelisken voll, dann geht die Tür auf.",
                 name.copy().withStyle(ChatFormatting.GOLD),
                 LockedItems.stageName(stage).copy().withStyle(ChatFormatting.YELLOW)).withStyle(ChatFormatting.RED), true);
+        return true;
     }
 }
