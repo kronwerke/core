@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.28
+
+- 0.39.27 is taken back, it never ran on a server. The camera needs no way into main's copy of the Nether: a `kw cam shot` in `minecraft:the_nether` on main hands the camera to the Nether server like any player who is teleported there, it logs in there and stands at the place the shot named (seen on 13.11.2026 with Core 0.39.26). `kw cam shot` on that server then photographs the real Nether (13.11.2026).
+
 ## 0.39.27
 
 - The camera may enter the main server's own copy of the Nether and the End (`execute in minecraft:the_nether run kw cam shot ...`). Every other player who is teleported there is handed to the server that runs the dimension; the camera cannot log in anywhere but over loopback, and it only looks. The copy comes from the same generator, so a fortress or a biome looks the way it does on the Nether server (13.11.2026).
