@@ -18,8 +18,14 @@ public final class MoveCommand {
                 .then(Commands.argument("players", EntityArgument.players()).executes(c -> {
                     int n = 0;
                     for (ServerPlayer p : EntityArgument.getPlayers(c, "players")) {
+                        // the dead stay: they would arrive dead, on the death screen of a world they never saw
+                        if (p.isDeadOrDying()) {
+                            c.getSource().sendFailure(Text.t("portal.dead", "%s ist tot und bleibt hier, bis er wieder steht.", p.getGameProfile().getName()));
+                            continue;
+                        }
                         if (Travel.move(p)) n++;
                     }
+                    if (n == 0 && EntityArgument.getPlayers(c, "players").stream().allMatch(ServerPlayer::isDeadOrDying)) return 0;
                     int moved = n;
                     if (moved == 0) {
                         c.getSource().sendFailure(Text.t("portal.nowhere", "Die andere Welt ist gerade nicht erreichbar."));

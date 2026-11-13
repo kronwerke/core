@@ -176,6 +176,7 @@
   "kronwerke.portal.failed": "Die Reise hat nicht geklappt, versuch es gleich noch einmal.",
   "kronwerke.portal.frame": "Der Rahmen ist nicht geschlossen: innen 2 bis 21 breit, 3 bis 21 hoch, rundherum Grubenrahmen.",
   "kronwerke.portal.moving": "%s Spieler auf dem Weg.",
+  "kronwerke.portal.dead": "%s ist tot und bleibt hier, bis er wieder steht.",
   "kronwerke.portal.nowhere": "Die andere Welt ist gerade nicht erreichbar.",
   "kronwerke.portal.pets": "Deine Tiere bleiben hier, das Portal nimmt nur dich mit.",
   "kronwerke.portal.reset": "Diese Welt wird zurückgesetzt.",
