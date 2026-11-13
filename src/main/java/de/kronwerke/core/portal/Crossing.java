@@ -191,6 +191,9 @@ public final class Crossing {
     public static boolean transition(ServerPlayer p, DimensionTransition t) {
         ResourceKey<Level> to = t.newLevel().dimension();
         if (Dimensions.here(to)) return false;
+        // the camera only looks: it photographs this server's own copy of the dimension (same generator,
+        // nobody plays there) and is never handed to the server that has the played one
+        if (de.kronwerke.core.camera.Camera.is(p)) return false;
         if (Travel.busy(p.getUUID())) return true;
         if (!CommonHooks.onTravelToDimension(p, to)) return true;
         NetworkSync.Peer host = Dimensions.host(to);
@@ -318,7 +321,7 @@ public final class Crossing {
         }
         // in a dimension that is played elsewhere (an old player file, or an operator who joined a side directly)
         ResourceKey<Level> dim = p.level().dimension();
-        if (!Dimensions.here(dim)) {
+        if (!Dimensions.here(dim) && !de.kronwerke.core.camera.Camera.is(p)) {
             NetworkSync.Peer host = Dimensions.host(dim);
             if (host == null) return;
             JsonObject a = Role.main() ? exact(dim, p.position(), p.getYRot()) : respawnArrive(false, false);

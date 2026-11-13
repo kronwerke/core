@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.27
+
+- The camera may enter the main server's own copy of the Nether and the End (`execute in minecraft:the_nether run kw cam shot ...`). Every other player who is teleported there is handed to the server that runs the dimension; the camera cannot log in anywhere but over loopback, and it only looks. The copy comes from the same generator, so a fortress or a biome looks the way it does on the Nether server (13.11.2026).
+
 ## 0.39.26
 
 - A build of the test world holds all its chunks loaded first and waits until their entities are there. A chunk loaded in the very tick its box was cleared had none yet, so what an earlier build had summoned survived: an armour stand of a scene that had since moved stood in another scene's picture, and item frames and displays piled up under each other (13.11.2026). The chunks are let go when the last file has run.
