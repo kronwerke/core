@@ -110,7 +110,17 @@ public final class ShotFiles {
         }
         byte[] data = all.toByteArray();
         int size = data.length;
-        // pieces of equal size, and none tiny: the reader handles small answers differently
+        int pieces = cut(out, data);
+        JsonObject o = new JsonObject();
+        o.addProperty("size", size);
+        o.addProperty("pieces", pieces);
+        o.add("files", index);
+        Files.writeString(out.resolve("index.json"), o.toString(), StandardCharsets.UTF_8);
+        return files.size();
+    }
+
+    /** Pieces of equal size, and none tiny: the reader handles small answers differently. */
+    private static int cut(Path out, byte[] data) throws IOException {
         if (data.length < MIN_PIECE) data = Arrays.copyOf(data, MIN_PIECE);
         int pieces = Math.max(1, (data.length + PIECE - 1) / PIECE);
         int each = (data.length + pieces - 1) / pieces;
@@ -118,11 +128,61 @@ public final class ShotFiles {
             int from = i * each;
             Files.write(out.resolve(String.format("%03d.bin", i)), Arrays.copyOfRange(data, from, Math.min(data.length, from + each)));
         }
-        JsonObject o = new JsonObject();
-        o.addProperty("size", size);
-        o.addProperty("pieces", pieces);
-        o.add("files", index);
-        Files.writeString(out.resolve("index.json"), o.toString(), StandardCharsets.UTF_8);
+        return pieces;
+    }
+
+    /** Pictures per contact sheet: two beside each other, four rows. */
+    public static final int SHEET = 8;
+
+    /**
+     * Contact sheets for looking through a run before fetching anything in full: the small
+     * copies whose name starts with prefix, sorted, eight to a sheet at their own size, as
+     * JPEG, strung together and cut into pieces in shots/bundle like the bundle itself. A
+     * sheet takes about a sixth of what its eight pictures take. Returns the number of
+     * pictures; the names follow from the sorted list, the sheets carry no lettering (a
+     * server need not have a font).
+     */
+    public static int sheets(Path shots, String prefix) throws IOException {
+        Path opt = shots.resolve("opt"), out = shots.resolve("bundle");
+        Files.createDirectories(out);
+        try (var old = Files.newDirectoryStream(out)) {
+            for (Path f : old) Files.deleteIfExists(f);
+        }
+        List<Path> files = new ArrayList<>();
+        if (Files.isDirectory(opt)) {
+            try (var all = Files.newDirectoryStream(opt, "*.png")) {
+                for (Path f : all) if (f.getFileName().toString().startsWith(prefix)) files.add(f);
+            }
+        }
+        files.sort(null);
+        ByteArrayOutputStream all = new ByteArrayOutputStream();
+        int w = BOOK_WIDTH, h = BOOK_WIDTH * 9 / 16;
+        for (int i = 0; i < files.size(); i += SHEET) {
+            int n = Math.min(SHEET, files.size() - i);
+            BufferedImage sheet = new BufferedImage(2 * w, (n + 1) / 2 * h, BufferedImage.TYPE_INT_RGB);
+            java.awt.Graphics2D g = sheet.createGraphics();
+            for (int k = 0; k < n; k++) {
+                BufferedImage img = ImageIO.read(files.get(i + k).toFile());
+                if (img != null) g.drawImage(img, (k % 2) * w, (k / 2) * h, w, h, null);
+            }
+            g.dispose();
+            javax.imageio.ImageWriter writer = ImageIO.getImageWritersByFormatName("jpeg").next();
+            javax.imageio.ImageWriteParam param = writer.getDefaultWriteParam();
+            param.setCompressionMode(javax.imageio.ImageWriteParam.MODE_EXPLICIT);
+            param.setCompressionQuality(0.8f);
+            ByteArrayOutputStream one = new ByteArrayOutputStream();
+            try (javax.imageio.stream.ImageOutputStream ios = ImageIO.createImageOutputStream(one)) {
+                writer.setOutput(ios);
+                writer.write(null, new javax.imageio.IIOImage(sheet, null, null), param);
+            } finally {
+                writer.dispose();
+            }
+            // a length in front of every sheet: JPEG data cannot be told apart by its markers alone
+            byte[] b = one.toByteArray();
+            all.write(new byte[] {(byte) (b.length >>> 24), (byte) (b.length >>> 16), (byte) (b.length >>> 8), (byte) b.length});
+            all.write(b);
+        }
+        cut(out, all.toByteArray());
         return files.size();
     }
 

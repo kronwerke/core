@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.22
+
+- `/kw cam sheet [prefix]` packs contact sheets of a run's pictures (eight a sheet, JPEG) for looking through them before anything is fetched in full: about a sixth of the data.
+
 ## 0.39.21
 
 - The camera for the quest book's pictures waits until the chunks around it have arrived and gives what arrived last half a second more. The first picture of a run came out as sky, and a belt of Create that only learned its length when the camera came close was missing from its picture (13.11.2026).

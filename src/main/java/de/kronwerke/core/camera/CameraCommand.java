@@ -38,6 +38,8 @@ import net.minecraft.world.phys.Vec3;
  *   /kw cam run [prefix]            every shot of data/kronwerke/shots/shots.json (or those
  *                                   whose name starts with prefix), one after the other
  *   /kw cam stop                    empties the queue
+ *   /kw cam bundle [prefix]         the small copies as pieces for the console's files API
+ *   /kw cam sheet [prefix]          the same as contact sheets, eight pictures each, to look through
  */
 public final class CameraCommand {
     private static final ResourceLocation LIST = ResourceLocation.fromNamespaceAndPath("kronwerke", "shots/shots.json");
@@ -71,6 +73,8 @@ public final class CameraCommand {
                         .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> reopt(c, StringArgumentType.getString(c, "prefix")))))
                 .then(Commands.literal("bundle").executes(c -> bundle(c, ""))
                         .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> bundle(c, StringArgumentType.getString(c, "prefix")))))
+                .then(Commands.literal("sheet").executes(c -> sheet(c, ""))
+                        .then(Commands.argument("prefix", StringArgumentType.word()).executes(c -> sheet(c, StringArgumentType.getString(c, "prefix")))))
                 .then(shotNode())));
     }
 
@@ -82,6 +86,11 @@ public final class CameraCommand {
     /** Packs the small copies in shots/opt into pieces for the console (shots/bundle). */
     private static int bundle(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c, String prefix) {
         return background(c, "Bündel", () -> ShotFiles.bundle(Camera.shotsDir(), prefix) + " Bilder in kronwerke/shots/bundle gepackt.");
+    }
+
+    /** Packs contact sheets of the small copies into shots/bundle, for looking through a run. */
+    private static int sheet(com.mojang.brigadier.context.CommandContext<CommandSourceStack> c, String prefix) {
+        return background(c, "Kontaktbögen", () -> ShotFiles.sheets(Camera.shotsDir(), prefix) + " Bilder auf Kontaktbögen in kronwerke/shots/bundle gepackt.");
     }
 
     /** Image work takes seconds to minutes: off the server thread, answered when done. */
