@@ -3,6 +3,7 @@
 ## 0.39.21
 
 - The camera for the quest book's pictures waits until the chunks around it have arrived and gives what arrived last half a second more. The first picture of a run came out as sky, and a belt of Create that only learned its length when the camera came close was missing from its picture (13.11.2026).
+- The camera and the test player turn Flywheel's backend off when they join. Without a graphics card its drawing lost what turns: shafts and cogwheels under speed were missing from the pictures and belts showed only their ends, while the same scene stood whole before anything moved (13.11.2026). Create then draws the plain way.
 - Nothing of the HUD gets into a picture any more, also not what other mods draw there: an area title had put "???" over two pictures. Only on the camera's own client.
 
 ## 0.39.20

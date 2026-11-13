@@ -49,8 +49,33 @@ public final class CameraShots {
         mc.options.fov().set(Math.max(30, Math.min(110, p.fov())));
     }
 
+    private static boolean plainRender;
+
+    /**
+     * The camera and the test player draw without a graphics card. Flywheel's own drawing
+     * (what Create uses for everything that turns) loses parts there: a shaft or a cogwheel
+     * that turns was gone from the picture, a belt showed only its ends. With its backend off
+     * Create draws the plain way, which is right everywhere. Once per world, after joining.
+     */
+    private static void plainRendering(Minecraft mc) {
+        if (mc.player == null) {
+            plainRender = false;
+            return;
+        }
+        if (plainRender) return;
+        plainRender = true;
+        if (!net.neoforged.fml.ModList.get().isLoaded("flywheel")) return;
+        try {
+            net.neoforged.neoforge.client.ClientCommandHandler.runCommand("flywheel backend flywheel:off");
+            KronwerkeCore.LOGGER.info("Camera: Flywheel backend off");
+        } catch (RuntimeException e) {
+            KronwerkeCore.LOGGER.warn("Camera: could not turn Flywheel's backend off: {}", e.toString());
+        }
+    }
+
     /** Every client tick, camera only. */
     public static void tick() {
+        if (CameraClient.HEADLESS) plainRendering(Minecraft.getInstance());
         if (!CameraClient.ON) return;
         Minecraft mc = Minecraft.getInstance();
         if (!optionsSet) {
