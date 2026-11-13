@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.26
+
+- A build of the test world holds all its chunks loaded first and waits until their entities are there. A chunk loaded in the very tick its box was cleared had none yet, so what an earlier build had summoned survived: an armour stand of a scene that had since moved stood in another scene's picture, and item frames and displays piled up under each other (13.11.2026). The chunks are let go when the last file has run.
+
 ## 0.39.25
 
 - The hand that builds the test world turns its head with its body, and looks north when it clicks a floor or a ceiling. A block that faces whoever sets it took the direction from the head, which never moved: drawers set by the hand stood with their backs to the camera (13.11.2026).

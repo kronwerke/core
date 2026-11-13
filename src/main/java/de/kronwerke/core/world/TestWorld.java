@@ -392,19 +392,83 @@ public final class TestWorld {
 
     private static net.minecraft.world.item.ItemStack hand = net.minecraft.world.item.ItemStack.EMPTY;
 
+    private static boolean holding;
+    private static int wait, patience;
+    private static final java.util.Set<Long> held = new java.util.HashSet<>();
+
+    /**
+     * Before the first file runs: every chunk of every file's "#area" is held loaded, and the
+     * build waits two seconds. A chunk that was loaded in the very tick its file runs has no
+     * entities yet (they are read from disk a few ticks later), so what an earlier build had
+     * summoned there survived the clearing: an armour stand of a scene that had since moved
+     * stood in another scene's picture (13.11.2026), and the items a cleared block dropped
+     * were out of the reach of the command that removes them.
+     */
+    private static void hold(ServerLevel level) {
+        holding = true;
+        wait = 40;
+        patience = 600;
+        for (java.nio.file.Path file : files) {
+            try {
+                for (String raw : java.nio.file.Files.readAllLines(file, StandardCharsets.UTF_8)) {
+                    if (!raw.startsWith("#area ")) continue;
+                    String[] a = raw.strip().split("\\s+");
+                    int x0 = Integer.parseInt(a[1]), z0 = Integer.parseInt(a[2]), x1 = Integer.parseInt(a[3]), z1 = Integer.parseInt(a[4]);
+                    for (int cx = x0 >> 4; cx <= x1 >> 4; cx++) {
+                        for (int cz = z0 >> 4; cz <= z1 >> 4; cz++) {
+                            if (level.getForcedChunks().contains(net.minecraft.world.level.ChunkPos.asLong(cx, cz))) continue;
+                            if (held.add(net.minecraft.world.level.ChunkPos.asLong(cx, cz))) level.setChunkForced(cx, cz, true);
+                        }
+                    }
+                }
+            } catch (java.io.IOException | RuntimeException ex) {
+                KronwerkeCore.LOGGER.warn("Could not read the areas of {}: {}", file, ex.toString());
+            }
+        }
+    }
+
+    /** Two seconds are the least; a large world takes longer to come off the disk, and then the build waits for it (half a minute at most). */
+    private static boolean entitiesThere(ServerLevel level) {
+        for (long c : held) if (!level.areEntitiesLoaded(c)) return false;
+        return true;
+    }
+
+    private static void release(ServerLevel level) {
+        for (long c : held) level.setChunkForced(net.minecraft.world.level.ChunkPos.getX(c), net.minecraft.world.level.ChunkPos.getZ(c), false);
+        held.clear();
+        holding = false;
+    }
+
     /** One row per tick, then one file of the server folder per tick. */
     public static void tick(MinecraftServer server) {
         if (queue.isEmpty() && !files.isEmpty()) {
             ServerLevel level = level(server);
             if (level == null) {
                 files.clear();
+                held.clear();
+                holding = false;
+                return;
+            }
+            if (!holding) {
+                hold(level);
+                return;
+            }
+            if (wait > 0) {
+                wait--;
+                return;
+            }
+            if (patience > 0 && !entitiesThere(level)) {
+                patience--;
                 return;
             }
             run(server, level, files.poll());
-            if (files.isEmpty() && fileReport != null) {
-                fileReport.accept("Testwelt: " + filesTotal + " Dateien, " + commands + " Befehle, " + failed + " fehlgeschlagen"
-                        + (failed > 0 ? " (siehe die .log neben der Datei)." : "."));
-                fileReport = null;
+            if (files.isEmpty()) {
+                release(level);
+                if (fileReport != null) {
+                    fileReport.accept("Testwelt: " + filesTotal + " Dateien, " + commands + " Befehle, " + failed + " fehlgeschlagen"
+                            + (failed > 0 ? " (siehe die .log neben der Datei)." : "."));
+                    fileReport = null;
+                }
             }
             return;
         }
