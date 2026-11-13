@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.29
+
+- The test player can change its client's language (`probe lang de_de`), so pictures of screens for the quest book show the game in the book's language. The bootstrap starts the client in English every time (13.11.2026).
+
 ## 0.39.28
 
 - 0.39.27 is taken back, it never ran on a server. The camera needs no way into main's copy of the Nether: a `kw cam shot` in `minecraft:the_nether` on main hands the camera to the Nether server like any player who is teleported there, it logs in there and stands at the place the shot named (seen on 13.11.2026 with Core 0.39.26). `kw cam shot` on that server then photographs the real Nether (13.11.2026).

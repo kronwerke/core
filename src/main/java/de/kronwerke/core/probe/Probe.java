@@ -304,6 +304,7 @@ public final class Probe {
      * gui on|off                the HUD
      * connect HOST:PORT / disconnect
      * wait TICKS                before the next line
+     * lang CODE                 the client's language (de_de), until it restarts; resources reload
      * mark TEXT                 a line in the timeline
      * log REGEX [n]             the last lines of the client's log that match
      * </pre>
@@ -433,6 +434,15 @@ public final class Probe {
             case "wait":
                 wait = Integer.parseInt(p[0]);
                 return null;
+            case "lang": {
+                // lang de_de: the client's language, for pictures of screens in the book's language.
+                // The bootstrap sets en_us at every start, so this holds until the client restarts.
+                if (mc.getLanguageManager().getLanguage(p[0]) == null) return "no such language";
+                mc.getLanguageManager().setSelected(p[0]);
+                mc.options.languageCode = p[0];
+                mc.reloadResourcePacks();
+                return "language " + p[0] + ", resources reload";
+            }
             case "mark":
                 event("MARK " + rest);
                 return null;
