@@ -15,6 +15,7 @@ import net.minecraft.client.gui.screens.ReceivingLevelScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.network.chat.contents.TranslatableContents;
 import net.neoforged.neoforge.client.event.RenderGuiEvent;
 import net.neoforged.neoforge.client.event.ScreenEvent;
@@ -23,18 +24,35 @@ import org.joml.Matrix4f;
 
 /**
  * Joining the server: instead of the game's grey "Connecting to the server" and "Loading
- * terrain" screens, the works start up. Three brass gears mesh and turn on a dark ground, a
- * crown stands in the large one, sparks drift up, and the name fades in underneath. It is the
- * same picture whatever world the player lands in, and on purpose nothing like the move
- * between the servers (white flash and stars, see {@link TravelOverlay}).
+ * terrain" screens, an old works that still ticks. Three brass gears mesh on a timber frame
+ * next to a crooked little house with light in the window, on a piece of ground that floats
+ * in the night: moss on the roof and the beams, vines over the wheels, a broken wheel in the
+ * grass. The crown stands in the large gear, a pendulum swings under the middle one, smoke
+ * rises from the chimney, fireflies drift, and the name fades in underneath. It is pixel art
+ * on the grid of the pack's menus, painted by tools/art/join_art.py; this class only puts
+ * the layers together and moves what moves. It is the same picture whatever world the
+ * player lands in, and on purpose nothing like the move between the servers (white flash and
+ * stars, see {@link TravelOverlay}).
  * <p>
  * In the top right corner a small gear turns next to a word for what is happening (connecting,
  * loading the world, JEI's plugins while {@link LoadPump} draws). It is the proof that the
  * picture is alive: where it stands still, the game does.
  */
 public final class JoinOverlay {
-    private static final int GROUND = 0x0e0b12, BRASS = 0xd9a441, SHADE = 0x8f6a26, DIM = 0x6d5226, DARK = 0x3d2e17,
-            SPARK = 0xffd591, EMBER = 0xd0661e;
+    private static final int GROUND = 0x0d0b10, BRASS = 0xe5b451, DIM = 0x8a5a24;
+    /** The picture's grid, and what join_art.py prints for the parts that move: where they sit, how big a frame is. */
+    private static final int ART_W = 320, ART_H = 200, PIC_H = 232, TOP = 22;
+    private static final int BIG_X = 154, BIG_Y = 54, BIG_S = 84, MID_X = 212, MID_Y = 32, MID_S = 58, SMALL_X = 128, SMALL_Y = 98, SMALL_S = 46;
+    private static final int PEND_X = 222, PEND_Y = 65, PEND_W = 40, PEND_H = 58, PEND_N = 13;
+    private static final int LOGO_W = 112, LOGO_H = 34;
+    /** How many teeth pass a second once the works run. */
+    private static final double TEETH = 1.05;
+    private static final ResourceLocation BACK = art("back"), SCENE = art("scene"), FRONT = art("front"), LIGHT = art("light"),
+            GEAR_BIG = art("gear_big"), GEAR_MID = art("gear_mid"), GEAR_SMALL = art("gear_small"), PENDULUM = art("pendulum"), LOGO = art("logo");
+
+    private static ResourceLocation art(String name) {
+        return ResourceLocation.fromNamespaceAndPath(de.kronwerke.core.KronwerkeCore.MOD_ID, "textures/gui/join/" + name + ".png");
+    }
     private static final long FADE_MS = 700, STAY_MS = 250;
 
     private static long since = -1, lastSeen, fadeFrom = -1;
@@ -197,63 +215,99 @@ public final class JoinOverlay {
         long t = now - Math.max(0, since);
         g.pose().pushPose();
         g.pose().translate(0, 0, 950);
-        float cx = w / 2f, cy = h / 2f - 16;
-        // drawn for a screen 240 high; on a larger one everything grows with it
-        float zoom = Math.max(1f, Math.min(2.5f, h / 240f));
-        // the works come up to speed in the first second and a half
-        float run = Math.min(1, t / 1500f);
-        // (the turn is the integral of a speed that rises from nothing to full, so nothing jumps)
-        float a = (float) ((t <= 1500 ? t * t / 3000.0 : t - 750.0) / 1000.0 * 0.6);
         Shape ground = new Shape(g);
         ground.rect(0, 0, w, h, argb(alpha, GROUND));
         ground.end();
-        g.pose().translate(cx, h / 2f, 0);
-        g.pose().scale(zoom, zoom, 1);
-        g.pose().translate(-cx, -h / 2f, 0);
+        // as large as the window allows, in steps that keep one texel a whole number of real
+        // pixels (the GUI scale times k), so the pixels stay square; the rows above TOP hold
+        // only stars and may run off the top
+        float k = Math.min(w / (ART_W + 8f), h / (PIC_H - TOP + 6f));
+        float gui = (float) mc.getWindow().getGuiScale();
+        if (k * gui >= 1) k = (float) Math.floor(k * gui) / gui;
+        float ox = Math.round((w - ART_W * k) / 2f * gui) / gui, oy = Math.round(((h - (PIC_H - TOP) * k) / 2f - TOP * k) * gui) / gui;
+        g.pose().translate(ox, oy, 0);
+        g.pose().scale(k, k, 1);
+        // the picture comes out of the dark in the first half second
+        float show = alpha * Math.min(1, t / 500f);
+        // the works come up to speed in the first second and a half (the turn is the integral of a
+        // speed that rises from nothing to full, so nothing jumps), and then they tick: every
+        // tooth goes through fast and slow, like a clock's
+        double s = (t <= 1500 ? t * t / 3000.0 : t - 750.0) / 1000.0;
+        double teeth = TEETH * s + 0.115 * Math.sin(Math.PI * 2 * TEETH * s);
+        long f = (long) Math.floor(teeth * 8);
+        float swing = (float) Math.sin(Math.PI * TEETH * s);
+
+        tex(g, BACK, 0, 0, ART_W, ART_H, 0, 0, ART_W, ART_H, show);
+        tex(g, SCENE, 0, 0, ART_W, ART_H, 0, 0, ART_W, ART_H, show);
+        // smoke from the chimney: small squares that rise, drift and thin out
         Shape q = new Shape(g);
-        // the glow of the fire behind the works, breathing slowly
-        float breath = 0.5f + 0.5f * (float) Math.sin(t / 1300.0);
-        q.glow(cx, cy + 6, 20, 120, argb(alpha * (0.16f + 0.05f * breath) * run, EMBER));
-        // embers rising behind the gears
-        for (int i = 0; i < 34; i++) {
-            float speed = 0.09f + 0.13f * hash(i * 7 + 1);
-            float life = ((t / 1000f) * speed + hash(i * 7 + 2)) % 1f;
-            float x = cx + (hash(i * 7 + 3) - 0.5f) * 230 + (float) Math.sin(t / 900.0 + i * 1.7) * (5 + 6 * life);
-            float y = cy + 78 - life * 175;
-            float size = 0.6f + 1.1f * hash(i * 7 + 4);
-            float flick = 0.7f + 0.3f * (float) Math.sin(t / 110.0 + i * 2.3);
-            float fade = Math.min(1, life * 6) * (1 - life) * flick;
-            q.diamond(x, y, size, argb(alpha * fade * run, hash(i * 7 + 5) > 0.5f ? SPARK : BRASS));
+        for (int i = 0; i < 9; i++) {
+            float life = ((t / 5200f) + i / 9f) % 1f;
+            int x = (int) Math.floor(70 + life * 22 + Math.sin(t / 1400.0 + i * 2.1) * (1.5 + 4 * life));
+            int y = (int) Math.floor(58 - life * 34);
+            int size = life < 0.25f ? 2 : life < 0.7f ? 3 : 2;
+            float fade = Math.min(1, life * 5) * (1 - life) * 0.9f;
+            int c = argb(show * fade, i % 2 == 0 ? 0x655a73 : 0x4b4159);
+            q.rect(x, y, x + size, y + size, c);
+            if (size == 3) q.rect(x + 1, y - 1, x + 2, y, c);
         }
-        // three gears that mesh: 12, 8 and 6 teeth on one module, so the small ones run faster
-        float big = 36, module = big * 0.9f / 12;
-        float r8 = module * 8 / 0.9f, r6 = module * 6 / 0.9f;
-        float at8 = 0.36f, at6 = 2.62f;
-        float d8 = module * (12 + 8), d6 = module * (12 + 6);
-        q.gear(cx + (float) Math.cos(at8) * d8, cy + (float) Math.sin(at8) * d8, r8, 8, mesh(a, at8, 8), alpha * 0.95f, DIM, DARK, true);
-        q.gear(cx + (float) Math.cos(at6) * d6, cy + (float) Math.sin(at6) * d6, r6, 6, mesh(a, at6, 6), alpha * 0.95f, DIM, DARK, true);
-        q.gear(cx, cy, big, 12, a, alpha, BRASS, SHADE, false);
-        q.crown(cx, cy + 1, 13, argb(alpha, SPARK), argb(alpha, GROUND));
-        // the name, and a line that grows out from the middle under it
-        Font font = mc.font;
-        float in = Math.max(0, Math.min(1, (t - 500) / 900f));
-        float grow = 1 - (float) Math.pow(1 - in, 3);
-        q.rect(cx - 62 * grow, cy + 73, cx + 62 * grow, cy + 73.6f, argb(alpha * in * 0.8f, DIM));
         q.end();
-        if (in * alpha > 0.03f) {
-            String name = "K R O N W E R K E";
-            text(g, font, Component.literal(name), (int) (cx - font.width(name) / 2f), (int) (cy + 60), argb(in * alpha, BRASS));
-            String sub = "S E A S O N   2";
-            text(g, font, Component.literal(sub), (int) (cx - font.width(sub) / 2f), (int) (cy + 79), argb(in * alpha * 0.75f, DIM));
+        int pf = Math.round((swing * 0.5f + 0.5f) * (PEND_N - 1));
+        tex(g, PENDULUM, PEND_X, PEND_Y, PEND_W, PEND_H, pf * PEND_W, 0, PEND_W * PEND_N, PEND_H, show);
+        gear(g, GEAR_SMALL, SMALL_X, SMALL_Y, SMALL_S, 8, 48, f, show);
+        gear(g, GEAR_MID, MID_X, MID_Y, MID_S, 8, 64, f, show);
+        gear(g, GEAR_BIG, BIG_X, BIG_Y, BIG_S, 12, 96, f, show);
+        tex(g, FRONT, 0, 0, ART_W, ART_H, 0, 0, ART_W, ART_H, show);
+        // the lamps flicker: the warm layer comes and goes a little, in steps
+        float flick = 0.80f + 0.12f * (float) Math.sin(t / 173.0) + 0.08f * (float) Math.sin(t / 61.0 + 1.3);
+        tex(g, LIGHT, 0, 0, ART_W, ART_H, 0, 0, ART_W, ART_H, show * Math.round(flick * 8) / 8f);
+        // fireflies over the grass, each a texel that wanders and blinks
+        q = new Shape(g);
+        for (int i = 0; i < 11; i++) {
+            float bx = 44 + hash(i * 5 + 1) * 240, by = 112 + hash(i * 5 + 2) * 34;
+            int x = (int) Math.floor(bx + Math.sin(t / (1900.0 + 700 * hash(i * 5 + 3)) + i) * 9);
+            int y = (int) Math.floor(by + Math.sin(t / (1300.0 + 500 * hash(i * 5 + 4)) + i * 1.7) * 5);
+            float blink = (float) Math.sin(t / (520.0 + 260 * hash(i * 5 + 5)) + i * 2.3);
+            if (blink < -0.2f) continue;
+            q.rect(x, y, x + 1, y + 1, argb(show * (0.55f + 0.45f * blink), blink > 0.6f ? 0xfff1b8 : 0xc6dc6e));
         }
+        q.end();
+        // the name, a moment after the rest
+        float in = Math.max(0, Math.min(1, (t - 600) / 900f));
+        tex(g, LOGO, (ART_W - LOGO_W) / 2, ART_H - 3, LOGO_W, LOGO_H, 0, 0, LOGO_W, LOGO_H, alpha * in);
         g.pose().popPose();
         indicator(g, now, alpha);
     }
 
-    /** The turn of a gear with the given teeth that meshes with the large one (12 teeth, turned by a) at the direction at. */
-    private static float mesh(float a, float at, int teeth) {
-        float step = (float) (Math.PI * 2 / teeth), step12 = (float) (Math.PI * 2 / 12);
-        return (float) (at + Math.PI - step * (0.5f - at / step12)) - a * 12f / teeth;
+    /** One gear from its sheet: frame f of a whole turn, the sheet has the given number of columns. */
+    private static void gear(GuiGraphics g, ResourceLocation sheet, int x, int y, int size, int columns, int frames, long f, float alpha) {
+        int i = (int) Math.floorMod(f, (long) frames);
+        tex(g, sheet, x, y, size, size, (i % columns) * size, (i / columns) * size, columns * size, frames / columns * size, alpha);
+    }
+
+    /**
+     * A piece of a texture, drawn at once and over everything: no depth test, so nothing of
+     * the HUD shows through, and in the order it is called in, between the buffered shapes.
+     */
+    private static void tex(GuiGraphics g, ResourceLocation texture, int x, int y, int w, int h, int u, int v, int texW, int texH, float alpha) {
+        if (alpha <= 0.01f) return;
+        g.flush();
+        com.mojang.blaze3d.systems.RenderSystem.setShaderTexture(0, texture);
+        com.mojang.blaze3d.systems.RenderSystem.setShader(net.minecraft.client.renderer.GameRenderer::getPositionTexColorShader);
+        com.mojang.blaze3d.systems.RenderSystem.enableBlend();
+        com.mojang.blaze3d.systems.RenderSystem.defaultBlendFunc();
+        com.mojang.blaze3d.systems.RenderSystem.disableDepthTest();
+        Matrix4f m = g.pose().last().pose();
+        float u0 = u / (float) texW, u1 = (u + w) / (float) texW, v0 = v / (float) texH, v1 = (v + h) / (float) texH;
+        int c = argb(Math.min(1, alpha), 0xffffff);
+        com.mojang.blaze3d.vertex.BufferBuilder b = com.mojang.blaze3d.vertex.Tesselator.getInstance()
+                .begin(com.mojang.blaze3d.vertex.VertexFormat.Mode.QUADS, com.mojang.blaze3d.vertex.DefaultVertexFormat.POSITION_TEX_COLOR);
+        b.addVertex(m, x, y, 0).setUv(u0, v0).setColor(c);
+        b.addVertex(m, x, y + h, 0).setUv(u0, v1).setColor(c);
+        b.addVertex(m, x + w, y + h, 0).setUv(u1, v1).setColor(c);
+        b.addVertex(m, x + w, y, 0).setUv(u1, v0).setColor(c);
+        com.mojang.blaze3d.vertex.BufferUploader.drawWithShader(b.buildOrThrow());
+        com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
     }
 
     /** The corner: a small gear that turns as long as pictures are drawn, and what is going on. */
@@ -281,8 +335,8 @@ public final class JoinOverlay {
     }
 
     /**
-     * Filled shapes with corners anywhere between the pixels, so that a turning gear does not
-     * crawl from pixel to pixel as it would when put together from the GUI's whole rectangles.
+     * Filled shapes over everything: the dark ground, the texels of smoke and fireflies, and
+     * the small gear of the corner, whose corners lie anywhere between the pixels.
      */
     private static final class Shape {
         private final GuiGraphics g;
@@ -320,11 +374,6 @@ public final class JoinOverlay {
             quad(x0, y0, c, x0, y1, c, x1, y1, c, x1, y0, c);
         }
 
-        void diamond(float x, float y, float r, int c) {
-            if ((c >>> 24) == 0) return;
-            quad(x, y - r, c, x - r, y, c, x, y + r, c, x + r, y, c);
-        }
-
         /** A ring between two radii, each with its own colour (0 alpha outside gives a glow). */
         void ring(float cx, float cy, float r0, float r1, int c0, int c1) {
             int n = Math.max(12, (int) (r1 * 1.6f));
@@ -333,41 +382,6 @@ public final class JoinOverlay {
                 float ca = (float) Math.cos(a0), sa = (float) Math.sin(a0), cb = (float) Math.cos(a1), sb = (float) Math.sin(a1);
                 quad(cx + ca * r0, cy + sa * r0, c0, cx + ca * r1, cy + sa * r1, c1, cx + cb * r1, cy + sb * r1, c1, cx + cb * r0, cy + sb * r0, c0);
             }
-        }
-
-        void glow(float cx, float cy, float r0, float r1, int c) {
-            if ((c >>> 24) == 0) return;
-            ring(cx, cy, 0, r0, c, c);
-            ring(cx, cy, r0, r1, c, c & 0xffffff);
-        }
-
-        /** A gear: teeth on a rim, a shaded inner edge, and either spokes with a hub or an open middle. */
-        void gear(float cx, float cy, float r, int teeth, float angle, float alpha, int rgb, int shade, boolean spokes) {
-            if (alpha <= 0.02f) return;
-            int c = argb(alpha, rgb), d = argb(alpha, shade);
-            float root = r * 0.80f, inner = r * 0.56f, step = (float) (Math.PI * 2 / teeth);
-            for (int i = 0; i < teeth; i++) {
-                float at = angle + i * step;
-                float rl = at - step * 0.27f, rr = at + step * 0.27f, tl = at - step * 0.15f, tr = at + step * 0.15f;
-                float in = root - 0.5f;
-                quad(cx + (float) Math.cos(rl) * in, cy + (float) Math.sin(rl) * in, c,
-                        cx + (float) Math.cos(tl) * r, cy + (float) Math.sin(tl) * r, c,
-                        cx + (float) Math.cos(tr) * r, cy + (float) Math.sin(tr) * r, c,
-                        cx + (float) Math.cos(rr) * in, cy + (float) Math.sin(rr) * in, c);
-            }
-            ring(cx, cy, inner, root, c, c);
-            ring(cx, cy, inner, inner + Math.max(0.8f, r * 0.07f), d, d);
-            if (!spokes) return;
-            float hub = r * 0.26f, half = Math.max(0.7f, r * 0.07f);
-            int n = teeth >= 8 ? 4 : 3;
-            for (int i = 0; i < n; i++) {
-                float at = angle + i * (float) (Math.PI * 2 / n);
-                float ux = (float) Math.cos(at), uy = (float) Math.sin(at), px = -uy * half, py = ux * half;
-                float r0 = hub - 0.3f, r1 = inner + 0.3f;
-                quad(cx + ux * r0 + px, cy + uy * r0 + py, c, cx + ux * r1 + px, cy + uy * r1 + py, c,
-                        cx + ux * r1 - px, cy + uy * r1 - py, c, cx + ux * r0 - px, cy + uy * r0 - py, c);
-            }
-            ring(cx, cy, hub * 0.45f, hub, c, c);
         }
 
         /** The small gear of the corner: at this size it needs coarse teeth and a plain rim to read as a gear. */
@@ -382,26 +396,6 @@ public final class JoinOverlay {
                         cx + ux * r - px * 0.8f, cy + uy * r - py * 0.8f, c, cx + ux * r0 - px, cy + uy * r0 - py, c);
             }
             ring(cx, cy, r * 0.32f, root, c, c);
-        }
-
-        /** A crown of three points with a band, standing still in the open middle of the large gear. */
-        void crown(float cx, float cy, float s, int c, int ground) {
-            float l = cx - s, r = cx + s, base = cy + s * 0.62f, band = base - s * 0.34f, top = cy - s * 0.80f, low = cy - s * 0.05f;
-            rect(l, band, r, base, c);
-            // three points; the outer ones lean outwards a little
-            float[] tip = {l - s * 0.06f, cx, r + s * 0.06f};
-            float[] from = {l, cx - s * 0.42f, r - s * 0.60f};
-            float[] to = {l + s * 0.60f, cx + s * 0.42f, r};
-            float[] high = {top + s * 0.22f, top, top + s * 0.22f};
-            for (int i = 0; i < 3; i++) {
-                quad(from[i], band + 0.2f, c, tip[i], high[i], c, tip[i], high[i], c, to[i], band + 0.2f, c);
-                ring(tip[i], high[i] - s * 0.04f, 0, s * 0.13f, c, c);
-            }
-            // the valleys between the points are filled up to the low line
-            quad(l, low + s * 0.20f, c, l, band + 0.2f, c, r, band + 0.2f, c, r, low + s * 0.20f, c);
-            // a dark line over the band, and three stones in it
-            rect(l + s * 0.12f, band + s * 0.07f, r - s * 0.12f, band + s * 0.12f, ground);
-            for (int i = -1; i <= 1; i++) diamond(cx + i * s * 0.52f, (band + base) / 2 + s * 0.05f, s * 0.085f, ground);
         }
     }
 
