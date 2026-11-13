@@ -1,7 +1,8 @@
 # Changelog
 
-## 0.39.22
+## 0.39.23
 
+- 0.39.22 never built: its version bump emptied gradle.properties. Same content, built.
 - `/kw cam sheet [prefix]` packs contact sheets of a run's pictures (eight a sheet, JPEG) for looking through them before anything is fetched in full: about a sixth of the data.
 
 ## 0.39.21
