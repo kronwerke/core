@@ -30,7 +30,7 @@ public final class FirstSteps {
         });
     }
 
-    /** A deposit at the obelisk, by hand or by command. */
+    /** A deposit at the obelisk, by hand or through a feeder. */
     public static void deposited(ServerPlayer p) {
         award(p, "deposited");
     }

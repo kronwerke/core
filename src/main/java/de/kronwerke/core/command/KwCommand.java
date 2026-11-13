@@ -28,7 +28,6 @@ import java.util.UUID;
  *   invite <player>            streamer: use one of your slots
  *   revoke <player>            streamer: free a slot again
  *   slots                      streamer: show your slots
- *   deposit [all]              everyone: deposit held item (or whole inventory) into the active goal
  *   goals                      everyone: list goals and progress
  *   top [goal]                 everyone: top contributors
  *   admin slots <streamer> <n> op: set a streamer's base slots
