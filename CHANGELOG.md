@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.32
+
+- The menus' music keeps still where it cannot play (13.11.2026). With the Music or the Master slider at zero the game throws such a sound out again in the same tick, and 0.39.31 started a new one every tick; the same on a client whose sound does not run at all. Now it is not wanted at volume zero, and a start that did not take is tried again after two seconds, not at once. Found in the test player, which has no sound.
+
 ## 0.39.31
 
 - The menus have music of their own (13.11.2026): one quiet piece of two minutes forty that loops without a seam, on the title screen, in the menus outside a world and while the game connects, on under the join picture; it fades out over four seconds when the world is there. It takes the place of the game's own menu music (`SelectMusicEvent`), follows the Music slider, and the game's own music then waits five to ten minutes before its first piece instead of starting at the arrival. `tools/sounds/menu.py` writes and synthesises it (72 beats a minute, no drums, the trailer's theme on a music box over a pad, a harp and a low string). `client/MenuMusic` plays it as a sound of its own so that it can fade; `MenuMusicKeepMixin` keeps the game from cutting it off when the join button is pressed (the game stops every sound before it opens a connection). It is held in memory and not streamed, because a streamed sound runs dry while a world loads or JEI builds its recipes: no ticks, nothing feeds it. New option in the `/kw` menu and in the client's settings: `menuMusic`. Checked in the test client by letting OpenAL write what the game plays into a file: the piece plays on through connecting and through the loading of a world and fades in the world. Nobody has heard it yet.

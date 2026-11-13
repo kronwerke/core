@@ -33,6 +33,7 @@ public final class MenuMusic {
     private static final int FADE_IN = 40, FADE_OUT = 80;
     private static Track track;
     private static boolean handedOver = true;
+    private static int retryIn;
 
     private MenuMusic() {
     }
@@ -45,6 +46,8 @@ public final class MenuMusic {
     /** Outside a world, and on for as long as the join picture stands whole. Not on a move between two servers of the network. */
     static boolean wanted(Minecraft mc) {
         if (!KronwerkeClientConfig.menuMusic()) return false;
+        // with the music or everything turned down to nothing the game throws every such sound out again at once
+        if (mc.options.getSoundSourceVolume(SoundSource.MUSIC) <= 0f || mc.options.getSoundSourceVolume(SoundSource.MASTER) <= 0f) return false;
         if (JoinOverlay.whole()) return true;
         return mc.level == null && !TravelOverlay.active() && !TravelOverlay.moving();
     }
@@ -54,7 +57,13 @@ public final class MenuMusic {
         if (want) {
             handedOver = false;
             if (track == null || track.isStopped() || !mc.getSoundManager().isActive(track)) {
-                // a new one after the first frame, after the sounds were loaded again, after it had faded away
+                // a new one after the first frame, after the sounds were loaded again, after it had faded away;
+                // not more often than every two seconds, for a game whose sound does not run at all
+                if (retryIn > 0) {
+                    retryIn--;
+                    return;
+                }
+                retryIn = 40;
                 if (track != null) track.end();
                 track = new Track();
                 mc.getSoundManager().play(track);
