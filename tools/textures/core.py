@@ -4,7 +4,7 @@
   plinth_side, plinth_top   the stepped plinth: carved panels with a brass crown, slabs on top
   trunk                      the monolith: large dark panels with corner pins and a mortar line
   shaft, cap, band           the tip, its cap, the brass band
-  pedestal_side, board       the pedestals and the leaderboard wall
+  pedestal_side, board_field the pedestals and the leaderboard wall's face
   paving, flagstone, shard   the grounds: engraved slabs that carry a faint rune glow, the ring
                              of flagstones, and the crystal that tops the arches
 
@@ -174,14 +174,23 @@ def pedestal_side():
     return im
 
 
-def board():
-    im = stone(181, SLATE_DARK, 2, bevel=False)
-    brass_line(im, 0, 0, 1, 15)
-    brass_line(im, 14, 0, 15, 15)
-    brass_line(im, 0, 0, 15, 1)
-    # a smooth dark face for the carved gold letters, framed by a light groove
-    fill(im, 3, 3, 12, 15, SLATE_DARK, 182, 1)
-    bevel(im, 3, 3, 12, 15, light=0.1, dark=0.3, inset=True)
+def board_field():
+    """The wall's face without a frame: the slabs join to one panel, and the frame is part of the model."""
+    im = stone(181, SLATE_DARK, 1, bevel=False)
+    fill(im, 0, 0, 15, 15, SLATE_DARK, 182, 1)
+    return im
+
+
+def board_frame(upright):
+    """The brass of the wall's frame: a bar of two pixels, light on its upper or left pixel and dark on the
+    other, the same along its whole length so that the bars of neighbouring slabs join without a mark. One
+    picture for the level bars (top and bottom) and one for the upright ones; every bar of the model shows
+    the strip that lies where it lies."""
+    im = empty()
+    for x in range(16):
+        for y in range(16):
+            across = x if upright else y
+            put(im, x, y, BRASS_LIGHT if across % 2 == 0 else BRASS_DARK)
     return im
 
 
@@ -296,7 +305,9 @@ if __name__ == "__main__":
     write_plain("obelisk_cap", cap())
     write_plain("obelisk_band", band())
     write_plain("obelisk_pedestal_side", pedestal_side())
-    write_plain("obelisk_board", board())
+    write_plain("obelisk_board_field", board_field())
+    write_plain("obelisk_board_frame_h", board_frame(False))
+    write_plain("obelisk_board_frame_v", board_frame(True))
 
     im, g = paving()
     save("obelisk_paving", im, g)

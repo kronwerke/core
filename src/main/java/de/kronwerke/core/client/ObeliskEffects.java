@@ -187,8 +187,24 @@ public final class ObeliskEffects {
     private static long depositTick;
     private static float depositStrength;
 
+    /**
+     * A right click on the obelisk is never a block set against it. The server refuses that
+     * anyway, but the client had already set its block and taken one from the hand, and nobody
+     * told it otherwise: a hopper in the hand was gone from the hotbar after a click on the stone,
+     * 32 cobblestone were 31, until something else made the server send the inventory again.
+     * The click still goes to the server, which takes the gift.
+     */
+    private static void onClientClick(net.neoforged.neoforge.event.entity.player.PlayerInteractEvent.RightClickBlock e) {
+        if (!e.getLevel().isClientSide()) return;
+        var state = e.getLevel().getBlockState(e.getPos());
+        if (!de.kronwerke.core.obelisk.ObeliskStructure.isPart(state) && !state.is(de.kronwerke.core.obelisk.ObeliskBlocks.OBELISK.get())) return;
+        e.setCanceled(true);
+        e.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+    }
+
     public static void register(net.neoforged.bus.api.IEventBus modBus) {
         RiteFx.register();
+        net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onClientClick);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onRenderStage);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onFog);
         net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(ObeliskEffects::onCamera);

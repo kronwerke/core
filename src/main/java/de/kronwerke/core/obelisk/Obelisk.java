@@ -85,6 +85,9 @@ public final class Obelisk {
         if (event.getHand() != InteractionHand.MAIN_HAND || !(event.getEntity() instanceof ServerPlayer player)) return;
         // by hand means a person's hand: a deployer or any other machine that clicks is not one
         if (player instanceof net.neoforged.neoforge.common.util.FakePlayer) return;
+        // a client that set a block against the stone all the same has one less in its hand, and only there:
+        // tell it what the inventory really holds (ObeliskEffects.onClientClick keeps Core's own client from it)
+        player.inventoryMenu.sendAllDataToRemote();
 
         GoalManager gm = GoalManager.get();
         List<Goal> active = gm.activeGoals();
@@ -802,7 +805,9 @@ public final class Obelisk {
         for (int i = 0; i < width; i++) {
             for (int j = 0; j < height; j++) {
                 BlockPos p = anchor.relative(right, i).above(j);
-                level.setBlock(p, state.setValue(ObeliskBoardBlock.ANCHOR, i == 0 && j == 0), 3);
+                level.setBlock(p, state.setValue(ObeliskBoardBlock.ANCHOR, i == 0 && j == 0)
+                        .setValue(ObeliskBoardBlock.LEFT, i > 0).setValue(ObeliskBoardBlock.RIGHT, i < width - 1)
+                        .setValue(ObeliskBoardBlock.DOWN, j > 0).setValue(ObeliskBoardBlock.UP, j < height - 1), 3);
             }
         }
         if (level.getBlockEntity(anchor) instanceof ObeliskBoardBlockEntity be) be.setSize(width, height);

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.39.33
+
+- A right click on the obelisk with a block in the hand no longer eats it on the client (13.11.2026). The server never set the block, but the client had already set it and taken one from the stack, and nothing corrected that: with a hopper in the hand the slot was empty after a click on the stone, 32 cobblestone were 31 after the first sneak click, until the inventory was sent again for another reason. Nothing was lost on the server. Now the client does not set a block against any part of the obelisk (the click still reaches the server), and the server sends the inventory after every click on it. Found with the test player on the real server.
+- The leaderboard wall is one panel (13.11.2026). Every block of it had its own frame, so 7 by 4 blocks looked like a grid of 28 tiles with writing across the joints. Now the blocks know their neighbours (`left`, `right`, `up`, `down` in the block state) and only the outer edge of the wall carries a frame of brass, the field inside is one dark face without joints. The frame stands half a pixel proud of the field, the writing sits on the field. New textures `obelisk_board_field`, `obelisk_board_frame_h`, `obelisk_board_frame_v` (drawn by `tools/textures/core.py`), the old `obelisk_board` is gone. A wall that stands in a world keeps its tiles until it is taken down and put up again. Seen in the small test client without names on it.
+- Less waiting at the portal on a side world: no monster spawns within 32 blocks of the arrival place (it was 8, the size of the protected place itself). The protection against digging stays at 8 blocks. Monsters still walk in from further out and still hurt, so this makes the arrival calmer, not safe. The test player was killed there twice within two minutes of arriving.
+
 ## 0.39.32
 
 - The menus' music keeps still where it cannot play (13.11.2026). With the Music or the Master slider at zero the game throws such a sound out again in the same tick, and 0.39.31 started a new one every tick; the same on a client whose sound does not run at all. Now it is not wanted at volume zero, and a start that did not take is tried again after two seconds, not at once. Found in the test player, which has no sound.

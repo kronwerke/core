@@ -19,6 +19,9 @@ import org.joml.Matrix4f;
  * so they read as cut into the stone. Drawn by the anchor slab across the whole wall.
  */
 public class BoardRenderer implements BlockEntityRenderer<ObeliskBoardBlockEntity> {
+    /** Where the writing lies: just over the field, which is sunk half a pixel into the slab (see the block's model). */
+    private static final float FIELD = 0.004f - 0.5f / 16f;
+
     private static final int GOLD = 0xFFd8ad55;
     private static final int GOLD_SOFT = 0xFFb89048;
     private static final int CUT = 0xFF0d0b10;
@@ -48,11 +51,11 @@ public class BoardRenderer implements BlockEntityRenderer<ObeliskBoardBlockEntit
 
         float y = margin;
         String head = be.lines().get(0);
-        drawCentered(pose, buffer, head, w / 2f, y, Math.min(scale * 2f, inner / Math.max(1, font.width(head))), GOLD, 0.004f);
+        drawCentered(pose, buffer, head, w / 2f, y, Math.min(scale * 2f, inner / Math.max(1, font.width(head))), GOLD, FIELD);
         y += rowH * 2.2f;
         if (lines > 1 && !be.lines().get(1).isEmpty()) {
             String sub = be.lines().get(1);
-            drawCentered(pose, buffer, sub, w / 2f, y, Math.min(scale, inner / Math.max(1, font.width(sub))), GOLD_SOFT, 0.004f);
+            drawCentered(pose, buffer, sub, w / 2f, y, Math.min(scale, inner / Math.max(1, font.width(sub))), GOLD_SOFT, FIELD);
         }
         y += rowH * 1.3f;
         for (int i = 2; i < lines; i++) {
@@ -60,8 +63,8 @@ public class BoardRenderer implements BlockEntityRenderer<ObeliskBoardBlockEntit
             float rw = parts.length > 1 ? font.width(parts[1]) * scale : 0;
             int room = (int) ((inner - rw) / scale) - 8;
             String left = font.width(parts[0]) <= room ? parts[0] : font.plainSubstrByWidth(parts[0], Math.max(0, room - font.width("..."))) + "...";
-            draw(pose, buffer, left, margin, y, scale, GOLD, 0.004f);
-            if (rw > 0) draw(pose, buffer, parts[1], margin + inner - rw, y, scale, GOLD, 0.004f);
+            draw(pose, buffer, left, margin, y, scale, GOLD, FIELD);
+            if (rw > 0) draw(pose, buffer, parts[1], margin + inner - rw, y, scale, GOLD, FIELD);
             y += rowH;
         }
         pose.popPose();

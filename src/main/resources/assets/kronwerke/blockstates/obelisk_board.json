@@ -1,36 +1,195 @@
 {
- "variants": {
-  "anchor=false,facing=north": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 0
+ "multipart": [
+  {
+   "when": {
+    "facing": "north"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board"
+   }
   },
-  "anchor=true,facing=north": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 0
+  {
+   "when": {
+    "facing": "north",
+    "up": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_up"
+   }
   },
-  "anchor=false,facing=east": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 90
+  {
+   "when": {
+    "facing": "north",
+    "down": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_down"
+   }
   },
-  "anchor=true,facing=east": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 90
+  {
+   "when": {
+    "facing": "north",
+    "left": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_left"
+   }
   },
-  "anchor=false,facing=south": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 180
+  {
+   "when": {
+    "facing": "north",
+    "right": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_right"
+   }
   },
-  "anchor=true,facing=south": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 180
+  {
+   "when": {
+    "facing": "east"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board",
+    "y": 90
+   }
   },
-  "anchor=false,facing=west": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 270
+  {
+   "when": {
+    "facing": "east",
+    "up": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_up",
+    "y": 90
+   }
   },
-  "anchor=true,facing=west": {
-   "model": "kronwerke:block/obelisk_board",
-   "y": 270
+  {
+   "when": {
+    "facing": "east",
+    "down": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_down",
+    "y": 90
+   }
+  },
+  {
+   "when": {
+    "facing": "east",
+    "left": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_left",
+    "y": 90
+   }
+  },
+  {
+   "when": {
+    "facing": "east",
+    "right": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_right",
+    "y": 90
+   }
+  },
+  {
+   "when": {
+    "facing": "south"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board",
+    "y": 180
+   }
+  },
+  {
+   "when": {
+    "facing": "south",
+    "up": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_up",
+    "y": 180
+   }
+  },
+  {
+   "when": {
+    "facing": "south",
+    "down": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_down",
+    "y": 180
+   }
+  },
+  {
+   "when": {
+    "facing": "south",
+    "left": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_left",
+    "y": 180
+   }
+  },
+  {
+   "when": {
+    "facing": "south",
+    "right": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_right",
+    "y": 180
+   }
+  },
+  {
+   "when": {
+    "facing": "west"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board",
+    "y": 270
+   }
+  },
+  {
+   "when": {
+    "facing": "west",
+    "up": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_up",
+    "y": 270
+   }
+  },
+  {
+   "when": {
+    "facing": "west",
+    "down": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_down",
+    "y": 270
+   }
+  },
+  {
+   "when": {
+    "facing": "west",
+    "left": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_left",
+    "y": 270
+   }
+  },
+  {
+   "when": {
+    "facing": "west",
+    "right": "false"
+   },
+   "apply": {
+    "model": "kronwerke:block/obelisk_board_edge_right",
+    "y": 270
+   }
   }
- }
+ ]
 }

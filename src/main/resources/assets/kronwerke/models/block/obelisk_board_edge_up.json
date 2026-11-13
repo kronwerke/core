@@ -1,0 +1,38 @@
+{
+ "parent": "minecraft:block/block",
+ "textures": {
+  "particle": "kronwerke:block/obelisk_board_frame_h",
+  "brass": "kronwerke:block/obelisk_board_frame_h"
+ },
+ "elements": [
+  {
+   "from": [
+    0,
+    14,
+    0
+   ],
+   "to": [
+    16,
+    16,
+    0.5
+   ],
+   "faces": {
+    "north": {
+     "texture": "#brass"
+    },
+    "east": {
+     "texture": "#brass"
+    },
+    "west": {
+     "texture": "#brass"
+    },
+    "up": {
+     "texture": "#brass"
+    },
+    "down": {
+     "texture": "#brass"
+    }
+   }
+  }
+ ]
+}

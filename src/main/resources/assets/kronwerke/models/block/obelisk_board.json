@@ -1,8 +1,8 @@
 {
  "parent": "minecraft:block/block",
  "textures": {
-  "particle": "kronwerke:block/obelisk_board",
-  "front": "kronwerke:block/obelisk_board",
+  "particle": "kronwerke:block/obelisk_board_field",
+  "front": "kronwerke:block/obelisk_board_field",
   "side": "kronwerke:block/obelisk_plinth_side",
   "top": "kronwerke:block/obelisk_plinth_top"
  },
@@ -11,7 +11,7 @@
    "from": [
     0,
     0,
-    0
+    0.5
    ],
    "to": [
     16,
@@ -20,8 +20,7 @@
    ],
    "faces": {
     "north": {
-     "texture": "#front",
-     "cullface": "north"
+     "texture": "#front"
     },
     "south": {
      "texture": "#side",

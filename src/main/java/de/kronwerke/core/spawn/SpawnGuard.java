@@ -219,11 +219,26 @@ public final class SpawnGuard {
         if (e != null && inside(e.level(), e.blockPosition())) event.setCanGrief(false);
     }
 
+    /**
+     * No monster spawns inside. On a side world the ring for that is wider than the protected
+     * arrival place (32 blocks), so nobody steps out of the portal into a creeper that grew
+     * nine blocks away. Monsters still walk in from further out.
+     */
     public static void onSpawn(FinalizeSpawnEvent event) {
         var mob = event.getEntity();
-        if (mob.getType().getCategory() == MobCategory.MONSTER && inside(mob.level(), mob.blockPosition())) {
+        if (mob.getType().getCategory() != MobCategory.MONSTER) return;
+        if (inside(mob.level(), mob.blockPosition()) || nearArrival(mob.level(), mob.blockPosition())) {
             event.setSpawnCancelled(true);
         }
+    }
+
+    private static final int ARRIVAL_CALM = 32;
+
+    private static boolean nearArrival(Level level, BlockPos pos) {
+        if (de.kronwerke.core.link.Role.main() || radius() <= 0) return false;
+        if (!(level instanceof ServerLevel sl) || sl.dimension() != Level.OVERWORLD) return false;
+        int[] c = center(sl);
+        return Math.max(Math.abs(pos.getX() - c[0]), Math.abs(pos.getZ() - c[1])) <= ARRIVAL_CALM;
     }
 
     /**
