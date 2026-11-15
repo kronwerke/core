@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.37
+
+- Plain anvils work with Easy Anvils (15.11.2026, `compat/AnvilSwap`). The mod puts its own block in place of an anvil a player sets or a new chunk brings, and refuses every other one ("Unable to open. Break and replace to use."): one set by a command, a schematic or a structure placed later. Now a right click on such an anvil turns it into the mod's block, facing kept, and that block answers the click. Visual Workbench does the same for crafting tables by itself. Seen in the small client: a damaged anvil set by `/setblock` opens the mod's window at the first click, is `easyanvils:minecraft/damaged_anvil[facing=east]` afterwards, and a sword takes Sharpness V from a book in it, with Apotheosis installed. Not seen on the server.
+
 ## 0.39.36
 
 - House rules, decided by Samuel on 15.11.2026 (`world/HouseRules`, settings under `rules`). The night is skipped when a quarter of the players in a world sleep (`rules.sleepPercent` 25, the game rule `playersSleepingPercentage`). No phantoms (`rules.phantoms` false, the game rule `doInsomnia`). Both are set at every server start, so a `/gamerule` by hand holds until the next restart. Farmland is not trampled, by players or by mobs (`rules.farmlandTrample` false). Seen in a small client in a singleplayer world: the two game rules read 25 and false, and a field stays a field under a player who drops onto it from three blocks. Not seen on the server.
