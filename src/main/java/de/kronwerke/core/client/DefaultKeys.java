@@ -20,13 +20,14 @@ import net.neoforged.neoforge.client.settings.KeyModifier;
 import net.neoforged.neoforge.common.NeoForge;
 
 /**
- * The pack's key layout. Default Options only writes keybindings.txt into an instance at its
- * very first start, so instances started before a layout change kept the mods' own defaults,
- * with their conflicts. The layout ships in assets/kronwerke/keys.tsv, written by the pack's
- * tools/keys/layout.py: one line per key and earlier default (name, the mod's or an earlier
- * pack layout's key and modifier, the pack's key and modifier), and a version number. Once per
- * version, on the first client tick, every key that still sits on such a default moves to the
- * pack's; a key the player chose is left alone.
+ * Kronwerke sets no keys of its own any more (layout 2, 15.11.2026): every mod keeps its
+ * default, as in other large packs, and the quest book prints the key the reader has bound.
+ * Instances that ran an earlier pack layout still have its keys in their options, so
+ * assets/kronwerke/keys.tsv (written by the pack's tools/keys/defaults.py) lists every key the
+ * earlier layout had moved or unbound: name, the earlier pack key and modifier, the mod's
+ * default key and modifier, and a version number. Once per version, on the first client
+ * tick, every key that still sits on the earlier pack key goes back to the mod's default; a
+ * key the player chose is left alone, and a fresh instance has nothing to move.
  */
 public final class DefaultKeys {
 
@@ -72,7 +73,7 @@ public final class DefaultKeys {
         mc.options.save();
         KronwerkeClientConfig.KEYS_APPLIED.set(version[0]);
         KronwerkeClientConfig.SPEC.save();
-        KronwerkeCore.LOGGER.info("Key layout {} applied: {} keys moved from their mod default", version[0], moved);
+        KronwerkeCore.LOGGER.info("Key layout {} applied: {} keys moved", version[0], moved);
     }
 
     private static Map<String, List<Move>> read(int[] version) {

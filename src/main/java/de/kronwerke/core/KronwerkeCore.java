@@ -116,6 +116,7 @@ public class KronwerkeCore {
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.spawn.ArrivalGrace::onLogout);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGHEST, de.kronwerke.core.spawn.ArrivalGrace::onDamage);
         NeoForge.EVENT_BUS.addListener(de.kronwerke.core.spawn.ArrivalGrace::onTarget);
+        NeoForge.EVENT_BUS.addListener(de.kronwerke.core.world.HouseRules::onTrample);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onAttack);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteract);
         NeoForge.EVENT_BUS.addListener(EventPriority.HIGH, SpawnGuard::onEntityInteractPlain);
@@ -174,6 +175,7 @@ public class KronwerkeCore {
     }
 
     private void onServerStarted(ServerStartedEvent event) {
+        de.kronwerke.core.world.HouseRules.onServerStarted(event.getServer());
         TabList.init(event.getServer());
         de.kronwerke.core.queue.JoinQueue.start(event.getServer());
         LogPruner.prune(FMLPaths.GAMEDIR.get().resolve("logs"), KronwerkeConfig.LOG_DAYS.get());

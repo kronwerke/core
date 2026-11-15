@@ -52,6 +52,9 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.IntValue GOAL_PAUSE_TICKS;
     public static final ModConfigSpec.IntValue SPAWN_RADIUS;
     public static final ModConfigSpec.IntValue ARRIVAL_GRACE;
+    public static final ModConfigSpec.IntValue SLEEP_PERCENT;
+    public static final ModConfigSpec.BooleanValue PHANTOMS;
+    public static final ModConfigSpec.BooleanValue TRAMPLE;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> BLAST_PROOF;
     public static final ModConfigSpec.ConfigValue<String> SPAWN_CENTER;
     public static final ModConfigSpec.ConfigValue<java.util.List<? extends String>> OWNERS;
@@ -120,6 +123,15 @@ public final class KronwerkeConfig {
                 .define("queue", true);
         QUEUE_LIMIT = b.comment("How many players the whole network holds (main and the side worlds together) before new players queue. Operators, owners, streamers and players coming back from a side world never queue. Changed in game with /kw admin queue limit <n>, which is kept in kronwerke/queue-limit.txt and wins over this value (pack updates bring this file back).")
                 .defineInRange("queueLimit", 50, 1, 999);
+        b.pop();
+
+        b.push("rules");
+        SLEEP_PERCENT = b.comment("The night is skipped when this share of the players in the overworld sleeps (the game rule playersSleepingPercentage, set at every start so it also holds in a world that was reset). 0 leaves the game rule alone.")
+                .defineInRange("sleepPercent", 25, 0, 100);
+        PHANTOMS = b.comment("Whether phantoms come for players who have not slept (the game rule doInsomnia). false sets the rule to false at every start.")
+                .define("phantoms", false);
+        TRAMPLE = b.comment("Whether farmland is trampled by jumping players and mobs.")
+                .define("farmlandTrample", false);
         b.pop();
 
         b.push("arrival");
