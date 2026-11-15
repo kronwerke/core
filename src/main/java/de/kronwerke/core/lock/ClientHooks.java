@@ -14,6 +14,10 @@ public final class ClientHooks {
         NeoForge.EVENT_BUS.addListener(LockedTooltip::onTooltip);
         modBus.addListener(LockedDecorator::register);
         NeoForge.EVENT_BUS.addListener((ClientTickEvent.Post e) -> ClientLocks.tick());
-        if (ModList.get().isLoaded("jei")) ClientLocks.onChange(JeiBatch::reconcile);
+        if (ModList.get().isLoaded("emi")) {
+            ClientLocks.onChange(() -> de.kronwerke.core.compat.EmiLocks.refresh());
+        } else if (ModList.get().isLoaded("jei")) {
+            ClientLocks.onChange(JeiBatch::reconcile);
+        }
     }
 }

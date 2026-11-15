@@ -36,11 +36,17 @@ import java.util.Map;
  * hidden until they are next. Chapters does not know about this: its hide calls for the
  * next stage are dropped here, its restore calls for items still in the list are
  * filtered, and when a stage opens {@link #reconcile()} brings the new next stage in.
+ *
+ * With EMI in the pack none of this reaches JEI: EMI shows the list, see EmiLocks.
  */
 public final class JeiBatch {
     private JeiBatch() {}
 
     private record Op(IIngredientManager manager, IIngredientType<?> type, boolean add, List<Object> items) {}
+
+    /** With EMI the locks are cut out of EMI's list (EmiLocks) and JEI's own list is left whole. */
+    private static final boolean EMI = net.neoforged.fml.ModList.get().isLoaded("emi");
+    private static int dropped;
 
     private static boolean active;
     private static final List<Op> ops = new ArrayList<>();
@@ -119,11 +125,20 @@ public final class JeiBatch {
         byItem = null;
         reconcileQueued();
         int[] done = flush();
+        if (EMI) {
+            KronwerkeCore.LOGGER.info("Stage locks: {} changes to JEI's list left out, EMI shows the list ({} recipe lookups skipped)", dropped, skipped);
+            dropped = 0;
+            return;
+        }
         KronwerkeCore.LOGGER.info("Stage locks applied in {} ms: {} ingredient changes in {} JEI calls, {} recipe lookups skipped",
                 (System.nanoTime() - started) / 1_000_000, done[0], done[1], skipped);
     }
 
     public static void remove(IIngredientManager manager, IIngredientType<?> type, Collection<?> items) {
+        if (EMI) {
+            dropped += items.size();
+            return;
+        }
         if (isItems(type) && currentItem != null) {
             lastManager = manager;
             itemType = type;
@@ -143,6 +158,10 @@ public final class JeiBatch {
     }
 
     public static void add(IIngredientManager manager, IIngredientType<?> type, Collection<?> items) {
+        if (EMI) {
+            dropped += items.size();
+            return;
+        }
         if (isItems(type)) {
             // items that are already in the list, because they were the next stage
             List<Object> keep = new ArrayList<>();

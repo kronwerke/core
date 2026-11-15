@@ -67,12 +67,22 @@ public final class JeiKeep {
         // the same pack on every server, but not always the very same number: after a restart the
         // farm world had 45077 recipes and main 45078 (11.11.2026). A handful in 45000 is not
         // worth stopping the game for 20 seconds at every move; another pack version is.
-        if (Math.abs(now - recipes) > Math.max(3, recipes / 2000)) {
+        if (!close(now, recipes)) {
             KronwerkeCore.LOGGER.info("JEI starts again: this server has {} recipes, the last one had {}", now, recipes);
             return false;
         }
         if (now != recipes) KronwerkeCore.LOGGER.info("JEI stays although this server has {} recipes and the last one had {}", now, recipes);
         return true;
+    }
+
+    /** Whether two servers' recipe counts are near enough to be the same pack. */
+    public static boolean close(int now, int before) {
+        return before >= 0 && Math.abs(now - before) <= Math.max(3, before / 2000);
+    }
+
+    /** The recipe count of the server last left on a move, or -1. */
+    public static int lastRecipes() {
+        return recipes;
     }
 
     /** JEI starts anew: what it holds from now on is this connection's. */
