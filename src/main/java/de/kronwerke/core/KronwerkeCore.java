@@ -123,6 +123,9 @@ public class KronwerkeCore {
 
         // the first steps in the quest book check what the player really did
         de.kronwerke.core.steps.FirstSteps.register();
+        if (net.neoforged.fml.ModList.get().isLoaded("ftbteams") && net.neoforged.fml.ModList.get().isLoaded("chapters")) {
+            de.kronwerke.core.goal.TeamStages.register();
+        }
 
         if (ModList.get().isLoaded("botania") && ModList.get().isLoaded("curios")) {
             de.kronwerke.core.perf.TiaraWearers.register();

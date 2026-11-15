@@ -195,6 +195,14 @@ public final class StageLink {
         });
     }
 
+    /** Side world: the player's team changed (TeamStages). The new team gets what the player is due. */
+    public static void teamChanged(ServerPlayer p) {
+        if (Role.main()) return;
+        Set<String> want = bypass.contains(p.getUUID()) ? all() : union(of(p), earned);
+        List<String> changed = set(p, union(want, of(p)), all());
+        if (!changed.isEmpty()) KronwerkeCore.LOGGER.info("Stages of {} set right after a team change: {}", p.getGameProfile().getName(), changed);
+    }
+
     /** Side world: whether the player has the bypass. */
     public static boolean hasBypass(UUID id) {
         return bypass.contains(id);

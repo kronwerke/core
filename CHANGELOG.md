@@ -2,6 +2,7 @@
 
 ## 0.39.35
 
+- Founding, joining or leaving a party no longer costs the stages (15.11.2026). Chapters keeps the stages in the FTB team, and a new party is a new team with none. Whoever followed the first chapter of the quest book and founded a team stood at stage 1 again until the next login, with everything of the later stages taken out of their hands. In a singleplayer world that ended the open pack, because nothing there gives a stage back but the login: this is what the testers ran into ("the stages cannot be unlocked in singleplayer"). On the server it would have hit everyone who founds a party after stage 2 is reached. Now the team a player is in after the change gets what the player is due: every stage in a singleplayer world, what the goals and the bypass say on main, what main last said in a side world (`goal/TeamStages`, on FTB Teams' `PLAYER_CHANGED`). Seen in a small client with Chapters, FTB Teams, JEI and AE2: before, `/ftbteams party create` left "Stages: -" and the ME controller was taken out of the hand; with the fix the four stages stay and the controller stays. Not seen with the whole pack (it does not fit into this machine's memory) and not on the server.
 - `/kw move` leaves the dead where they are and says so (13.11.2026). It carried a dead player to the other server, where they arrived on the death screen. Seen twice with the test player.
 
 ## 0.39.34
