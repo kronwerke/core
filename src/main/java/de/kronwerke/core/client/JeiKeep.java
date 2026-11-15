@@ -26,6 +26,7 @@ import java.util.Map;
 public final class JeiKeep {
     private static long keptUntil;
     private static int recipes = -1;
+    private static long movedAt;
     /** Objects of the data-driven registries of the connection JEI was started on, by registry and name. */
     private static Map<Object, ResourceLocation> stale;
 
@@ -53,6 +54,7 @@ public final class JeiKeep {
             KronwerkeCore.LOGGER.warn("JEI is not kept across this move: {}", e.toString());
             return false;
         }
+        movedAt = System.currentTimeMillis();
         keptUntil = System.currentTimeMillis() + 90_000;
         KronwerkeCore.LOGGER.info("JEI stays up across the move ({} recipes)", recipes);
         return true;
@@ -78,6 +80,11 @@ public final class JeiKeep {
     /** Whether two servers' recipe counts are near enough to be the same pack. */
     public static boolean close(int now, int before) {
         return before >= 0 && Math.abs(now - before) <= Math.max(3, before / 2000);
+    }
+
+    /** When JEI was last kept for a move, in milliseconds, or 0. */
+    public static long movedAt() {
+        return movedAt;
     }
 
     /** The recipe count of the server last left on a move, or -1. */

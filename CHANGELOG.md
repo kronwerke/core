@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.39.38
+
+- EMI really keeps its lists across a move (15.11.2026). 0.39.37 skipped EMI's clearing at the logout, but on a move EMI does not clear at all (it does that when the game goes back to the menu); it simply reloads when the new server's tags and recipes arrive, and that went through: seen with the test player on the way from main to the farm world, EMI started to build its lists again. Now that reload is left out when the arrival is a move, EMI's lists are whole and the new server has the same recipes within a handful (`client/EmiKeep`).
+- Seen with 0.39.37 and the whole pack on the server: "Stage locks in EMI: 8901 of 42686 stacks hidden, next stage kronwerke:stage2" at the login, 157 pages in EMI instead of 198, and with the bypass on "0 of 42686 stacks hidden" at once, without a reload. No error from Chipped's workbench recipes any more (0 in the log, more than 170 before).
+
 ## 0.39.37
 
 - The stage locks work in EMI (15.11.2026, decided by Samuel after the measurement in pack 0.24.48: with EMI next to JEI the wait after the login is 13 to 14 seconds instead of 28 to 29). JEI stays underneath, because 73 mods of the pack only have a JEI plugin, but it shows no list of its own then. `compat/EmiLocks` cuts EMI's shown list the way JEI's was cut: items of the next stage stay, veiled as "???", items of later stages are out, and so are locked fluids and chemicals; recipes are not touched. EMI derives the list it shows from the whole one in a tenth of a second (`bakeFiltered`), the cut hangs on the end of that (`EmiStackListMixin`), and when a stage opens the list is derived again, nothing reloads. What Chapters would hide in JEI's own list is left out with EMI (`JeiBatch`): EMI's JEI layer throws every stack JEI calls invisible out of EMI's list for good. Seen in the small client (Chapters, JEI, EMI, AE2): with stage 2 the log says "28 of 2705 stacks hidden, next stage kronwerke:stage3" and stage 3 items are veiled in the list; `chapters add` of stage 3 gives "0 of 2705 stacks hidden, next stage kronwerke:stage4" at once, without a reload, on the same page. Not seen with the whole pack.
