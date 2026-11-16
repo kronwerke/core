@@ -91,7 +91,9 @@
     "TntBudgetMixin",
     "TravelFreezeMixin",
     "WaystoneContextMixin",
-    "WaystoneTravelMixin"
+    "WaystoneTravelMixin",
+    "RsTransmitterMixin",
+    "RsCardMixin"
   ],
   "client": [
     "ChatKeepMixin",

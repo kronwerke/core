@@ -61,6 +61,7 @@ public final class Share {
         if (ModList.get().isLoaded("mekanism")) add(de.kronwerke.core.share.mek.QioLayer.create());
         if (ModList.get().isLoaded("mekanism")) add(de.kronwerke.core.share.mek.FrequencyLayer.create());
         if (ModList.get().isLoaded("ae2")) add(de.kronwerke.core.share.ae2.BridgeLayer.create());
+        if (ModList.get().isLoaded("refinedstorage")) add(de.kronwerke.core.share.rs.RsBridgeLayer.create());
         if (ModList.get().isLoaded("fluxnetworks")) add(de.kronwerke.core.share.flux.FluxLayer.create());
         if (ModList.get().isLoaded("powah")) add(de.kronwerke.core.share.powah.EnderLayer.create());
         if (ModList.get().isLoaded("functionalstorage")) add(de.kronwerke.core.share.fs.EnderDrawerLayer.create());

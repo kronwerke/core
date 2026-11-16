@@ -1179,7 +1179,7 @@ public final class Travel {
         return r;
     }
 
-    static String encode(CompoundTag tag) {
+    public static String encode(CompoundTag tag) {
         try {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             NbtIo.writeCompressed(tag, out);
@@ -1189,7 +1189,7 @@ public final class Travel {
         }
     }
 
-    static CompoundTag decode(String s) throws IOException {
+    public static CompoundTag decode(String s) throws IOException {
         return NbtIo.readCompressed(new ByteArrayInputStream(Base64.getDecoder().decode(s)), NbtAccounter.unlimitedHeap());
     }
 

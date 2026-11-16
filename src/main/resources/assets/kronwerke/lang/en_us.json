@@ -291,5 +291,6 @@
   "kronwerke.hub.help_give2": "By hand only: no command, no menu button and no machine hands in for you.",
   "kronwerke.hub.help_give3": "/kw undo takes a gift back for ten seconds.",
   "kronwerke.hub.help_cmds": "Commands",
-  "kronwerke.hub.help_all": "Every command, in the chat"
+  "kronwerke.hub.help_all": "Every command, in the chat",
+  "kronwerke.rs.linked": "Linked to %s"
 }

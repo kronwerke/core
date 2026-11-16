@@ -278,5 +278,6 @@
   "kronwerke.hub.help_give2": "Nur von Hand: kein Befehl, kein Menüknopf und keine Maschine gibt für dich ab.",
   "kronwerke.hub.help_give3": "/kw undo holt eine Gabe zehn Sekunden lang zurück.",
   "kronwerke.hub.help_cmds": "Befehle",
-  "kronwerke.hub.help_all": "Alle Befehle im Chat"
+  "kronwerke.hub.help_all": "Alle Befehle im Chat",
+  "kronwerke.rs.linked": "Verbunden mit %s"
 }

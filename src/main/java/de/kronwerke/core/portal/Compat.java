@@ -23,7 +23,8 @@ import java.util.UUID;
  * <p>
  * Sophisticated Backpacks keeps a backpack's contents in world storage under the backpack's
  * uuid; the item only carries the uuid. Every backpack in the player file (inventory, ender
- * chest, Curios slots) and every backpack inside those travels along.
+ * chest, Curios slots) and every backpack inside those travels along. Refined Storage does the
+ * same with its disks and storage blocks, see RsDisks.
  */
 final class Compat {
     private static final String STORAGE_UUID = "sophisticatedcore:storage_uuid";
@@ -53,6 +54,20 @@ final class Compat {
      * replaced (an empty backpack thrown home used to leave its old contents on main).
      */
     static JsonObject collect(CompoundTag self, String what) {
+        JsonObject extra = backpacks(self, what);
+        if (RS) {
+            JsonObject disks = de.kronwerke.core.share.rs.RsDisks.collect(self, what);
+            if (disks != null) {
+                if (extra == null) extra = new JsonObject();
+                extra.add("rsdisks", disks);
+            }
+        }
+        return extra;
+    }
+
+    private static final boolean RS = net.neoforged.fml.ModList.get().isLoaded("refinedstorage");
+
+    private static JsonObject backpacks(CompoundTag self, String what) {
         Object storage = backpackStorage();
         if (storage == null) return null;
         try {
@@ -94,6 +109,7 @@ final class Compat {
     }
 
     static void restore(MinecraftServer server, JsonObject extra) {
+        if (RS && extra.get("rsdisks") instanceof JsonObject disks) de.kronwerke.core.share.rs.RsDisks.restore(server, disks);
         if (!(extra.get("backpacks") instanceof JsonObject packs)) return;
         Object storage = backpackStorage();
         if (storage == null) return;
