@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.41 (not released yet)
+
+- Test client only (`-Dkronwerke.probe=true`): two new probe lines for pictures the website uses. `icons LIST [size] [dir]` draws every item id of a list as an inventory does and writes one PNG each; `entities LIST [size] [dir]` does the same for mobs (in a world; lines are `name entity_id [yaw] [tilt] [snbt]`). Both draw once on black and once on white and work out colour and transparency from the two pictures, so the cut-outs have true alpha and no halo. An item whose renderer throws is left out and listed in `failed.txt`, the rest of its batch is drawn again. No change for players or servers.
+
 ## 0.39.40
 
 - `kw admin quests <uuid> json` answers the quest progress of the player's FTB team for the website's quest book (20.11.2026): the ids of done and started quests, as FTB Quests writes them, with the team's name and size. The bot asks it for a signed in visitor (kronwerke.com/anmelden) and the book marks those quests.
