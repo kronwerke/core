@@ -155,7 +155,7 @@ public final class KronwerkeConfig {
                         "cataclysm:the_harbinger", "cataclysm:the_leviathan", "cataclysm:maledictus", "cataclysm:ancient_remnant",
                         "cataclysm:scylla", "cataclysm:wadjet", "cataclysm:the_watcher",
                         "mowziesmobs:frostmaw", "mowziesmobs:wroughtnaut", "mowziesmobs:umvuthi", "mowziesmobs:sculptor",
-                        "draconicevolution:chaos_guardian", "minecraft:ender_dragon", "minecraft:wither"), o -> o instanceof String);
+                        "draconicevolution:draconic_guardian", "minecraft:ender_dragon", "minecraft:wither"), o -> o instanceof String);
         BOSS_HEALTH_PER_PLAYER = b.comment("Extra health per player beyond the first, as a fraction of the base (0.5 = plus 50 percent each).")
                 .defineInRange("healthPerPlayer", 0.6, 0.0, 10.0);
         BOSS_DAMAGE_PER_PLAYER = b.comment("Extra damage per player beyond the first, as a fraction of the base.")

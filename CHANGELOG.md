@@ -1,7 +1,9 @@
 # Changelog
 
-## 0.39.41 (not released yet)
+## 0.39.41
 
+- The Chaos Guardian grows with the group and gets his hint (20.11.2026). The boss list named `draconicevolution:chaos_guardian`, an id Draconic Evolution never had; the entity is `draconicevolution:draconic_guardian`. So the last boss of the season was the only one that did not scale, and the note a player hears on coming close never fired. The default list has the right id, and a config that still carries the old one is read as the right one, so no server config has to be edited.
+- The hint itself was wrong about the crystals: their shields cannot be shot or beaten down. The Guardian's own attack has to hit a crystal, then its shield is unstable for ten seconds. Lines 1 and 2 say that now, in both languages.
 - Test client only (`-Dkronwerke.probe=true`): two new probe lines for pictures the website uses. `icons LIST [size] [dir]` draws every item id of a list as an inventory does and writes one PNG each; `entities LIST [size] [dir]` does the same for mobs (in a world; lines are `name entity_id [yaw] [tilt] [snbt]`). Both draw once on black and once on white and work out colour and transparency from the two pictures, so the cut-outs have true alpha and no halo. An item whose renderer throws is left out and listed in `failed.txt`, the rest of its batch is drawn again. No change for players or servers.
 
 ## 0.39.40

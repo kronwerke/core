@@ -45,12 +45,17 @@ public final class BossScaling {
     private BossScaling() {
     }
 
+    static final String CHAOS_GUARDIAN = "draconicevolution:draconic_guardian";
+
     /** The configured bosses as entity types, so the check on every entity tick allocates nothing. */
     public static Set<EntityType<?>> bossTypes() {
         Set<EntityType<?>> b = bosses;
         if (b == null) {
             b = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
             for (String id : KronwerkeConfig.BOSSES.get()) {
+                // Draconic Evolution calls its Chaos Guardian draconic_guardian. Configs written
+                // before 0.39.41 carry the name it never had, so he neither scaled nor got his hint.
+                if (id.equals("draconicevolution:chaos_guardian")) id = CHAOS_GUARDIAN;
                 ResourceLocation rl = ResourceLocation.tryParse(id);
                 if (rl != null) net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getOptional(rl).ifPresent(b::add);
             }
@@ -194,12 +199,12 @@ public final class BossScaling {
     public static void chaosHint(ServerPlayer p) {
         if (told.contains(p.getUUID()) || !(p.level() instanceof ServerLevel level)) return;
         AABB box = p.getBoundingBox().inflate(96);
-        List<LivingEntity> guardians = level.getEntitiesOfClass(LivingEntity.class, box, e -> EntityType.getKey(e.getType()).toString().equals("draconicevolution:chaos_guardian"));
+        List<LivingEntity> guardians = level.getEntitiesOfClass(LivingEntity.class, box, e -> EntityType.getKey(e.getType()).toString().equals(CHAOS_GUARDIAN));
         if (guardians.isEmpty()) return;
         told.add(p.getUUID());
         p.sendSystemMessage(Text.t("boss.chaos_title", "Der Chaoswächter").withStyle(ChatFormatting.DARK_PURPLE, ChatFormatting.BOLD));
-        p.sendSystemMessage(Text.t("boss.chaos_1", "1. Die vier Wächterkristalle auf den Säulen heilen und schützen ihn. Solange sie stehen, ist er unverwundbar.").withStyle(ChatFormatting.LIGHT_PURPLE));
-        p.sendSystemMessage(Text.t("boss.chaos_2", "2. Jeder Kristall hat einen Schild, der nachwächst: Schild runter, Kristall sofort zerstören. Pfeile, Zauber und Nahkampf zählen.").withStyle(ChatFormatting.LIGHT_PURPLE));
+        p.sendSystemMessage(Text.t("boss.chaos_1", "1. Die Wächterkristalle rund um die Insel schützen ihn. Solange sie stehen, ist er unverwundbar.").withStyle(ChatFormatting.LIGHT_PURPLE));
+        p.sendSystemMessage(Text.t("boss.chaos_2", "2. Jeder Kristall hat einen Schild, den ihr nicht selbst brecht: Lockt den Wächter hin. Trifft sein eigener Angriff den Kristall, ist der Schild zehn Sekunden instabil. Dann zerschlagen.").withStyle(ChatFormatting.LIGHT_PURPLE));
         p.sendSystemMessage(Text.t("boss.chaos_3", "3. Ohne Kristalle ist er verwundbar und wütend: Feuerbälle, Laser, Flächenschaden. Zusammenbleiben, heilen, beim Tanken abwechseln.").withStyle(ChatFormatting.LIGHT_PURPLE));
         p.sendSystemMessage(Text.t("boss.chaos_4", "4. Nach dem Sieg: der Chaoskristall in der Mitte. Abbauen gibt die Chaosscherben, dann fliegt die Insel in die Luft. Erst wegfliegen, dann jubeln.").withStyle(ChatFormatting.LIGHT_PURPLE));
     }
