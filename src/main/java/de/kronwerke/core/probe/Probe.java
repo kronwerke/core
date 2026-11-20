@@ -114,6 +114,8 @@ public final class Probe {
     // ---- what happens by itself ----
 
     private static void frame() {
+        if (Minecraft.getInstance().screen instanceof IconExport icons) icons.frame();
+        if (Minecraft.getInstance().screen instanceof EntityExport mobs) mobs.frame();
         lastFrame = System.nanoTime();
         frames++;
         frameCount++;
@@ -289,6 +291,8 @@ public final class Probe {
      * inv                       the player's inventory
      * chat [n]                  the last chat lines
      * shot NAME [width]         a picture of the frame as the player sees it
+     * icons LIST [size] [dir]   every item id in probe/LIST drawn as in an inventory, to probe/icons (see IconExport)
+     * entities LIST [size] [dir] the mobs of probe/LIST cut out, to probe/entities (see EntityExport; needs a world)
      * say TEXT / cmd COMMAND    chat, or a command without the slash
      * key NAME [ticks]          a key of the keyboard (e, escape, f3, space ...), down and up
      * type TEXT                 characters into the open screen
@@ -330,6 +334,16 @@ public final class Probe {
             }
             case "shot":
                 return shot(mc, p[0], p.length > 1 ? Integer.parseInt(p[1]) : 854);
+            case "icons": {
+                IconExport screen = new IconExport(DIR.resolve(p[0]), DIR.resolve(p.length > 2 ? p[2] : "icons"), p.length > 1 ? Integer.parseInt(p[1]) : 96);
+                mc.setScreen(screen);
+                return "icons started";
+            }
+            case "entities": {
+                if (mc.level == null) return "needs a world";
+                mc.setScreen(new EntityExport(DIR.resolve(p[0]), DIR.resolve(p.length > 2 ? p[2] : "entities"), p.length > 1 ? Integer.parseInt(p[1]) : 512));
+                return "entities started";
+            }
             case "say":
                 mc.player.connection.sendChat(rest);
                 return null;
