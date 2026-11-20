@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.39.40
+
+- `kw admin quests <uuid> json` answers the quest progress of the player's FTB team for the website's quest book (20.11.2026): the ids of done and started quests, as FTB Quests writes them, with the team's name and size. The bot asks it for a signed in visitor (kronwerke.com/anmelden) and the book marks those quests.
+
 ## 0.39.39
 
 - Refined Storage across the network's servers (16.11.2026, asked by Samuel). Its disks keep their contents in one world's storage repository and the item only carries a uuid, so on another server a disk was empty. Now every disk a travelling player has with them (inventory, ender chest, Curios, backpacks, a disk drive carried with Carry On) takes its repository entry along, like backpacks, and so does a disk thrown through a portal (`share/rs/RsDisks`, `portal/Compat`). Seen with three local servers: a 1k disk with 37 diamonds and 20 iron taken out of a drive in the main world, carried to the Nether server ("Refined Storage: 1 disks came with their contents"), put into a drive there, and the grid shows both.

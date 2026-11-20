@@ -316,6 +316,7 @@ public final class KwCommand {
                         .then(BotCommand.ungrant())
                         .then(BotCommand.goals())
                         .then(BotCommand.roster())
+                        .then(BotCommand.quests())
                         .then(Commands.literal("goal")
                                 .then(Commands.literal("reload").executes(c -> {
                                     List<String> problems = GoalManager.get().reloadChecked();

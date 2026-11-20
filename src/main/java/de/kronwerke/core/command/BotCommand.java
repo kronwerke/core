@@ -38,6 +38,8 @@ import java.util.UUID;
  * stays the same player.
  *   admin goals json                   every goal with state, progress and top five
  *   admin roster json                  every streamer and granted player with slots and invited players
+ *   admin quests <uuid> json           the quest progress of the player's team, for the website:
+ *                                      ids (as FTB Quests writes them) of done and started quests
  */
 public final class BotCommand {
     private static final Gson GSON = new Gson();
@@ -133,6 +135,49 @@ public final class BotCommand {
         JsonObject out = new JsonObject();
         out.addProperty("defaultSlots", de.kronwerke.core.config.KronwerkeConfig.DEFAULT_SLOTS.get());
         out.add("streamers", list);
+        answer(c, "OK " + GSON.toJson(out));
+        return 1;
+    }
+
+    static LiteralArgumentBuilder<CommandSourceStack> quests() {
+        return Commands.literal("quests")
+                .then(Commands.argument("uuid", StringArgumentType.word())
+                        .then(Commands.literal("json").executes(BotCommand::questsJson)));
+    }
+
+    /** The website's quest book marks what the reader's team has done. FTB Quests keeps progress per
+     *  team; a player without a team of their own has their solo team. Ids are the hex code strings,
+     *  the same the pack's quest files and the web export use. */
+    private static int questsJson(CommandContext<CommandSourceStack> c) {
+        UUID player;
+        try {
+            player = UUID.fromString(StringArgumentType.getString(c, "uuid"));
+        } catch (IllegalArgumentException e) {
+            answer(c, "ERR not a uuid");
+            return 0;
+        }
+        dev.ftb.mods.ftbquests.quest.ServerQuestFile file = dev.ftb.mods.ftbquests.quest.ServerQuestFile.INSTANCE;
+        if (file == null || !dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().isManagerLoaded()) {
+            answer(c, "ERR quests not loaded");
+            return 0;
+        }
+        java.util.Optional<dev.ftb.mods.ftbteams.api.Team> team =
+                dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager().getTeamForPlayerID(player);
+        if (team.isEmpty()) {
+            answer(c, "ERR unknown player");
+            return 0;
+        }
+        dev.ftb.mods.ftbquests.quest.TeamData data = file.getOrCreateTeamData(team.get());
+        JsonArray done = new JsonArray(), started = new JsonArray();
+        file.forAllQuests(q -> {
+            if (data.isCompleted(q)) done.add(q.getCodeString());
+            else if (data.isStarted(q)) started.add(q.getCodeString());
+        });
+        JsonObject out = new JsonObject();
+        out.addProperty("team", team.get().getShortName());
+        out.addProperty("members", team.get().getMembers().size());
+        out.add("done", done);
+        out.add("started", started);
         answer(c, "OK " + GSON.toJson(out));
         return 1;
     }
