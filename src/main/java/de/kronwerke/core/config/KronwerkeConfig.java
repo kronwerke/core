@@ -46,6 +46,9 @@ public final class KronwerkeConfig {
     public static final ModConfigSpec.DoubleValue AUTOSAVE_MS_PER_TICK;
     public static final ModConfigSpec.DoubleValue TNT_MS_PER_TICK;
     public static final ModConfigSpec.BooleanValue QUEUE;
+    public static final ModConfigSpec.BooleanValue STATUS_BRAND;
+    public static final ModConfigSpec.ConfigValue<String> STATUS_TAG;
+    public static final ModConfigSpec.ConfigValue<String> STATUS_LINE;
     public static final ModConfigSpec.IntValue QUEUE_LIMIT;
     public static final ModConfigSpec.BooleanValue MACHINE_LOCKS;
     public static final ModConfigSpec.BooleanValue CHEAP_TNT_EXPOSURE;
@@ -123,6 +126,15 @@ public final class KronwerkeConfig {
                 .define("queue", true);
         QUEUE_LIMIT = b.comment("How many players the whole network holds (main and the side worlds together) before new players queue. Operators, owners, streamers and players coming back from a side world never queue. Changed in game with /kw admin queue limit <n>, which is kept in kronwerke/queue-limit.txt and wins over this value (pack updates bring this file back).")
                 .defineInRange("queueLimit", 50, 1, 999);
+        b.pop();
+
+        b.push("status");
+        STATUS_BRAND = b.comment("The server list entry is Kronwerke's: the crown of the logo as the icon and KRONWERKE in the logo's colours as the first line, on every server of the network. Off leaves server-icon.png and the motd of server.properties alone.")
+                .define("brand", true);
+        STATUS_TAG = b.comment("What follows the name on the first line. Empty leaves the name alone.")
+                .define("tag", "Season 2");
+        STATUS_LINE = b.comment("The second line of the entry. Empty leaves it out.")
+                .define("line", "Start am 16. Januar 2027 um 18 Uhr");
         b.pop();
 
         b.push("rules");

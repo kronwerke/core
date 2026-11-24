@@ -78,6 +78,7 @@
     "SelectorTagIndexMixin",
     "ServerPlayerRespawnInvoker",
     "ServerReadTimeoutMixin",
+    "ServerStatusBrandMixin",
     "ServerStatusQueueMixin",
     "SophGroupsAccessor",
     "SophInventoryGateMixin",
@@ -96,6 +97,7 @@
     "RsCardMixin"
   ],
   "client": [
+    "ServerListBrandMixin",
     "ChatKeepMixin",
     "DisconnectedScreenAccessor",
     "MusicManagerAccessor",

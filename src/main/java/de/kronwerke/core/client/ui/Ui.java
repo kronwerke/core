@@ -53,11 +53,10 @@ public final class Ui {
     public static final ResourceLocation BAR = sprite("bar");
     public static final ResourceLocation TAB = sprite("tab");
     public static final ResourceLocation TAB_ACTIVE = sprite("tab_active");
-    public static final ResourceLocation BRAND = sprite("brand");
     public static final ResourceLocation SWITCH_ON = sprite("switch_on");
     public static final ResourceLocation SWITCH_OFF = sprite("switch_off");
-    /** The brand sprite's size in GUI pixels. */
-    public static final int BRAND_W = 130, BRAND_H = 18;
+    /** The size of the logo's lettering in a window's header, in GUI pixels. */
+    public static final int BRAND_H = 16, BRAND_W = Brand.width(BRAND_H);
 
     private static final Map<String, ItemStack> ICONS = new HashMap<>();
 

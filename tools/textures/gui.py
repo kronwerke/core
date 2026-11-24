@@ -293,7 +293,9 @@ def brand():
         ring |= m.shift(cm, dx, dy)
     c.fill(ring & ~cm, DARK)
     c.paste(m)
-    write("brand", c)
+    # not written any more: since the painted logo the header shows its lettering
+    # (textures/gui/brand/wordmark.png, drawn by client/ui/Brand)
+    return c
 
 
 def icon(name):

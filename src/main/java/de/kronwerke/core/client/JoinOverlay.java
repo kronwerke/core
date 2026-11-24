@@ -44,11 +44,12 @@ public final class JoinOverlay {
     private static final int ART_W = 320, ART_H = 200, PIC_H = 232, TOP = 22;
     private static final int BIG_X = 154, BIG_Y = 54, BIG_S = 84, MID_X = 212, MID_Y = 32, MID_S = 58, SMALL_X = 128, SMALL_Y = 98, SMALL_S = 46;
     private static final int PEND_X = 222, PEND_Y = 65, PEND_W = 40, PEND_H = 58, PEND_N = 13;
-    private static final int LOGO_W = 112, LOGO_H = 34;
+    /** The logo's lettering under the picture, in art pixels. */
+    private static final int LOGO_H = 24, LOGO_W = de.kronwerke.core.client.ui.Brand.width(LOGO_H);
     /** How many teeth pass a second once the works run. */
     private static final double TEETH = 1.05;
     private static final ResourceLocation BACK = art("back"), SCENE = art("scene"), FRONT = art("front"), LIGHT = art("light"),
-            GEAR_BIG = art("gear_big"), GEAR_MID = art("gear_mid"), GEAR_SMALL = art("gear_small"), PENDULUM = art("pendulum"), LOGO = art("logo");
+            GEAR_BIG = art("gear_big"), GEAR_MID = art("gear_mid"), GEAR_SMALL = art("gear_small"), PENDULUM = art("pendulum");
 
     private static ResourceLocation art(String name) {
         return ResourceLocation.fromNamespaceAndPath(de.kronwerke.core.KronwerkeCore.MOD_ID, "textures/gui/join/" + name + ".png");
@@ -274,7 +275,8 @@ public final class JoinOverlay {
         q.end();
         // the name, a moment after the rest
         float in = Math.max(0, Math.min(1, (t - 600) / 900f));
-        tex(g, LOGO, (ART_W - LOGO_W) / 2, ART_H - 3, LOGO_W, LOGO_H, 0, 0, LOGO_W, LOGO_H, alpha * in);
+        g.flush();
+        de.kronwerke.core.client.ui.Brand.draw(g, (ART_W - LOGO_W) / 2, ART_H + 2, LOGO_H, gui * k, alpha * in);
         g.pose().popPose();
         indicator(g, now, alpha);
     }

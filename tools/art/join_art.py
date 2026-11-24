@@ -18,7 +18,6 @@ drawn for), nothing smoothed. What is written into assets/kronwerke/textures/gui
     gear_mid.png   64 frames, 8 columns
     gear_small.png 48 frames, 8 columns
     pendulum.png   13 frames from one end of the swing to the other
-    logo.png       the name for under the picture
 
     join_art.py                 writes the textures
     join_art.py preview <dir>   also writes still.png and loop.gif there, to look at
@@ -759,7 +758,7 @@ def build(preview=None):
     under.paste(scene)
     under.paste(front)
     light = light_layer(lit, under)
-    for name, c in (('back', back), ('scene', scene), ('front', front), ('light', light), ('logo', logo())):
+    for name, c in (('back', back), ('scene', scene), ('front', front), ('light', light)):          # the name under the picture is the logo's lettering now (client/ui/Brand)
         c.image(1, rgba=True).save(os.path.join(OUT, name + '.png'), optimize=True)
     big, sb = gear_sheet('gear_big', BIG, 0.0, 81, 'big', 12)
     mid, sm = gear_sheet('gear_mid', MID, mesh_base(AT_MID, 8), 82, 'mid', 8)

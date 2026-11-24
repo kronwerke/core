@@ -83,7 +83,7 @@ public abstract class KwScreen extends Screen {
         Ui.header(g, left + 6, top + 6, left + w - 6, top + HEAD);
         // on a narrow panel the brand gives way to the heading
         boolean brand = w >= 300;
-        if (brand) g.blitSprite(Ui.BRAND, left + 9, top + 6, Ui.BRAND_W, Ui.BRAND_H);
+        if (brand) Brand.draw(g, left + 9, top + 7, Ui.BRAND_H);
         int bx = left + 9 + (brand ? Ui.BRAND_W : 0);
         if (brand) {
             g.fill(bx + 4, top + 11, bx + 5, top + 19, Ui.GOLD_DARK);

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.39.42
+
+- The server list shows the logo (24.11.2026, asked by Samuel with the new logo: "replace the text part with our logo, not only the server icon"). A server can only send text and a 64 pixel icon, so the two halves are:
+  - Server (`status/StatusBrand`, `ServerStatusBrandMixin`): every server of the network answers a status ping with the crown of the logo as its icon and with the name in the logo's colours as the first line: gold for KRON, ice blue for WERKE, one colour per letter, then `Season 2`. The second line says when the season starts. `status.brand`, `status.tag` and `status.line` in `kronwerke-common.toml` turn it off or change the words; no `server-icon.png` and no `motd` line has to be kept in step on four servers.
+  - Client (`client/ServerListBrand`, `ServerListBrandMixin`): an entry whose text begins with the name is drawn with the logo's lettering as a picture where the entry's name and that first line stood, the tag beside it, the second line below. A client without Core, and a server list on the web, shows the coloured text.
+- The join screen and the header of Core's windows carry the logo's lettering in place of the pixel name (`client/ui/Brand`; `textures/gui/brand/wordmark.png` and a half size copy, drawn with smoothing). The pixel logo files are gone and the art scripts no longer write them.
+- A server without FTB Quests starts again. Since 0.39.40 the command class named FTB Quests' classes itself, so a server that does not have the mod (the test network) stopped while registering commands. The quest progress lives in a class of its own that is only loaded when both FTB mods are there.
+- Seen in the test client against the local network: the server list entry with icon, lettering, tag and second line; the join screen; the header of `/kw`. Not seen: any of it with the whole pack.
+
 ## 0.39.41
 
 - The Chaos Guardian grows with the group and gets his hint (20.11.2026). The boss list named `draconicevolution:chaos_guardian`, an id Draconic Evolution never had; the entity is `draconicevolution:draconic_guardian`. So the last boss of the season was the only one that did not scale, and the note a player hears on coming close never fired. The default list has the right id, and a config that still carries the old one is read as the right one, so no server config has to be edited.

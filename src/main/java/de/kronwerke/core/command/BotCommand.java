@@ -156,30 +156,15 @@ public final class BotCommand {
             answer(c, "ERR not a uuid");
             return 0;
         }
-        dev.ftb.mods.ftbquests.quest.ServerQuestFile file = dev.ftb.mods.ftbquests.quest.ServerQuestFile.INSTANCE;
-        if (file == null || !dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().isManagerLoaded()) {
+        // FTB Quests is named in a class of its own: a server without the mod (the test network)
+        // must be able to load this one
+        if (!net.neoforged.fml.ModList.get().isLoaded("ftbquests") || !net.neoforged.fml.ModList.get().isLoaded("ftbteams")) {
             answer(c, "ERR quests not loaded");
             return 0;
         }
-        java.util.Optional<dev.ftb.mods.ftbteams.api.Team> team =
-                dev.ftb.mods.ftbteams.api.FTBTeamsAPI.api().getManager().getTeamForPlayerID(player);
-        if (team.isEmpty()) {
-            answer(c, "ERR unknown player");
-            return 0;
-        }
-        dev.ftb.mods.ftbquests.quest.TeamData data = file.getOrCreateTeamData(team.get());
-        JsonArray done = new JsonArray(), started = new JsonArray();
-        file.forAllQuests(q -> {
-            if (data.isCompleted(q)) done.add(q.getCodeString());
-            else if (data.isStarted(q)) started.add(q.getCodeString());
-        });
-        JsonObject out = new JsonObject();
-        out.addProperty("team", team.get().getShortName());
-        out.addProperty("members", team.get().getMembers().size());
-        out.add("done", done);
-        out.add("started", started);
-        answer(c, "OK " + GSON.toJson(out));
-        return 1;
+        String line = QuestProgress.json(player);
+        answer(c, line);
+        return line.startsWith("OK") ? 1 : 0;
     }
 
     static LiteralArgumentBuilder<CommandSourceStack> goals() {
